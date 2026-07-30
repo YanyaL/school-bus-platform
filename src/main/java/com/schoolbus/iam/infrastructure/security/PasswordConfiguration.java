@@ -1,4 +1,4 @@
-package com.schoolbus.infrastructure.security;
+package com.schoolbus.iam.infrastructure.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
