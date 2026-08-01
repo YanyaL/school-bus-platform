@@ -1,5 +1,7 @@
 package com.schoolbus.iam.domain.account;
 
+import org.jspecify.annotations.NonNull;
+
 import java.time.Instant;
 import java.util.Objects;
 import java.util.Set;
@@ -49,7 +51,8 @@ public final class Account {
         );
     }
 
-    public static Account register(
+    @org.jetbrains.annotations.Contract("_, _, _ -> new")
+    public static @NonNull Account register(
             StudentNumber studentNumber,
             PasswordHash passwordHash,
             Instant registeredAt
