@@ -22,11 +22,14 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.Instant;
+import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -167,5 +170,42 @@ class AuthenticationControllerTest {
                                 "invalid student number or password"
                         )
                 );
+    }
+
+    @Test
+    void shouldReturnCurrentAuthenticatedUser() throws Exception {
+        mockMvc.perform(
+                        get("/api/v1/auth/me")
+                                .with(
+                                        jwt().jwt(builder -> builder
+                                                .subject("1000001")
+                                                .claim(
+                                                        "roles",
+                                                        List.of("STUDENT")
+                                                )
+                                        )
+                                )
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("OK"))
+                .andExpect(
+                        jsonPath("$.data.userId")
+                                .value(1000001L)
+                )
+                .andExpect(
+                        jsonPath("$.data.roles[0]")
+                                .value("STUDENT")
+                );
+
+        verifyNoInteractions(service);
+    }
+
+    @Test
+    void shouldRejectUnauthenticatedCurrentUserRequest()
+            throws Exception {
+        mockMvc.perform(get("/api/v1/auth/me"))
+                .andExpect(status().isUnauthorized());
+
+        verifyNoInteractions(service);
     }
 }

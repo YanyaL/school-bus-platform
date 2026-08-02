@@ -6,11 +6,15 @@ import com.schoolbus.iam.application.authentication.LoginCommand;
 import com.schoolbus.shared.api.ApiResponse;
 import jakarta.validation.Valid;
 import org.springframework.context.annotation.Profile;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.Objects;
 
 @RestController
@@ -43,6 +47,21 @@ public class AuthenticationController {
 
         return ApiResponse.success(
                 LoginResponse.from(result)
+        );
+    }
+
+    @GetMapping("/me")
+    public ApiResponse<CurrentUserResponse> currentUser(
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        long userId = Long.parseLong(jwt.getSubject());
+        List<String> roles = jwt.getClaimAsStringList("roles");
+
+        return ApiResponse.success(
+                new CurrentUserResponse(
+                        userId,
+                        roles == null ? List.of() : roles
+                )
         );
     }
 }
