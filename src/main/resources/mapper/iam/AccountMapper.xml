@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.schoolbus.iam.infrastructure.persistence.account.AccountMapper">
+
+    <resultMap
+            id="AccountResultMap"
+            type="com.schoolbus.iam.infrastructure.persistence.account.AccountDataObject">
+        <id property="id" column="id"/>
+        <result property="userId" column="user_id"/>
+        <result property="studentNumber" column="student_number"/>
+        <result property="passwordHash" column="password_hash"/>
+        <result property="status" column="status"/>
+        <result property="version" column="version"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <select
+            id="countByStudentNumber"
+            resultType="int">
+        SELECT COUNT(*)
+        FROM iam_account
+        WHERE student_number = #{studentNumber}
+    </select>
+
+    <insert
+            id="insertAccount"
+            parameterType="com.schoolbus.iam.infrastructure.persistence.account.AccountDataObject"
+            useGeneratedKeys="true"
+            keyProperty="id"
+            keyColumn="id">
+        INSERT INTO iam_account (
+            user_id,
+            student_number,
+            password_hash,
+            status,
+            version,
+            created_at,
+            updated_at
+        ) VALUES (
+            #{userId},
+            #{studentNumber},
+            #{passwordHash},
+            #{status},
+            #{version},
+            #{createdAt},
+            #{updatedAt}
+        )
+    </insert>
+
+    <insert id="insertRole">
+        INSERT INTO iam_account_role (
+            account_id,
+            role_code,
+            created_at
+        ) VALUES (
+            #{accountId},
+            #{roleCode},
+            #{createdAt}
+        )
+    </insert>
+
+    <select
+            id="selectByStudentNumber"
+            resultMap="AccountResultMap">
+        SELECT
+            id,
+            user_id,
+            student_number,
+            password_hash,
+            status,
+            version,
+            created_at,
+            updated_at
+        FROM iam_account
+        WHERE student_number = #{studentNumber}
+        LIMIT 1
+    </select>
+
+    <select
+            id="selectRoleCodesByAccountId"
+            resultType="string">
+        SELECT role_code
+        FROM iam_account_role
+        WHERE account_id = #{accountId}
+        ORDER BY role_code
+    </select>
+
+</mapper>
