@@ -56,3 +56,5 @@ school-bus:
       issuer: ${JWT_ISSUER:https://school-bus.local}
       audience: ${JWT_AUDIENCE:school-bus-api}
       access-token-ttl: ${JWT_ACCESS_TOKEN_TTL:PT15M}
+    refresh-token:
+      ttl: ${REFRESH_TOKEN_TTL:PT168H}
