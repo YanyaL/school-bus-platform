@@ -4,8 +4,10 @@ import com.schoolbus.shared.domain.identity.UserId;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class AccountTest {
 
@@ -141,5 +143,64 @@ class AccountTest {
 
         assertThat(account.hasRole(Role.ADMIN))
                 .isFalse();
+    }
+
+    @Test
+    void shouldRestoreExistingAccount() {
+        Instant createdAt =
+                Instant.parse("2026-01-01T10:00:00Z");
+
+        Instant updatedAt =
+                Instant.parse("2026-07-01T10:00:00Z");
+
+        Account account = Account.restore(
+                userId,
+                studentNumber,
+                passwordHash,
+                Set.of(Role.ADMIN),
+                AccountStatus.DISABLED,
+                createdAt,
+                updatedAt
+        );
+
+        assertThat(account.userId())
+                .isEqualTo(userId);
+
+        assertThat(account.studentNumber())
+                .isEqualTo(studentNumber);
+
+        assertThat(account.passwordHash())
+                .isEqualTo(passwordHash);
+
+        assertThat(account.roles())
+                .containsExactly(Role.ADMIN);
+
+        assertThat(account.status())
+                .isEqualTo(AccountStatus.DISABLED);
+
+        assertThat(account.createdAt())
+                .isEqualTo(createdAt);
+
+        assertThat(account.updatedAt())
+                .isEqualTo(updatedAt);
+    }
+
+    @Test
+    void shouldRejectAccountWithoutRoles() {
+        assertThatThrownBy(
+                () -> Account.restore(
+                        userId,
+                        studentNumber,
+                        passwordHash,
+                        Set.of(),
+                        AccountStatus.ACTIVE,
+                        REGISTERED_AT,
+                        REGISTERED_AT
+                )
+        )
+                .isInstanceOf(
+                        IllegalArgumentException.class
+                )
+                .hasMessage("roles must not be empty");
     }
 }

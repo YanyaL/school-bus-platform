@@ -37,12 +37,18 @@ public final class Account {
                 passwordHash,
                 "passwordHash must not be null"
         );
-        this.roles = Set.copyOf(
+        Set<Role> validatedRoles = Set.copyOf(
                 Objects.requireNonNull(
                         roles,
                         "roles must not be null"
                 )
         );
+        if (validatedRoles.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "roles must not be empty"
+            );
+        }
+        this.roles = validatedRoles;
         this.status = Objects.requireNonNull(
                 status,
                 "status must not be null"
@@ -71,6 +77,26 @@ public final class Account {
                 AccountStatus.ACTIVE,
                 registeredAt,
                 registeredAt
+        );
+    }
+
+    public static Account restore(
+            UserId userId,
+            StudentNumber studentNumber,
+            PasswordHash passwordHash,
+            Set<Role> roles,
+            AccountStatus status,
+            Instant createdAt,
+            Instant updatedAt
+    ) {
+        return new Account(
+                userId,
+                studentNumber,
+                passwordHash,
+                roles,
+                status,
+                createdAt,
+                updatedAt
         );
     }
 
