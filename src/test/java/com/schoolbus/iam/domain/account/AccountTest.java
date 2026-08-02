@@ -1,5 +1,6 @@
 package com.schoolbus.iam.domain.account;
 
+import com.schoolbus.shared.domain.identity.UserId;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -11,6 +12,9 @@ class AccountTest {
     private static final Instant REGISTERED_AT =
             Instant.parse("2026-07-31T10:00:00Z");
 
+    private final UserId userId =
+            UserId.of(1000001L);
+
     private final StudentNumber studentNumber =
             StudentNumber.of("S4789503");
 
@@ -20,10 +24,14 @@ class AccountTest {
     @Test
     void shouldRegisterActiveStudentAccount() {
         Account account = Account.register(
+                userId,
                 studentNumber,
                 passwordHash,
                 REGISTERED_AT
         );
+
+        assertThat(account.userId())
+                .isEqualTo(userId);
 
         assertThat(account.studentNumber())
                 .isEqualTo(studentNumber);
@@ -47,6 +55,7 @@ class AccountTest {
     @Test
     void shouldDisableAccount() {
         Account account = Account.register(
+                userId,
                 studentNumber,
                 passwordHash,
                 REGISTERED_AT
@@ -67,6 +76,7 @@ class AccountTest {
     @Test
     void shouldEnableAccount() {
         Account account = Account.register(
+                userId,
                 studentNumber,
                 passwordHash,
                 REGISTERED_AT
@@ -91,6 +101,7 @@ class AccountTest {
     @Test
     void shouldChangePassword() {
         Account account = Account.register(
+                userId,
                 studentNumber,
                 passwordHash,
                 REGISTERED_AT
@@ -119,6 +130,7 @@ class AccountTest {
     @Test
     void shouldCheckAccountRoles() {
         Account account = Account.register(
+                userId,
                 studentNumber,
                 passwordHash,
                 REGISTERED_AT

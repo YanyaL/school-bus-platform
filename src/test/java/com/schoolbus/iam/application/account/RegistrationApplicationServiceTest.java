@@ -5,6 +5,8 @@ import com.schoolbus.iam.domain.account.AccountRepository;
 import com.schoolbus.iam.domain.account.AccountStatus;
 import com.schoolbus.iam.domain.account.Role;
 import com.schoolbus.iam.domain.account.StudentNumber;
+import com.schoolbus.shared.domain.identity.UserId;
+import com.schoolbus.shared.domain.identity.UserIdGenerator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -36,6 +38,9 @@ class RegistrationApplicationServiceTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
+    @Mock
+    private UserIdGenerator userIdGenerator;
+
     private RegistrationApplicationService service;
 
     @BeforeEach
@@ -48,6 +53,7 @@ class RegistrationApplicationServiceTest {
         service = new RegistrationApplicationService(
                 accountRepository,
                 passwordEncoder,
+                userIdGenerator,
                 fixedClock
         );
     }
@@ -63,6 +69,9 @@ class RegistrationApplicationServiceTest {
         StudentNumber studentNumber =
                 StudentNumber.of("S4789503");
 
+        UserId userId =
+                UserId.of(1000001L);
+
         String encodedPassword =
                 "{bcrypt}$2a$10$encodedPassword";
 
@@ -77,6 +86,9 @@ class RegistrationApplicationServiceTest {
                 )
         ).thenReturn(encodedPassword);
 
+        when(userIdGenerator.nextId())
+                .thenReturn(userId);
+
         when(
                 accountRepository.save(any(Account.class))
         ).thenAnswer(invocation ->
@@ -84,6 +96,9 @@ class RegistrationApplicationServiceTest {
         );
 
         Account account = service.register(command);
+
+        assertThat(account.userId())
+                .isEqualTo(userId);
 
         assertThat(account.studentNumber())
                 .isEqualTo(studentNumber);
@@ -105,6 +120,8 @@ class RegistrationApplicationServiceTest {
 
         verify(passwordEncoder)
                 .encode("StrongPass!2026");
+
+        verify(userIdGenerator).nextId();
 
         verify(accountRepository)
                 .save(account);
@@ -136,7 +153,10 @@ class RegistrationApplicationServiceTest {
                         "student number already exists: S4789503"
                 );
 
-        verifyNoInteractions(passwordEncoder);
+        verifyNoInteractions(
+                passwordEncoder,
+                userIdGenerator
+        );
 
         verify(accountRepository, never())
                 .save(any(Account.class));

@@ -1,6 +1,6 @@
 package com.schoolbus.iam.domain.account;
 
-import org.jspecify.annotations.NonNull;
+import com.schoolbus.shared.domain.identity.UserId;
 
 import java.time.Instant;
 import java.util.Objects;
@@ -8,6 +8,7 @@ import java.util.Set;
 
 public final class Account {
 
+    private final UserId userId;
     private final StudentNumber studentNumber;
     private PasswordHash passwordHash;
     private final Set<Role> roles;
@@ -16,6 +17,7 @@ public final class Account {
     private Instant updatedAt;
 
     private Account(
+            UserId userId,
             StudentNumber studentNumber,
             PasswordHash passwordHash,
             Set<Role> roles,
@@ -23,6 +25,10 @@ public final class Account {
             Instant createdAt,
             Instant updatedAt
     ) {
+        this.userId = Objects.requireNonNull(
+                userId,
+                "userId must not be null"
+        );
         this.studentNumber = Objects.requireNonNull(
                 studentNumber,
                 "studentNumber must not be null"
@@ -51,13 +57,14 @@ public final class Account {
         );
     }
 
-    @org.jetbrains.annotations.Contract("_, _, _ -> new")
-    public static @NonNull Account register(
+    public static Account register(
+            UserId userId,
             StudentNumber studentNumber,
             PasswordHash passwordHash,
             Instant registeredAt
     ) {
         return new Account(
+                userId,
                 studentNumber,
                 passwordHash,
                 Set.of(Role.STUDENT),
@@ -103,6 +110,10 @@ public final class Account {
 
     public boolean hasRole(Role role) {
         return roles.contains(role);
+    }
+
+    public UserId userId() {
+        return userId;
     }
 
     public StudentNumber studentNumber() {
