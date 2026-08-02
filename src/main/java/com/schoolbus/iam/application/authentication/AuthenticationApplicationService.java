@@ -17,10 +17,12 @@ public class AuthenticationApplicationService {
 
     private final AccountRepository accountRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AccessTokenIssuer accessTokenIssuer;
 
     public AuthenticationApplicationService(
             AccountRepository accountRepository,
-            PasswordEncoder passwordEncoder
+            PasswordEncoder passwordEncoder,
+            AccessTokenIssuer accessTokenIssuer
     ) {
         this.accountRepository = Objects.requireNonNull(
                 accountRepository,
@@ -30,10 +32,14 @@ public class AuthenticationApplicationService {
                 passwordEncoder,
                 "passwordEncoder must not be null"
         );
+        this.accessTokenIssuer = Objects.requireNonNull(
+                accessTokenIssuer,
+                "accessTokenIssuer must not be null"
+        );
     }
 
     @Transactional(readOnly = true)
-    public Account authenticate(LoginCommand command) {
+    public AuthenticationResult authenticate(LoginCommand command) {
         LoginCommand validatedCommand = Objects.requireNonNull(
                 command,
                 "command must not be null"
@@ -60,6 +66,11 @@ public class AuthenticationApplicationService {
             throw new AccountDisabledException();
         }
 
-        return account;
+        AccessToken accessToken = accessTokenIssuer.issue(account);
+
+        return new AuthenticationResult(
+                account,
+                accessToken
+        );
     }
 }

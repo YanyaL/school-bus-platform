@@ -43,13 +43,17 @@ class AuthenticationApplicationServiceTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
+    @Mock
+    private AccessTokenIssuer accessTokenIssuer;
+
     private AuthenticationApplicationService service;
 
     @BeforeEach
     void setUp() {
         service = new AuthenticationApplicationService(
                 accountRepository,
-                passwordEncoder
+                passwordEncoder,
+                accessTokenIssuer
         );
     }
 
@@ -64,12 +68,16 @@ class AuthenticationApplicationServiceTest {
                         PASSWORD_HASH.value()
                 )
         ).thenReturn(true);
+        AccessToken accessToken = accessToken();
+        when(accessTokenIssuer.issue(account))
+                .thenReturn(accessToken);
 
-        Account authenticated = service.authenticate(
+        AuthenticationResult result = service.authenticate(
                 new LoginCommand("s4789503", RAW_PASSWORD)
         );
 
-        assertThat(authenticated).isSameAs(account);
+        assertThat(result.account()).isSameAs(account);
+        assertThat(result.accessToken()).isSameAs(accessToken);
     }
 
     @Test
@@ -87,6 +95,7 @@ class AuthenticationApplicationServiceTest {
         ).isInstanceOf(InvalidCredentialsException.class);
 
         verifyNoInteractions(passwordEncoder);
+        verifyNoInteractions(accessTokenIssuer);
     }
 
     @Test
@@ -109,6 +118,8 @@ class AuthenticationApplicationServiceTest {
                         )
                 )
         ).isInstanceOf(InvalidCredentialsException.class);
+
+        verifyNoInteractions(accessTokenIssuer);
     }
 
     @Test
@@ -140,6 +151,8 @@ class AuthenticationApplicationServiceTest {
                         )
                 )
         ).isInstanceOf(AccountDisabledException.class);
+
+        verifyNoInteractions(accessTokenIssuer);
     }
 
     private Account activeAccount() {
@@ -148,6 +161,16 @@ class AuthenticationApplicationServiceTest {
                 STUDENT_NUMBER,
                 PASSWORD_HASH,
                 Instant.parse("2026-08-02T05:00:00Z")
+        );
+    }
+
+    private AccessToken accessToken() {
+        Instant issuedAt = Instant.parse("2026-08-02T05:00:00Z");
+        return new AccessToken(
+                "header.payload.signature",
+                AccessToken.BEARER_TYPE,
+                issuedAt,
+                issuedAt.plusSeconds(900)
         );
     }
 }

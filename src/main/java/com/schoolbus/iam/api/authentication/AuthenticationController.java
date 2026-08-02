@@ -1,8 +1,8 @@
 package com.schoolbus.iam.api.authentication;
 
 import com.schoolbus.iam.application.authentication.AuthenticationApplicationService;
+import com.schoolbus.iam.application.authentication.AuthenticationResult;
 import com.schoolbus.iam.application.authentication.LoginCommand;
-import com.schoolbus.iam.domain.account.Account;
 import com.schoolbus.shared.api.ApiResponse;
 import jakarta.validation.Valid;
 import org.springframework.context.annotation.Profile;
@@ -39,10 +39,10 @@ public class AuthenticationController {
                 request.password()
         );
 
-        Account account = service.authenticate(command);
+        AuthenticationResult result = service.authenticate(command);
 
         return ApiResponse.success(
-                LoginResponse.from(account)
+                LoginResponse.from(result)
         );
     }
 }

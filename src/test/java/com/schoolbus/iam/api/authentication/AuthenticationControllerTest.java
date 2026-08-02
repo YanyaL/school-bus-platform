@@ -1,6 +1,8 @@
 package com.schoolbus.iam.api.authentication;
 
 import com.schoolbus.iam.application.authentication.AuthenticationApplicationService;
+import com.schoolbus.iam.application.authentication.AccessToken;
+import com.schoolbus.iam.application.authentication.AuthenticationResult;
 import com.schoolbus.iam.application.authentication.InvalidCredentialsException;
 import com.schoolbus.iam.application.authentication.LoginCommand;
 import com.schoolbus.iam.domain.account.Account;
@@ -14,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -42,6 +45,9 @@ class AuthenticationControllerTest {
     @MockitoBean
     private AuthenticationApplicationService service;
 
+    @MockitoBean
+    private JwtDecoder jwtDecoder;
+
     @Test
     void shouldAuthenticateStudent() throws Exception {
         Account account = Account.register(
@@ -52,7 +58,16 @@ class AuthenticationControllerTest {
                 ),
                 Instant.parse("2026-08-02T05:00:00Z")
         );
-        when(service.authenticate(any())).thenReturn(account);
+        Instant issuedAt = Instant.parse("2026-08-02T05:00:00Z");
+        AccessToken accessToken = new AccessToken(
+                "header.payload.signature",
+                AccessToken.BEARER_TYPE,
+                issuedAt,
+                issuedAt.plusSeconds(900)
+        );
+        when(service.authenticate(any())).thenReturn(
+                new AuthenticationResult(account, accessToken)
+        );
 
         mockMvc.perform(
                         post("/api/v1/auth/login")
@@ -79,6 +94,18 @@ class AuthenticationControllerTest {
                 .andExpect(
                         jsonPath("$.data.roles[0]")
                                 .value("STUDENT")
+                )
+                .andExpect(
+                        jsonPath("$.data.tokenType")
+                                .value("Bearer")
+                )
+                .andExpect(
+                        jsonPath("$.data.accessToken")
+                                .value("header.payload.signature")
+                )
+                .andExpect(
+                        jsonPath("$.data.expiresAt")
+                                .value("2026-08-02T05:15:00Z")
                 );
 
         verify(service).authenticate(

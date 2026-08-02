@@ -16,6 +16,12 @@ springdoc:
   swagger-ui:
     enabled: false
 
+school-bus:
+  security:
+    jwt:
+      public-key-location: ${JWT_PUBLIC_KEY_LOCATION}
+      private-key-location: ${JWT_PRIVATE_KEY_LOCATION}
+
 logging:
   level:
     root: INFO

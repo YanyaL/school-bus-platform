@@ -51,3 +51,8 @@ springdoc:
 school-bus:
   identity:
     worker-id: ${SCHOOL_BUS_WORKER_ID:0}
+  security:
+    jwt:
+      issuer: ${JWT_ISSUER:https://school-bus.local}
+      audience: ${JWT_AUDIENCE:school-bus-api}
+      access-token-ttl: ${JWT_ACCESS_TOKEN_TTL:PT15M}
