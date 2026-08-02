@@ -46,3 +46,8 @@ springdoc:
     path: /v3/api-docs
   swagger-ui:
     path: /swagger-ui.html
+
+
+school-bus:
+  identity:
+    worker-id: ${SCHOOL_BUS_WORKER_ID:0}
