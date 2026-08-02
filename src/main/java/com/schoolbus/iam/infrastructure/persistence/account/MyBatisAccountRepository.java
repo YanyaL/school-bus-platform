@@ -7,6 +7,8 @@ import com.schoolbus.iam.domain.account.PasswordHash;
 import com.schoolbus.iam.domain.account.Role;
 import com.schoolbus.iam.domain.account.StudentNumber;
 import com.schoolbus.shared.domain.identity.UserId;
+import org.springframework.context.annotation.Profile;
+import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -15,7 +17,9 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public final class MyBatisAccountRepository
+@Repository
+@Profile("!test")
+public class MyBatisAccountRepository
         implements AccountRepository {
 
     private static final ZoneOffset DATABASE_ZONE =

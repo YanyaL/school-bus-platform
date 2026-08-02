@@ -6,12 +6,16 @@ import com.schoolbus.iam.domain.account.PasswordHash;
 import com.schoolbus.iam.domain.account.StudentNumber;
 import com.schoolbus.shared.domain.identity.UserId;
 import com.schoolbus.shared.domain.identity.UserIdGenerator;
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
 
 import java.time.Clock;
 import java.util.Objects;
 
-public final class RegistrationApplicationService {
+@Service
+@Profile("!test")
+public class RegistrationApplicationService {
 
     private final AccountRepository accountRepository;
     private final PasswordEncoder passwordEncoder;
