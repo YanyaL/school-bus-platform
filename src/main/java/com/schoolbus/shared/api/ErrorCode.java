@@ -8,6 +8,7 @@ public enum ErrorCode {
     UNAUTHENTICATED(HttpStatus.UNAUTHORIZED, "请先登录"),
     FORBIDDEN(HttpStatus.FORBIDDEN, "没有权限执行此操作"),
     RESOURCE_NOT_FOUND(HttpStatus.NOT_FOUND, "请求的资源不存在"),
+    DUPLICATE_STUDENT_NUMBER(HttpStatus.CONFLICT, "学号已被注册"),
     VERSION_CONFLICT(HttpStatus.CONFLICT, "资源已被其他请求修改"),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "系统暂时无法处理请求");
 
