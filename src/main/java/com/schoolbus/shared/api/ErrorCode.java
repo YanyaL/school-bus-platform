@@ -6,6 +6,8 @@ public enum ErrorCode {
     VALIDATION_ERROR(HttpStatus.BAD_REQUEST, "请求参数校验失败"),
     MALFORMED_JSON(HttpStatus.BAD_REQUEST, "请求 JSON 无法解析"),
     UNAUTHENTICATED(HttpStatus.UNAUTHORIZED, "请先登录"),
+    INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "学号或密码错误"),
+    ACCOUNT_DISABLED(HttpStatus.FORBIDDEN, "账户已被禁用"),
     FORBIDDEN(HttpStatus.FORBIDDEN, "没有权限执行此操作"),
     RESOURCE_NOT_FOUND(HttpStatus.NOT_FOUND, "请求的资源不存在"),
     DUPLICATE_STUDENT_NUMBER(HttpStatus.CONFLICT, "学号已被注册"),
