@@ -81,6 +81,23 @@
     </select>
 
     <select
+            id="selectByUserId"
+            resultMap="AccountResultMap">
+        SELECT
+            id,
+            user_id,
+            student_number,
+            password_hash,
+            status,
+            version,
+            created_at,
+            updated_at
+        FROM iam_account
+        WHERE user_id = #{userId}
+        LIMIT 1
+    </select>
+
+    <select
             id="selectRoleCodesByAccountId"
             resultType="string">
         SELECT role_code

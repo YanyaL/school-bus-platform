@@ -112,6 +112,13 @@ class MyBatisAccountRepositoryIntegrationTest {
                 .isEqualTo(REGISTERED_AT);
         assertThat(restored.updatedAt())
                 .isEqualTo(REGISTERED_AT);
+
+        Account restoredByUserId = repository
+                .findByUserId(userId)
+                .orElseThrow();
+        assertThat(restoredByUserId.userId()).isEqualTo(userId);
+        assertThat(restoredByUserId.studentNumber())
+                .isEqualTo(studentNumber);
     }
 
     @Test

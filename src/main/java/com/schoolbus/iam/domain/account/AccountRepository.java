@@ -1,5 +1,7 @@
 package com.schoolbus.iam.domain.account;
 
+import com.schoolbus.shared.domain.identity.UserId;
+
 import java.util.Optional;
 
 public interface AccountRepository {
@@ -13,4 +15,6 @@ public interface AccountRepository {
     Optional<Account> findByStudentNumber(
         StudentNumber studentNumber
     );
+
+    Optional<Account> findByUserId(UserId userId);
 }

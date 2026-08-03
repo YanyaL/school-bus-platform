@@ -1,16 +1,11 @@
 package com.schoolbus.iam.api.authentication;
 
 import com.schoolbus.iam.application.authentication.AuthenticationResult;
-import com.schoolbus.iam.domain.account.Account;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.Objects;
 
-public record LoginResponse(
-        long userId,
-        String studentNumber,
-        List<String> roles,
+public record RefreshTokenResponse(
         String tokenType,
         String accessToken,
         Instant accessTokenExpiresAt,
@@ -18,23 +13,15 @@ public record LoginResponse(
         Instant refreshTokenExpiresAt
 ) {
 
-    public static LoginResponse from(AuthenticationResult result) {
+    public static RefreshTokenResponse from(
+            AuthenticationResult result
+    ) {
         AuthenticationResult validatedResult = Objects.requireNonNull(
                 result,
                 "result must not be null"
         );
-        Account account = validatedResult.account();
 
-        List<String> roleNames = account.roles()
-                .stream()
-                .map(Enum::name)
-                .sorted()
-                .toList();
-
-        return new LoginResponse(
-                account.userId().value(),
-                account.studentNumber().value(),
-                roleNames,
+        return new RefreshTokenResponse(
                 validatedResult.accessToken().tokenType(),
                 validatedResult.accessToken().value(),
                 validatedResult.accessToken().expiresAt(),

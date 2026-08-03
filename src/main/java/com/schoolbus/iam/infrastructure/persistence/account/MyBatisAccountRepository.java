@@ -125,6 +125,38 @@ public class MyBatisAccountRepository
         );
     }
 
+    @Override
+    public Optional<Account> findByUserId(UserId userId) {
+        UserId validatedUserId = Objects.requireNonNull(
+                userId,
+                "userId must not be null"
+        );
+
+        return restoreAccount(
+                accountMapper.selectByUserId(
+                        validatedUserId.value()
+                )
+        );
+    }
+
+    private Optional<Account> restoreAccount(
+            AccountDataObject dataObject
+    ) {
+        if (dataObject == null) {
+            return Optional.empty();
+        }
+
+        Set<Role> roles = accountMapper
+                .selectRoleCodesByAccountId(
+                        dataObject.getId()
+                )
+                .stream()
+                .map(Role::valueOf)
+                .collect(Collectors.toUnmodifiableSet());
+
+        return Optional.of(toDomain(dataObject, roles));
+    }
+
     private AccountDataObject toDataObject(
             Account account
     ) {

@@ -6,7 +6,8 @@ import java.util.Objects;
 
 public record AuthenticationResult(
         Account account,
-        AccessToken accessToken
+        AccessToken accessToken,
+        RefreshToken refreshToken
 ) {
 
     public AuthenticationResult {
@@ -17,6 +18,10 @@ public record AuthenticationResult(
         Objects.requireNonNull(
                 accessToken,
                 "accessToken must not be null"
+        );
+        Objects.requireNonNull(
+                refreshToken,
+                "refreshToken must not be null"
         );
     }
 }

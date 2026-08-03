@@ -43,11 +43,16 @@ public class JwtAccessTokenIssuer implements AccessTokenIssuer {
     }
 
     @Override
-    public AccessToken issue(Account account) {
+    public AccessToken issue(Account account, String sessionId) {
         Account validatedAccount = Objects.requireNonNull(
                 account,
                 "account must not be null"
         );
+        if (sessionId == null || sessionId.isBlank()) {
+            throw new IllegalArgumentException(
+                    "sessionId must not be blank"
+            );
+        }
         Instant issuedAt = clock.instant();
         Instant expiresAt = issuedAt.plus(
                 properties.accessTokenTtl()
@@ -70,6 +75,7 @@ public class JwtAccessTokenIssuer implements AccessTokenIssuer {
                         )
                 )
                 .claim("roles", roles)
+                .claim("sid", sessionId)
                 .build();
         JwsHeader header = JwsHeader
                 .with(SignatureAlgorithm.RS256)

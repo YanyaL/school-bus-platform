@@ -3,6 +3,8 @@ package com.schoolbus.shared.api;
 import org.springframework.http.HttpStatus;
 
 public enum ErrorCode {
+    INVALID_LOGIN_SESSION(HttpStatus.UNAUTHORIZED, "invalid login session"),
+    INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "invalid or expired refresh token"),
     VALIDATION_ERROR(HttpStatus.BAD_REQUEST, "请求参数校验失败"),
     MALFORMED_JSON(HttpStatus.BAD_REQUEST, "请求 JSON 无法解析"),
     UNAUTHENTICATED(HttpStatus.UNAUTHORIZED, "请先登录"),

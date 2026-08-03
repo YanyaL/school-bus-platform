@@ -32,6 +32,11 @@ public interface AccountMapper {
         String studentNumber
     );
 
+    AccountDataObject selectByUserId(
+        @Param("userId")
+        Long userId
+    );
+
     List<String> selectRoleCodesByAccountId(
         @Param("accountId")
         Long accountId

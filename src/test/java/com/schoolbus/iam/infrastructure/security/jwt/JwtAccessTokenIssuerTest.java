@@ -59,7 +59,10 @@ class JwtAccessTokenIssuerTest {
                 NOW
         );
 
-        AccessToken accessToken = tokenIssuer.issue(account);
+        AccessToken accessToken = tokenIssuer.issue(
+                account,
+                "session-001"
+        );
         Jwt jwt = jwtDecoder.decode(accessToken.value());
 
         assertThat(accessToken.tokenType()).isEqualTo("Bearer");
@@ -73,6 +76,8 @@ class JwtAccessTokenIssuerTest {
                 .containsExactly("school-bus-api");
         assertThat(jwt.getClaimAsStringList("roles"))
                 .containsExactly("STUDENT");
+        assertThat(jwt.getClaimAsString("sid"))
+                .isEqualTo("session-001");
         assertThat(jwt.getClaims())
                 .doesNotContainKey("studentNumber");
         assertThat(jwt.getId()).isNotBlank();

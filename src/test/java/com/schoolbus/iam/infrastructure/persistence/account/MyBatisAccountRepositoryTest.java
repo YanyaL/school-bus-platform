@@ -230,4 +230,39 @@ class MyBatisAccountRepositoryTest {
         assertThat(restored.updatedAt())
                 .isEqualTo(updatedAt);
     }
+
+    @Test
+    void shouldFindAccountByUserId() {
+        AccountDataObject dataObject = new AccountDataObject();
+        dataObject.setId(42L);
+        dataObject.setUserId(USER_ID.value());
+        dataObject.setStudentNumber(STUDENT_NUMBER.value());
+        dataObject.setPasswordHash(PASSWORD_HASH.value());
+        dataObject.setStatus(AccountStatus.ACTIVE.name());
+        dataObject.setVersion(0L);
+        dataObject.setCreatedAt(
+                LocalDateTime.ofInstant(
+                        REGISTERED_AT,
+                        ZoneOffset.UTC
+                )
+        );
+        dataObject.setUpdatedAt(
+                LocalDateTime.ofInstant(
+                        REGISTERED_AT,
+                        ZoneOffset.UTC
+                )
+        );
+        when(accountMapper.selectByUserId(USER_ID.value()))
+                .thenReturn(dataObject);
+        when(accountMapper.selectRoleCodesByAccountId(42L))
+                .thenReturn(List.of(Role.STUDENT.name()));
+
+        Optional<Account> result = repository.findByUserId(USER_ID);
+
+        assertThat(result).isPresent();
+        assertThat(result.orElseThrow().userId())
+                .isEqualTo(USER_ID);
+        assertThat(result.orElseThrow().roles())
+                .containsExactly(Role.STUDENT);
+    }
 }

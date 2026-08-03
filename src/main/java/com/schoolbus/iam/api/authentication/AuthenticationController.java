@@ -3,6 +3,8 @@ package com.schoolbus.iam.api.authentication;
 import com.schoolbus.iam.application.authentication.AuthenticationApplicationService;
 import com.schoolbus.iam.application.authentication.AuthenticationResult;
 import com.schoolbus.iam.application.authentication.LoginCommand;
+import com.schoolbus.iam.application.authentication.LogoutCommand;
+import com.schoolbus.iam.application.authentication.RefreshAuthenticationCommand;
 import com.schoolbus.shared.api.ApiResponse;
 import jakarta.validation.Valid;
 import org.springframework.context.annotation.Profile;
@@ -48,6 +50,34 @@ public class AuthenticationController {
         return ApiResponse.success(
                 LoginResponse.from(result)
         );
+    }
+
+    @PostMapping("/refresh")
+    public ApiResponse<RefreshTokenResponse> refresh(
+            @Valid
+            @RequestBody RefreshTokenRequest request
+    ) {
+        AuthenticationResult result = service.refresh(
+                new RefreshAuthenticationCommand(
+                        request.refreshToken()
+                )
+        );
+
+        return ApiResponse.success(
+                RefreshTokenResponse.from(result)
+        );
+    }
+
+    @PostMapping("/logout")
+    public ApiResponse<Void> logout(
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        service.logout(
+                new LogoutCommand(
+                        jwt.getClaimAsString("sid")
+                )
+        );
+        return ApiResponse.success(null);
     }
 
     @GetMapping("/me")
