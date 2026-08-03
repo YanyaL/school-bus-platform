@@ -6,22 +6,26 @@ import java.util.Objects;
 public final class BusTrip {
 
     private final TripId tripId;
+    private final TripNumber tripNumber;
+    private final VehicleId vehicleId;
     private final RouteId routeId;
-    private final Instant departureAt;
-    private final Instant arrivalAt;
+    private final Instant departureTime;
+    private final Instant bookingDeadline;
+    private final Money price;
     private TripStatus status;
-    private SeatCapacity seatCapacity;
     private long version;
     private final Instant createdAt;
     private Instant updatedAt;
 
     private BusTrip(
             TripId tripId,
+            TripNumber tripNumber,
+            VehicleId vehicleId,
             RouteId routeId,
-            Instant departureAt,
-            Instant arrivalAt,
+            Instant departureTime,
+            Instant bookingDeadline,
+            Money price,
             TripStatus status,
-            SeatCapacity seatCapacity,
             long version,
             Instant createdAt,
             Instant updatedAt
@@ -30,30 +34,38 @@ public final class BusTrip {
                 tripId,
                 "tripId must not be null"
         );
+        this.tripNumber = Objects.requireNonNull(
+                tripNumber,
+                "tripNumber must not be null"
+        );
+        this.vehicleId = Objects.requireNonNull(
+                vehicleId,
+                "vehicleId must not be null"
+        );
         this.routeId = Objects.requireNonNull(
                 routeId,
                 "routeId must not be null"
         );
-        this.departureAt = Objects.requireNonNull(
-                departureAt,
-                "departureAt must not be null"
+        this.departureTime = Objects.requireNonNull(
+                departureTime,
+                "departureTime must not be null"
         );
-        this.arrivalAt = Objects.requireNonNull(
-                arrivalAt,
-                "arrivalAt must not be null"
+        this.bookingDeadline = Objects.requireNonNull(
+                bookingDeadline,
+                "bookingDeadline must not be null"
         );
-        if (!arrivalAt.isAfter(departureAt)) {
+        if (!bookingDeadline.isBefore(departureTime)) {
             throw new IllegalArgumentException(
-                    "arrivalAt must be after departureAt"
+                    "bookingDeadline must be before departureTime"
             );
         }
+        this.price = Objects.requireNonNull(
+                price,
+                "price must not be null"
+        );
         this.status = Objects.requireNonNull(
                 status,
                 "status must not be null"
-        );
-        this.seatCapacity = Objects.requireNonNull(
-                seatCapacity,
-                "seatCapacity must not be null"
         );
         if (version < 0) {
             throw new IllegalArgumentException(
@@ -76,86 +88,86 @@ public final class BusTrip {
         }
     }
 
-    public static BusTrip schedule(
+    public static BusTrip draft(
             TripId tripId,
+            TripNumber tripNumber,
+            VehicleId vehicleId,
             RouteId routeId,
-            Instant departureAt,
-            Instant arrivalAt,
-            int totalSeats,
-            Instant scheduledAt
+            Instant departureTime,
+            Instant bookingDeadline,
+            Money price,
+            Instant createdAt
     ) {
         return new BusTrip(
                 tripId,
+                tripNumber,
+                vehicleId,
                 routeId,
-                departureAt,
-                arrivalAt,
-                TripStatus.SCHEDULED,
-                SeatCapacity.full(totalSeats),
+                departureTime,
+                bookingDeadline,
+                price,
+                TripStatus.DRAFT,
                 0L,
-                scheduledAt,
-                scheduledAt
+                createdAt,
+                createdAt
         );
     }
 
     public static BusTrip restore(
             TripId tripId,
+            TripNumber tripNumber,
+            VehicleId vehicleId,
             RouteId routeId,
-            Instant departureAt,
-            Instant arrivalAt,
+            Instant departureTime,
+            Instant bookingDeadline,
+            Money price,
             TripStatus status,
-            SeatCapacity seatCapacity,
             long version,
             Instant createdAt,
             Instant updatedAt
     ) {
         return new BusTrip(
                 tripId,
+                tripNumber,
+                vehicleId,
                 routeId,
-                departureAt,
-                arrivalAt,
+                departureTime,
+                bookingDeadline,
+                price,
                 status,
-                seatCapacity,
                 version,
                 createdAt,
                 updatedAt
         );
     }
 
-    public void reserveSeat(Instant reservedAt) {
-        ensureSeatOperationAllowed();
-        Instant operationTime = validateChangeTime(reservedAt);
-        SeatCapacity updatedCapacity = seatCapacity.reserveOne();
-        seatCapacity = updatedCapacity;
-        recordChange(operationTime);
+    public void openForBooking(Instant openedAt) {
+        transitionTo(TripStatus.OPEN_FOR_BOOKING, openedAt);
     }
 
-    public void releaseSeat(Instant releasedAt) {
-        ensureSeatOperationAllowed();
-        Instant operationTime = validateChangeTime(releasedAt);
-        SeatCapacity updatedCapacity = seatCapacity.releaseOne();
-        seatCapacity = updatedCapacity;
-        recordChange(operationTime);
-    }
-
-    public void startBoarding(Instant startedAt) {
-        transitionTo(TripStatus.BOARDING, startedAt);
+    public void closeBooking(Instant closedAt) {
+        transitionTo(TripStatus.CLOSED, closedAt);
     }
 
     public void depart(Instant departedAt) {
         transitionTo(TripStatus.DEPARTED, departedAt);
     }
 
-    public void arrive(Instant arrivedAt) {
-        transitionTo(TripStatus.ARRIVED, arrivedAt);
+    public void complete(Instant completedAt) {
+        transitionTo(TripStatus.COMPLETED, completedAt);
     }
 
     public void cancel(Instant cancelledAt) {
         transitionTo(TripStatus.CANCELLED, cancelledAt);
     }
 
-    public boolean canReserve() {
-        return allowsSeatOperation()
-                && seatCapacity.hasAvailableSeat();
+    public boolean canBookAt(Instant instant) {
+        Instant checkedInstant = Objects.requireNonNull(
+                instant,
+                "instant must not be null"
+        );
+        return status == TripStatus.OPEN_FOR_BOOKING
+                && checkedInstant.isBefore(bookingDeadline);
     }
 
     private void transitionTo(
@@ -170,7 +182,8 @@ public final class BusTrip {
         }
         Instant operationTime = validateChangeTime(changedAt);
         status = targetStatus;
-        recordChange(operationTime);
+        updatedAt = operationTime;
+        version++;
     }
 
     private boolean isTransitionAllowed(
@@ -178,24 +191,15 @@ public final class BusTrip {
             TripStatus targetStatus
     ) {
         return switch (currentStatus) {
-            case SCHEDULED -> targetStatus == TripStatus.BOARDING
+            case DRAFT -> targetStatus == TripStatus.OPEN_FOR_BOOKING
                     || targetStatus == TripStatus.CANCELLED;
-            case BOARDING -> targetStatus == TripStatus.DEPARTED
+            case OPEN_FOR_BOOKING -> targetStatus == TripStatus.CLOSED
                     || targetStatus == TripStatus.CANCELLED;
-            case DEPARTED -> targetStatus == TripStatus.ARRIVED;
-            case CANCELLED, ARRIVED -> false;
+            case CLOSED -> targetStatus == TripStatus.DEPARTED
+                    || targetStatus == TripStatus.CANCELLED;
+            case DEPARTED -> targetStatus == TripStatus.COMPLETED;
+            case COMPLETED, CANCELLED -> false;
         };
-    }
-
-    private void ensureSeatOperationAllowed() {
-        if (!allowsSeatOperation()) {
-            throw new TripSeatOperationNotAllowedException(status);
-        }
-    }
-
-    private boolean allowsSeatOperation() {
-        return status == TripStatus.SCHEDULED
-                || status == TripStatus.BOARDING;
     }
 
     private Instant validateChangeTime(Instant changedAt) {
@@ -211,33 +215,36 @@ public final class BusTrip {
         return operationTime;
     }
 
-    private void recordChange(Instant operationTime) {
-        updatedAt = operationTime;
-        version++;
-    }
-
     public TripId tripId() {
         return tripId;
+    }
+
+    public TripNumber tripNumber() {
+        return tripNumber;
+    }
+
+    public VehicleId vehicleId() {
+        return vehicleId;
     }
 
     public RouteId routeId() {
         return routeId;
     }
 
-    public Instant departureAt() {
-        return departureAt;
+    public Instant departureTime() {
+        return departureTime;
     }
 
-    public Instant arrivalAt() {
-        return arrivalAt;
+    public Instant bookingDeadline() {
+        return bookingDeadline;
+    }
+
+    public Money price() {
+        return price;
     }
 
     public TripStatus status() {
         return status;
-    }
-
-    public SeatCapacity seatCapacity() {
-        return seatCapacity;
     }
 
     public long version() {

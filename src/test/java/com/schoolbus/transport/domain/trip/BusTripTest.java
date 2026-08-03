@@ -1,8 +1,6 @@
 package com.schoolbus.transport.domain.trip;
 
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
 
 import java.time.Instant;
 
@@ -11,194 +9,118 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class BusTripTest {
 
-    private static final Instant SCHEDULED_AT =
+    private static final Instant CREATED_AT =
             Instant.parse("2026-08-03T00:00:00Z");
-    private static final Instant DEPARTURE_AT =
+    private static final Instant BOOKING_DEADLINE =
+            Instant.parse("2026-08-04T07:30:00Z");
+    private static final Instant DEPARTURE_TIME =
             Instant.parse("2026-08-04T08:00:00Z");
-    private static final Instant ARRIVAL_AT =
-            Instant.parse("2026-08-04T09:00:00Z");
 
     @Test
-    void shouldScheduleTripWithAllSeatsAvailable() {
-        BusTrip trip = scheduledTrip(45);
+    void shouldCreateDraftTrip() {
+        BusTrip trip = draftTrip();
 
         assertThat(trip.tripId()).isEqualTo(TripId.of(1001L));
+        assertThat(trip.vehicleId())
+                .isEqualTo(VehicleId.of(3001L));
         assertThat(trip.routeId()).isEqualTo(RouteId.of(2001L));
-        assertThat(trip.departureAt()).isEqualTo(DEPARTURE_AT);
-        assertThat(trip.arrivalAt()).isEqualTo(ARRIVAL_AT);
-        assertThat(trip.status()).isEqualTo(TripStatus.SCHEDULED);
-        assertThat(trip.seatCapacity())
-                .isEqualTo(SeatCapacity.full(45));
+        assertThat(trip.status()).isEqualTo(TripStatus.DRAFT);
+        assertThat(trip.price()).isEqualTo(Money.of("5.00"));
         assertThat(trip.version()).isZero();
-        assertThat(trip.createdAt()).isEqualTo(SCHEDULED_AT);
-        assertThat(trip.updatedAt()).isEqualTo(SCHEDULED_AT);
-        assertThat(trip.canReserve()).isTrue();
     }
 
     @Test
-    void shouldRejectTripWhoseArrivalIsNotAfterDeparture() {
+    void shouldRejectInvalidBookingDeadline() {
         assertThatThrownBy(
-                () -> BusTrip.schedule(
+                () -> BusTrip.draft(
                         TripId.of(1001L),
+                        tripNumber(),
+                        VehicleId.of(3001L),
                         RouteId.of(2001L),
-                        DEPARTURE_AT,
-                        DEPARTURE_AT,
-                        45,
-                        SCHEDULED_AT
+                        DEPARTURE_TIME,
+                        DEPARTURE_TIME,
+                        Money.of("5.00"),
+                        CREATED_AT
                 )
         )
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage(
-                        "arrivalAt must be after departureAt"
+                        "bookingDeadline must be before departureTime"
                 );
     }
 
     @Test
-    void shouldReserveAndReleaseSeat() {
-        BusTrip trip = scheduledTrip(2);
-        Instant reservedAt = SCHEDULED_AT.plusSeconds(60);
-        Instant releasedAt = SCHEDULED_AT.plusSeconds(120);
+    void shouldFollowCompleteTripLifecycle() {
+        BusTrip trip = draftTrip();
 
-        trip.reserveSeat(reservedAt);
+        trip.openForBooking(CREATED_AT.plusSeconds(60));
+        assertThat(trip.status())
+                .isEqualTo(TripStatus.OPEN_FOR_BOOKING);
+        assertThat(trip.canBookAt(CREATED_AT.plusSeconds(120)))
+                .isTrue();
 
-        assertThat(trip.seatCapacity().availableSeats())
-                .isEqualTo(1);
-        assertThat(trip.version()).isEqualTo(1L);
-        assertThat(trip.updatedAt()).isEqualTo(reservedAt);
+        trip.closeBooking(CREATED_AT.plusSeconds(180));
+        trip.depart(CREATED_AT.plusSeconds(240));
+        trip.complete(CREATED_AT.plusSeconds(300));
 
-        trip.releaseSeat(releasedAt);
-
-        assertThat(trip.seatCapacity().availableSeats())
-                .isEqualTo(2);
-        assertThat(trip.version()).isEqualTo(2L);
-        assertThat(trip.updatedAt()).isEqualTo(releasedAt);
+        assertThat(trip.status()).isEqualTo(TripStatus.COMPLETED);
+        assertThat(trip.version()).isEqualTo(4L);
+        assertThat(trip.updatedAt())
+                .isEqualTo(CREATED_AT.plusSeconds(300));
     }
 
     @Test
-    void shouldRejectReservationWhenTripIsFull() {
-        BusTrip trip = scheduledTrip(1);
-        trip.reserveSeat(SCHEDULED_AT.plusSeconds(60));
+    void shouldStopAcceptingBookingsAtDeadline() {
+        BusTrip trip = draftTrip();
+        trip.openForBooking(CREATED_AT.plusSeconds(60));
+
+        assertThat(trip.canBookAt(BOOKING_DEADLINE.minusMillis(1)))
+                .isTrue();
+        assertThat(trip.canBookAt(BOOKING_DEADLINE)).isFalse();
+        assertThat(trip.canBookAt(BOOKING_DEADLINE.plusMillis(1)))
+                .isFalse();
+    }
+
+    @Test
+    void shouldCancelTripBeforeDeparture() {
+        BusTrip trip = draftTrip();
+        trip.openForBooking(CREATED_AT.plusSeconds(60));
+        trip.closeBooking(CREATED_AT.plusSeconds(120));
+
+        trip.cancel(CREATED_AT.plusSeconds(180));
+
+        assertThat(trip.status()).isEqualTo(TripStatus.CANCELLED);
+        assertThat(trip.canBookAt(CREATED_AT.plusSeconds(240)))
+                .isFalse();
+    }
+
+    @Test
+    void shouldRejectInvalidStateTransitionWithoutMutation() {
+        BusTrip trip = draftTrip();
 
         assertThatThrownBy(
-                () -> trip.reserveSeat(
-                        SCHEDULED_AT.plusSeconds(120)
-                )
-        ).isInstanceOf(NoAvailableSeatException.class);
-
-        assertThat(trip.seatCapacity().availableSeats()).isZero();
-        assertThat(trip.version()).isEqualTo(1L);
-    }
-
-    @Test
-    void shouldAllowReservationDuringBoarding() {
-        BusTrip trip = scheduledTrip(2);
-        trip.startBoarding(SCHEDULED_AT.plusSeconds(60));
-
-        trip.reserveSeat(SCHEDULED_AT.plusSeconds(120));
-
-        assertThat(trip.status()).isEqualTo(TripStatus.BOARDING);
-        assertThat(trip.seatCapacity().availableSeats())
-                .isEqualTo(1);
-        assertThat(trip.canReserve()).isTrue();
-    }
-
-    @ParameterizedTest
-    @EnumSource(
-            value = TripStatus.class,
-            names = {"DEPARTED", "CANCELLED", "ARRIVED"}
-    )
-    void shouldRejectSeatOperationAfterTripCloses(
-            TripStatus status
-    ) {
-        BusTrip trip = restoredTrip(status, new SeatCapacity(2, 1));
-
-        assertThatThrownBy(
-                () -> trip.reserveSeat(
-                        SCHEDULED_AT.plusSeconds(60)
-                )
-        )
-                .isInstanceOf(
-                        TripSeatOperationNotAllowedException.class
-                )
-                .hasMessageContaining(status.name());
-        assertThat(trip.canReserve()).isFalse();
-    }
-
-    @Test
-    void shouldFollowValidTripLifecycle() {
-        BusTrip trip = scheduledTrip(45);
-
-        trip.startBoarding(SCHEDULED_AT.plusSeconds(60));
-        assertThat(trip.status()).isEqualTo(TripStatus.BOARDING);
-
-        trip.depart(SCHEDULED_AT.plusSeconds(120));
-        assertThat(trip.status()).isEqualTo(TripStatus.DEPARTED);
-
-        trip.arrive(SCHEDULED_AT.plusSeconds(180));
-        assertThat(trip.status()).isEqualTo(TripStatus.ARRIVED);
-        assertThat(trip.version()).isEqualTo(3L);
-    }
-
-    @Test
-    void shouldCancelScheduledOrBoardingTrip() {
-        BusTrip scheduled = scheduledTrip(45);
-        scheduled.cancel(SCHEDULED_AT.plusSeconds(60));
-        assertThat(scheduled.status())
-                .isEqualTo(TripStatus.CANCELLED);
-
-        BusTrip boarding = scheduledTrip(45);
-        boarding.startBoarding(SCHEDULED_AT.plusSeconds(60));
-        boarding.cancel(SCHEDULED_AT.plusSeconds(120));
-        assertThat(boarding.status())
-                .isEqualTo(TripStatus.CANCELLED);
-    }
-
-    @Test
-    void shouldRejectInvalidStatusTransition() {
-        BusTrip trip = scheduledTrip(45);
-
-        assertThatThrownBy(
-                () -> trip.arrive(
-                        SCHEDULED_AT.plusSeconds(60)
-                )
+                () -> trip.depart(CREATED_AT.plusSeconds(60))
         )
                 .isInstanceOf(
                         InvalidTripStateTransitionException.class
                 )
                 .hasMessage(
-                        "cannot change trip status from SCHEDULED to ARRIVED"
+                        "cannot change trip status from DRAFT to DEPARTED"
                 );
 
-        assertThat(trip.status()).isEqualTo(TripStatus.SCHEDULED);
+        assertThat(trip.status()).isEqualTo(TripStatus.DRAFT);
         assertThat(trip.version()).isZero();
     }
 
     @Test
-    void shouldKeepTerminalStatusImmutable() {
-        BusTrip trip = scheduledTrip(45);
-        trip.cancel(SCHEDULED_AT.plusSeconds(60));
+    void shouldRejectOutOfOrderMutationWithoutMutation() {
+        BusTrip trip = draftTrip();
+        Instant openedAt = CREATED_AT.plusSeconds(120);
+        trip.openForBooking(openedAt);
 
         assertThatThrownBy(
-                () -> trip.startBoarding(
-                        SCHEDULED_AT.plusSeconds(120)
-                )
-        ).isInstanceOf(
-                InvalidTripStateTransitionException.class
-        );
-
-        assertThat(trip.status()).isEqualTo(TripStatus.CANCELLED);
-        assertThat(trip.version()).isEqualTo(1L);
-    }
-
-    @Test
-    void shouldRejectOutOfOrderMutationWithoutChangingTrip() {
-        BusTrip trip = scheduledTrip(2);
-        Instant firstChangeAt = SCHEDULED_AT.plusSeconds(120);
-        trip.reserveSeat(firstChangeAt);
-
-        assertThatThrownBy(
-                () -> trip.releaseSeat(
-                        SCHEDULED_AT.plusSeconds(60)
+                () -> trip.closeBooking(
+                        CREATED_AT.plusSeconds(60)
                 )
         )
                 .isInstanceOf(IllegalArgumentException.class)
@@ -206,57 +128,49 @@ class BusTripTest {
                         "changedAt must not be before updatedAt"
                 );
 
-        assertThat(trip.seatCapacity().availableSeats())
-                .isEqualTo(1);
+        assertThat(trip.status())
+                .isEqualTo(TripStatus.OPEN_FOR_BOOKING);
         assertThat(trip.version()).isEqualTo(1L);
-        assertThat(trip.updatedAt()).isEqualTo(firstChangeAt);
+        assertThat(trip.updatedAt()).isEqualTo(openedAt);
     }
 
     @Test
     void shouldRestorePersistedTrip() {
         BusTrip trip = BusTrip.restore(
                 TripId.of(1001L),
+                tripNumber(),
+                VehicleId.of(3001L),
                 RouteId.of(2001L),
-                DEPARTURE_AT,
-                ARRIVAL_AT,
-                TripStatus.BOARDING,
-                new SeatCapacity(45, 12),
-                7L,
-                SCHEDULED_AT,
-                SCHEDULED_AT.plusSeconds(300)
+                DEPARTURE_TIME,
+                BOOKING_DEADLINE,
+                Money.of("5.00"),
+                TripStatus.OPEN_FOR_BOOKING,
+                3L,
+                CREATED_AT,
+                CREATED_AT.plusSeconds(300)
         );
 
-        assertThat(trip.status()).isEqualTo(TripStatus.BOARDING);
-        assertThat(trip.seatCapacity().availableSeats())
-                .isEqualTo(12);
-        assertThat(trip.version()).isEqualTo(7L);
+        assertThat(trip.status())
+                .isEqualTo(TripStatus.OPEN_FOR_BOOKING);
+        assertThat(trip.version()).isEqualTo(3L);
     }
 
-    private BusTrip scheduledTrip(int totalSeats) {
-        return BusTrip.schedule(
+    private BusTrip draftTrip() {
+        return BusTrip.draft(
                 TripId.of(1001L),
+                tripNumber(),
+                VehicleId.of(3001L),
                 RouteId.of(2001L),
-                DEPARTURE_AT,
-                ARRIVAL_AT,
-                totalSeats,
-                SCHEDULED_AT
+                DEPARTURE_TIME,
+                BOOKING_DEADLINE,
+                Money.of("5.00"),
+                CREATED_AT
         );
     }
 
-    private BusTrip restoredTrip(
-            TripStatus status,
-            SeatCapacity capacity
-    ) {
-        return BusTrip.restore(
-                TripId.of(1001L),
-                RouteId.of(2001L),
-                DEPARTURE_AT,
-                ARRIVAL_AT,
-                status,
-                capacity,
-                0L,
-                SCHEDULED_AT,
-                SCHEDULED_AT
+    private TripNumber tripNumber() {
+        return TripNumber.of(
+                "11111111-1111-1111-1111-111111111111"
         );
     }
 }

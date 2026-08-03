@@ -1,9 +1,10 @@
 package com.schoolbus.transport.domain.trip;
 
 public enum TripStatus {
-    SCHEDULED,
-    BOARDING,
+    DRAFT,
+    OPEN_FOR_BOOKING,
+    CLOSED,
     DEPARTED,
-    CANCELLED,
-    ARRIVED
+    COMPLETED,
+    CANCELLED
 }
