@@ -69,6 +69,50 @@
         LIMIT 1
     </select>
 
+    <select
+            id="selectDueOpenTripsForClosing"
+            resultMap="TripResultMap">
+        SELECT
+            id,
+            trip_no,
+            vehicle_id,
+            route_id,
+            departure_time,
+            booking_deadline,
+            price,
+            status,
+            version,
+            created_at,
+            updated_at
+        FROM transport_trip
+        WHERE status = 'OPEN_FOR_BOOKING'
+          AND booking_deadline &lt;= #{now}
+        ORDER BY booking_deadline ASC, id ASC
+        LIMIT #{limit}
+    </select>
+
+    <select
+            id="selectDueClosedTripsForDeparture"
+            resultMap="TripResultMap">
+        SELECT
+            id,
+            trip_no,
+            vehicle_id,
+            route_id,
+            departure_time,
+            booking_deadline,
+            price,
+            status,
+            version,
+            created_at,
+            updated_at
+        FROM transport_trip
+        WHERE status = 'CLOSED'
+          AND departure_time &lt;= #{now}
+        ORDER BY departure_time ASC, id ASC
+        LIMIT #{limit}
+    </select>
+
     <update id="updateWithVersion">
         UPDATE transport_trip
         SET status = #{trip.status},
