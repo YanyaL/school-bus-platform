@@ -19,6 +19,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -125,6 +126,52 @@ class MyBatisBusTripRepositoryTest {
         assertThat(trip.status()).isEqualTo(TripStatus.DRAFT);
         assertThat(trip.price()).isEqualTo(Money.of("5.00"));
         assertThat(trip.version()).isZero();
+    }
+
+    @Test
+    void shouldRestoreDueOpenTrips() {
+        TripDataObject dataObject = dataObject();
+        dataObject.setStatus("OPEN_FOR_BOOKING");
+        dataObject.setVersion(1L);
+        LocalDateTime now = LocalDateTime.ofInstant(
+                BOOKING_DEADLINE,
+                ZoneOffset.UTC
+        );
+        when(tripMapper.selectDueOpenTripsForClosing(now, 100))
+                .thenReturn(List.of(dataObject));
+
+        List<BusTrip> trips = repository
+                .findDueOpenTripsForClosing(
+                        BOOKING_DEADLINE,
+                        100
+                );
+
+        assertThat(trips).hasSize(1);
+        assertThat(trips.getFirst().status())
+                .isEqualTo(TripStatus.OPEN_FOR_BOOKING);
+    }
+
+    @Test
+    void shouldRestoreDueClosedTrips() {
+        TripDataObject dataObject = dataObject();
+        dataObject.setStatus("CLOSED");
+        dataObject.setVersion(2L);
+        LocalDateTime now = LocalDateTime.ofInstant(
+                DEPARTURE_TIME,
+                ZoneOffset.UTC
+        );
+        when(tripMapper.selectDueClosedTripsForDeparture(now, 100))
+                .thenReturn(List.of(dataObject));
+
+        List<BusTrip> trips = repository
+                .findDueClosedTripsForDeparture(
+                        DEPARTURE_TIME,
+                        100
+                );
+
+        assertThat(trips).hasSize(1);
+        assertThat(trips.getFirst().status())
+                .isEqualTo(TripStatus.CLOSED);
     }
 
     private BusTrip draftTrip() {

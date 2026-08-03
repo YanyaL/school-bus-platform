@@ -12,8 +12,10 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -79,6 +81,34 @@ public class MyBatisBusTripRepository
         return Optional.of(toDomain(dataObject));
     }
 
+    @Override
+    public List<BusTrip> findDueOpenTripsForClosing(
+            Instant now,
+            int limit
+    ) {
+        return tripMapper.selectDueOpenTripsForClosing(
+                        toDatabaseTime(now),
+                        requirePositiveLimit(limit)
+                )
+                .stream()
+                .map(this::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<BusTrip> findDueClosedTripsForDeparture(
+            Instant now,
+            int limit
+    ) {
+        return tripMapper.selectDueClosedTripsForDeparture(
+                        toDatabaseTime(now),
+                        requirePositiveLimit(limit)
+                )
+                .stream()
+                .map(this::toDomain)
+                .toList();
+    }
+
     private TripDataObject toDataObject(BusTrip trip) {
         TripDataObject dataObject = new TripDataObject();
         dataObject.setId(trip.tripId().value());
@@ -133,5 +163,24 @@ public class MyBatisBusTripRepository
                 dataObject.getUpdatedAt()
                         .toInstant(DATABASE_ZONE)
         );
+    }
+
+    private LocalDateTime toDatabaseTime(Instant instant) {
+        return LocalDateTime.ofInstant(
+                Objects.requireNonNull(
+                        instant,
+                        "now must not be null"
+                ),
+                DATABASE_ZONE
+        );
+    }
+
+    private int requirePositiveLimit(int limit) {
+        if (limit <= 0) {
+            throw new IllegalArgumentException(
+                    "limit must be positive"
+            );
+        }
+        return limit;
     }
 }
