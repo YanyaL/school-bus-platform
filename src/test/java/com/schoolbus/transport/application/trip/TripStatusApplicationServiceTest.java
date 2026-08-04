@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.OptimisticLockingFailureException;
 
 import java.time.Clock;
@@ -22,6 +23,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -38,13 +40,17 @@ class TripStatusApplicationServiceTest {
     @Mock
     private BusTripRepository busTripRepository;
 
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
+
     private TripStatusApplicationService service;
 
     @BeforeEach
     void setUp() {
         service = new TripStatusApplicationService(
                 busTripRepository,
-                Clock.fixed(NOW, ZoneOffset.UTC)
+                Clock.fixed(NOW, ZoneOffset.UTC),
+                eventPublisher
         );
     }
 
@@ -74,6 +80,9 @@ class TripStatusApplicationServiceTest {
         );
         verify(busTripRepository).save(openTrip);
         verify(busTripRepository).save(closedTrip);
+        verify(eventPublisher).publishEvent(
+                new TripAvailabilityChangedEvent(NOW)
+        );
     }
 
     @Test
@@ -97,6 +106,7 @@ class TripStatusApplicationServiceTest {
         assertThat(result).isEqualTo(
                 new TripStatusUpdateResult(0, 0, 1)
         );
+        verifyNoInteractions(eventPublisher);
     }
 
     private BusTrip openTrip(long id) {

@@ -69,6 +69,27 @@
         LIMIT 1
     </select>
 
+    <select id="selectBookableTrips" resultMap="TripResultMap">
+        SELECT
+            id,
+            trip_no,
+            vehicle_id,
+            route_id,
+            departure_time,
+            booking_deadline,
+            price,
+            status,
+            version,
+            created_at,
+            updated_at
+        FROM transport_trip
+        WHERE status = 'OPEN_FOR_BOOKING'
+          AND booking_deadline &gt; #{now}
+          AND departure_time &gt; #{now}
+        ORDER BY departure_time ASC, id ASC
+        LIMIT #{limit}
+    </select>
+
     <select
             id="selectDueOpenTripsForClosing"
             resultMap="TripResultMap">

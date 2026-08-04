@@ -110,6 +110,20 @@ class TripMapperIntegrationTest {
     }
 
     @Test
+    void shouldSelectOnlyTripsThatAreStillBookable() {
+        insertTrip(1401L, "OPEN_FOR_BOOKING", 30, 60);
+        insertTrip(1402L, "OPEN_FOR_BOOKING", 0, 70);
+        insertTrip(1403L, "CLOSED", 40, 80);
+
+        List<TripDataObject> bookableTrips =
+                tripMapper.selectBookableTrips(NOW, 100);
+
+        assertThat(bookableTrips)
+                .extracting(TripDataObject::getId)
+                .containsExactly(1401L);
+    }
+
+    @Test
     void shouldSelectOnlyClosedTripsWhoseDepartureTimeHasArrived() {
         insertTrip(1201L, "CLOSED", -90, -10);
         insertTrip(1202L, "CLOSED", -80, 0);

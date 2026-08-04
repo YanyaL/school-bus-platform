@@ -13,6 +13,11 @@ public interface TripMapper {
 
     TripDataObject selectById(@Param("id") Long id);
 
+    List<TripDataObject> selectBookableTrips(
+            @Param("now") LocalDateTime now,
+            @Param("limit") int limit
+    );
+
     List<TripDataObject> selectDueOpenTripsForClosing(
             @Param("now") LocalDateTime now,
             @Param("limit") int limit

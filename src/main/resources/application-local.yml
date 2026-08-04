@@ -25,3 +25,12 @@ logging:
     root: INFO
     com.schoolbus: DEBUG
     org.mybatis: INFO
+
+school-bus:
+  trip-list-cache:
+    ttl: ${TRIP_LIST_CACHE_TTL:PT1M}
+  trip-status:
+    scheduler:
+      enabled: ${TRIP_STATUS_SCHEDULER_ENABLED:true}
+      initial-delay-ms: ${TRIP_STATUS_SCHEDULER_INITIAL_DELAY_MS:10000}
+      fixed-delay-ms: ${TRIP_STATUS_SCHEDULER_FIXED_DELAY_MS:30000}

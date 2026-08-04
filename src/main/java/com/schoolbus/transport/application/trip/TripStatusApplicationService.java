@@ -3,6 +3,7 @@ package com.schoolbus.transport.application.trip;
 import com.schoolbus.transport.domain.trip.BusTrip;
 import com.schoolbus.transport.domain.trip.BusTripRepository;
 import org.springframework.context.annotation.Profile;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,10 +22,12 @@ public class TripStatusApplicationService {
 
     private final BusTripRepository busTripRepository;
     private final Clock clock;
+    private final ApplicationEventPublisher eventPublisher;
 
     public TripStatusApplicationService(
             BusTripRepository busTripRepository,
-            Clock clock
+            Clock clock,
+            ApplicationEventPublisher eventPublisher
     ) {
         this.busTripRepository = Objects.requireNonNull(
                 busTripRepository,
@@ -33,6 +36,10 @@ public class TripStatusApplicationService {
         this.clock = Objects.requireNonNull(
                 clock,
                 "clock must not be null"
+        );
+        this.eventPublisher = Objects.requireNonNull(
+                eventPublisher,
+                "eventPublisher must not be null"
         );
     }
 
@@ -55,12 +62,19 @@ public class TripStatusApplicationService {
                 trip -> trip.depart(now)
         );
 
-        return new TripStatusUpdateResult(
+        TripStatusUpdateResult result = new TripStatusUpdateResult(
                 closingCount.updated(),
                 departureCount.updated(),
                 closingCount.conflicts()
                         + departureCount.conflicts()
         );
+        if (result.closedBookings() > 0
+                || result.departedTrips() > 0) {
+            eventPublisher.publishEvent(
+                    new TripAvailabilityChangedEvent(now)
+            );
+        }
+        return result;
     }
 
     private UpdateCount updateTrips(

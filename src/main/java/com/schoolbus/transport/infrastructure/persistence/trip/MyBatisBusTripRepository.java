@@ -82,6 +82,20 @@ public class MyBatisBusTripRepository
     }
 
     @Override
+    public List<BusTrip> findBookableTrips(
+            Instant now,
+            int limit
+    ) {
+        return tripMapper.selectBookableTrips(
+                        toDatabaseTime(now),
+                        requirePositiveLimit(limit)
+                )
+                .stream()
+                .map(this::toDomain)
+                .toList();
+    }
+
+    @Override
     public List<BusTrip> findDueOpenTripsForClosing(
             Instant now,
             int limit

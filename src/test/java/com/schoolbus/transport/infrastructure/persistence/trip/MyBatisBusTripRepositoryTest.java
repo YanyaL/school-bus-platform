@@ -152,6 +152,28 @@ class MyBatisBusTripRepositoryTest {
     }
 
     @Test
+    void shouldRestoreBookableTrips() {
+        TripDataObject dataObject = dataObject();
+        dataObject.setStatus("OPEN_FOR_BOOKING");
+        dataObject.setVersion(1L);
+        LocalDateTime now = LocalDateTime.ofInstant(
+                CREATED_AT,
+                ZoneOffset.UTC
+        );
+        when(tripMapper.selectBookableTrips(now, 100))
+                .thenReturn(List.of(dataObject));
+
+        List<BusTrip> trips = repository.findBookableTrips(
+                CREATED_AT,
+                100
+        );
+
+        assertThat(trips).hasSize(1);
+        assertThat(trips.getFirst().status())
+                .isEqualTo(TripStatus.OPEN_FOR_BOOKING);
+    }
+
+    @Test
     void shouldRestoreDueClosedTrips() {
         TripDataObject dataObject = dataObject();
         dataObject.setStatus("CLOSED");

@@ -10,6 +10,11 @@ public interface BusTripRepository {
 
     Optional<BusTrip> findById(TripId tripId);
 
+    List<BusTrip> findBookableTrips(
+            Instant now,
+            int limit
+    );
+
     List<BusTrip> findDueOpenTripsForClosing(
             Instant now,
             int limit
