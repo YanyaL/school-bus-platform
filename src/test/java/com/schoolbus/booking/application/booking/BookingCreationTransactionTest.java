@@ -1,0 +1,228 @@
+package com.schoolbus.booking.application.booking;
+
+import com.schoolbus.booking.domain.inventory.SeatInventory;
+import com.schoolbus.booking.domain.inventory.SeatInventoryRepository;
+import com.schoolbus.booking.domain.order.BookingAmount;
+import com.schoolbus.booking.domain.order.BookingId;
+import com.schoolbus.booking.domain.order.BookingIdGenerator;
+import com.schoolbus.booking.domain.order.BookingNumber;
+import com.schoolbus.booking.domain.order.BookingNumberGenerator;
+import com.schoolbus.booking.domain.order.BookingOrder;
+import com.schoolbus.booking.domain.order.BookingOrderRepository;
+import com.schoolbus.booking.domain.order.BookingRequestNumber;
+import com.schoolbus.booking.domain.order.BookingStatus;
+import com.schoolbus.booking.domain.order.SeatNumber;
+import com.schoolbus.booking.domain.trip.TripReference;
+import com.schoolbus.shared.domain.identity.UserId;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+class BookingCreationTransactionTest {
+
+    private static final Instant NOW =
+            Instant.parse("2026-08-08T00:00:00Z");
+    private static final Instant DEADLINE =
+            Instant.parse("2026-08-08T01:00:00Z");
+    private static final Instant DEPARTURE =
+            Instant.parse("2026-08-08T02:00:00Z");
+    private static final TripReference TRIP =
+            TripReference.of(2001L);
+    private static final BookingNumber BOOKING_NUMBER =
+            BookingNumber.of(
+                    "55555555-5555-5555-5555-555555555555"
+            );
+
+    private BookableTripGateway tripGateway;
+    private TripSeatReservationPort seatReservationPort;
+    private SeatInventoryRepository inventoryRepository;
+    private BookingOrderRepository orderRepository;
+    private BookingIdGenerator idGenerator;
+    private BookingNumberGenerator numberGenerator;
+    private BookingCreationTransaction transaction;
+
+    @BeforeEach
+    void setUp() {
+        tripGateway = mock(BookableTripGateway.class);
+        seatReservationPort = mock(TripSeatReservationPort.class);
+        inventoryRepository = mock(SeatInventoryRepository.class);
+        orderRepository = mock(BookingOrderRepository.class);
+        idGenerator = mock(BookingIdGenerator.class);
+        numberGenerator = mock(BookingNumberGenerator.class);
+        transaction = new BookingCreationTransaction(
+                tripGateway,
+                seatReservationPort,
+                inventoryRepository,
+                orderRepository,
+                idGenerator,
+                numberGenerator,
+                Clock.fixed(NOW, ZoneOffset.UTC),
+                Duration.ofMinutes(15)
+        );
+    }
+
+    @Test
+    void shouldLockSeatReserveInventoryAndCreatePendingOrder() {
+        prepareSuccessfulCreation(DEADLINE);
+
+        CreateBookingResult result = transaction.createOnce(command());
+
+        assertThat(result.bookingId()).isEqualTo(5001L);
+        assertThat(result.status())
+                .isEqualTo(BookingStatus.PENDING_PAYMENT);
+        assertThat(result.expiresAt())
+                .isEqualTo(NOW.plus(Duration.ofMinutes(15)));
+
+        ArgumentCaptor<SeatLockRequest> lockCaptor =
+                ArgumentCaptor.forClass(SeatLockRequest.class);
+        verify(seatReservationPort).tryLockSeat(
+                lockCaptor.capture()
+        );
+        assertThat(lockCaptor.getValue().bookingNumber())
+                .isEqualTo(BOOKING_NUMBER);
+        assertThat(lockCaptor.getValue().lockExpiresAt())
+                .isEqualTo(result.expiresAt());
+
+        ArgumentCaptor<SeatInventory> inventoryCaptor =
+                ArgumentCaptor.forClass(SeatInventory.class);
+        verify(inventoryRepository).save(
+                inventoryCaptor.capture()
+        );
+        assertThat(inventoryCaptor.getValue().availableSeats())
+                .isEqualTo(9);
+        assertThat(inventoryCaptor.getValue().version())
+                .isEqualTo(1L);
+
+        ArgumentCaptor<BookingOrder> orderCaptor =
+                ArgumentCaptor.forClass(BookingOrder.class);
+        verify(orderRepository).save(orderCaptor.capture());
+        assertThat(orderCaptor.getValue().amount())
+                .isEqualTo(BookingAmount.of("5.50"));
+    }
+
+    @Test
+    void shouldCapPaymentExpirationAtBookingDeadline() {
+        Instant closeDeadline = NOW.plus(Duration.ofMinutes(10));
+        prepareSuccessfulCreation(closeDeadline);
+
+        CreateBookingResult result = transaction.createOnce(command());
+
+        assertThat(result.expiresAt()).isEqualTo(closeDeadline);
+    }
+
+    @Test
+    void shouldReturnExistingOrderForSameRequestNumber() {
+        BookingOrder existing = existingOrder();
+        when(orderRepository.findByRequestNumber(
+                BookingRequestNumber.of("request-5001")
+        )).thenReturn(Optional.of(existing));
+
+        CreateBookingResult result = transaction.createOnce(command());
+
+        assertThat(result.bookingId())
+                .isEqualTo(existing.bookingId().value());
+        verify(tripGateway, never()).findByTripReference(any());
+        verify(seatReservationPort, never()).tryLockSeat(any());
+        verify(inventoryRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldRejectReuseOfRequestNumberForDifferentBooking() {
+        BookingOrder existing = existingOrder();
+        when(orderRepository.findByRequestNumber(
+                BookingRequestNumber.of("request-5001")
+        )).thenReturn(Optional.of(existing));
+        CreateBookingCommand conflictingCommand =
+                new CreateBookingCommand(
+                        1001L,
+                        2001L,
+                        "A02",
+                        "request-5001"
+                );
+
+        assertThatThrownBy(
+                () -> transaction.createOnce(conflictingCommand)
+        ).isInstanceOf(BookingRequestConflictException.class);
+    }
+
+    @Test
+    void shouldNotChangeInventoryWhenSeatCannotBeLocked() {
+        prepareSuccessfulCreation(DEADLINE);
+        when(seatReservationPort.tryLockSeat(any()))
+                .thenReturn(false);
+
+        assertThatThrownBy(() -> transaction.createOnce(command()))
+                .isInstanceOf(SeatAlreadyReservedException.class);
+
+        verify(inventoryRepository, never()).save(any());
+        verify(orderRepository, never()).save(any(BookingOrder.class));
+    }
+
+    private void prepareSuccessfulCreation(Instant deadline) {
+        when(orderRepository.findByRequestNumber(any()))
+                .thenReturn(Optional.empty());
+        when(tripGateway.findByTripReference(TRIP))
+                .thenReturn(Optional.of(new BookableTripSnapshot(
+                        TRIP,
+                        BookingAmount.of("5.50"),
+                        DEPARTURE,
+                        deadline,
+                        true
+                )));
+        when(orderRepository.existsActiveByUserIdAndTripReference(
+                UserId.of(1001L),
+                TRIP
+        )).thenReturn(false);
+        when(inventoryRepository.findByTripReference(TRIP))
+                .thenReturn(Optional.of(SeatInventory.initialize(
+                        TRIP,
+                        10,
+                        NOW.minusSeconds(60)
+                )));
+        when(idGenerator.nextId()).thenReturn(BookingId.of(5001L));
+        when(numberGenerator.nextNumber()).thenReturn(BOOKING_NUMBER);
+        when(seatReservationPort.tryLockSeat(any()))
+                .thenReturn(true);
+        when(inventoryRepository.save(any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(orderRepository.save(any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+    }
+
+    private CreateBookingCommand command() {
+        return new CreateBookingCommand(
+                1001L,
+                2001L,
+                "A01",
+                "request-5001"
+        );
+    }
+
+    private BookingOrder existingOrder() {
+        return BookingOrder.place(
+                BookingId.of(5001L),
+                BOOKING_NUMBER,
+                BookingRequestNumber.of("request-5001"),
+                UserId.of(1001L),
+                TRIP,
+                SeatNumber.of("A01"),
+                BookingAmount.of("5.50"),
+                NOW.plus(Duration.ofMinutes(15)),
+                NOW
+        );
+    }
+}

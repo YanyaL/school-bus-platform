@@ -20,6 +20,10 @@ public enum ErrorCode {
             HttpStatus.CONFLICT,
             "booking could not be completed because of concurrent updates"
     ),
+    BOOKING_REQUEST_CONFLICT(
+            HttpStatus.CONFLICT,
+            "requestNumber has already been used for another booking"
+    ),
     INVALID_LOGIN_SESSION(HttpStatus.UNAUTHORIZED, "invalid login session"),
     INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "invalid or expired refresh token"),
     VALIDATION_ERROR(HttpStatus.BAD_REQUEST, "请求参数校验失败"),

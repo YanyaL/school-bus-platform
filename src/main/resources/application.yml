@@ -49,6 +49,9 @@ springdoc:
 
 
 school-bus:
+  booking:
+    payment-window: ${BOOKING_PAYMENT_WINDOW:PT15M}
+    maximum-attempts: ${BOOKING_MAXIMUM_ATTEMPTS:3}
   identity:
     worker-id: ${SCHOOL_BUS_WORKER_ID:0}
   security:

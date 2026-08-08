@@ -1,12 +1,17 @@
 package com.schoolbus.booking.infrastructure.persistence;
 
 import com.schoolbus.booking.application.booking.SeatLockRequest;
+import com.schoolbus.booking.application.booking.BookingApplicationService;
+import com.schoolbus.booking.application.booking.BookingCreationTransaction;
+import com.schoolbus.booking.application.booking.CreateBookingCommand;
+import com.schoolbus.booking.application.booking.CreateBookingResult;
 import com.schoolbus.booking.application.booking.TripSeatReservationPort;
 import com.schoolbus.booking.domain.inventory.NoSeatAvailableException;
 import com.schoolbus.booking.domain.inventory.SeatInventory;
 import com.schoolbus.booking.domain.inventory.SeatInventoryRepository;
 import com.schoolbus.booking.domain.order.BookingAmount;
 import com.schoolbus.booking.domain.order.BookingId;
+import com.schoolbus.booking.domain.order.BookingIdGenerator;
 import com.schoolbus.booking.domain.order.BookingNumber;
 import com.schoolbus.booking.domain.order.BookingOrder;
 import com.schoolbus.booking.domain.order.BookingOrderRepository;
@@ -20,9 +25,14 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
 import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.context.annotation.Import;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -30,20 +40,26 @@ import org.testcontainers.utility.DockerImageName;
 
 import java.math.BigDecimal;
 import java.sql.Timestamp;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @Testcontainers(disabledWithoutDocker = true)
-@SpringBootTest
+@SpringBootTest(properties = {
+        "school-bus.booking.maximum-attempts=50"
+})
 @ActiveProfiles("integration-test")
+@Import(BookingPersistenceIntegrationTest.FixedClockConfiguration.class)
 class BookingPersistenceIntegrationTest {
 
     private static final Instant CREATED_AT =
@@ -73,10 +89,20 @@ class BookingPersistenceIntegrationTest {
     private TripSeatReservationPort tripSeatReservationPort;
 
     @Autowired
+    private BookingApplicationService bookingApplicationService;
+
+    @Autowired
+    private BookingCreationTransaction bookingCreationTransaction;
+
+    @Autowired
+    private ControllableBookingIdGenerator bookingIdGenerator;
+
+    @Autowired
     private JdbcTemplate jdbcTemplate;
 
     @BeforeEach
     void resetDatabase() {
+        bookingIdGenerator.reset();
         jdbcTemplate.update("DELETE FROM booking_order");
         jdbcTemplate.update("DELETE FROM booking_trip_inventory");
         jdbcTemplate.update("DELETE FROM transport_trip_seat");
@@ -84,6 +110,139 @@ class BookingPersistenceIntegrationTest {
         jdbcTemplate.update("DELETE FROM transport_route");
         jdbcTemplate.update("DELETE FROM transport_vehicle");
         seedTrip();
+    }
+
+    @Test
+    void shouldCreateBookingAsOneTransactionAndRemainIdempotent() {
+        seedSeat("C01");
+        seatInventoryRepository.save(
+                SeatInventory.initialize(TRIP, 10, CREATED_AT)
+        );
+        CreateBookingCommand command = new CreateBookingCommand(
+                2001L,
+                TRIP.value(),
+                "C01",
+                "create-booking-2001"
+        );
+
+        CreateBookingResult first =
+                bookingApplicationService.createBooking(command);
+        CreateBookingResult repeated =
+                bookingApplicationService.createBooking(command);
+
+        assertThat(repeated.bookingId()).isEqualTo(first.bookingId());
+        assertThat(first.expiresAt())
+                .isEqualTo(CREATED_AT.plusSeconds(15 * 60));
+        assertThat(seatInventoryRepository
+                .findByTripReference(TRIP)
+                .orElseThrow()
+                .availableSeats()).isEqualTo(9);
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM booking_order",
+                Integer.class
+        )).isEqualTo(1);
+        assertThat(jdbcTemplate.queryForObject(
+                """
+                SELECT status
+                FROM transport_trip_seat
+                WHERE trip_id = ? AND seat_number = ?
+                """,
+                String.class,
+                TRIP.value(),
+                "C01"
+        )).isEqualTo("LOCKED");
+    }
+
+    @Test
+    void shouldRollbackSeatAndInventoryWhenOrderInsertFails() {
+        seedSeat("C02");
+        seatInventoryRepository.save(
+                SeatInventory.initialize(TRIP, 10, CREATED_AT)
+        );
+        bookingOrderRepository.save(pendingOrder());
+        bookingIdGenerator.forceNext(5001L);
+
+        assertThatThrownBy(
+                () -> bookingCreationTransaction.createOnce(
+                        new CreateBookingCommand(
+                                2002L,
+                                TRIP.value(),
+                                "C02",
+                                "rollback-booking-2002"
+                        )
+                )
+        ).isInstanceOf(DataAccessException.class);
+
+        assertThat(seatInventoryRepository
+                .findByTripReference(TRIP)
+                .orElseThrow()
+                .availableSeats()).isEqualTo(10);
+        assertThat(jdbcTemplate.queryForObject(
+                """
+                SELECT status
+                FROM transport_trip_seat
+                WHERE trip_id = ? AND seat_number = ?
+                """,
+                String.class,
+                TRIP.value(),
+                "C02"
+        )).isEqualTo("AVAILABLE");
+        assertThat(jdbcTemplate.queryForObject(
+                """
+                SELECT COUNT(*)
+                FROM booking_order
+                WHERE request_no = 'rollback-booking-2002'
+                """,
+                Integer.class
+        )).isZero();
+    }
+
+    @Test
+    void shouldCreateExactlyOneOrderPerSeatUnderConcurrency() {
+        int capacity = 10;
+        int requests = 20;
+        IntStream.range(0, capacity)
+                .forEach(index -> seedSeat("D" + index));
+        seatInventoryRepository.save(
+                SeatInventory.initialize(TRIP, capacity, CREATED_AT)
+        );
+
+        try (ExecutorService executor =
+                     Executors.newFixedThreadPool(requests)) {
+            List<CompletableFuture<Boolean>> attempts =
+                    IntStream.range(0, requests)
+                            .mapToObj(index ->
+                                    CompletableFuture.supplyAsync(
+                                            () -> tryCreateBooking(index),
+                                            executor
+                                    )
+                            )
+                            .toList();
+            long successes = attempts.stream()
+                    .map(CompletableFuture::join)
+                    .filter(Boolean::booleanValue)
+                    .count();
+
+            assertThat(successes).isEqualTo(capacity);
+        }
+
+        assertThat(seatInventoryRepository
+                .findByTripReference(TRIP)
+                .orElseThrow()
+                .availableSeats()).isZero();
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM booking_order",
+                Integer.class
+        )).isEqualTo(capacity);
+        assertThat(jdbcTemplate.queryForObject(
+                """
+                SELECT COUNT(*)
+                FROM transport_trip_seat
+                WHERE trip_id = ? AND status = 'LOCKED'
+                """,
+                Integer.class,
+                TRIP.value()
+        )).isEqualTo(capacity);
     }
 
     @Test
@@ -287,6 +446,22 @@ class BookingPersistenceIntegrationTest {
         );
     }
 
+    private boolean tryCreateBooking(int index) {
+        try {
+            bookingApplicationService.createBooking(
+                    new CreateBookingCommand(
+                            3000L + index,
+                            TRIP.value(),
+                            "D" + (index % 10),
+                            "concurrent-booking-" + index
+                    )
+            );
+            return true;
+        } catch (RuntimeException exception) {
+            return false;
+        }
+    }
+
     private BookingOrder pendingOrder() {
         return BookingOrder.place(
                 BookingId.of(5001L),
@@ -394,5 +569,50 @@ class BookingPersistenceIntegrationTest {
                 createdAt,
                 createdAt
         );
+    }
+
+    @TestConfiguration(proxyBeanMethods = false)
+    static class FixedClockConfiguration {
+
+        @Bean
+        @Primary
+        Clock bookingTestClock() {
+            return Clock.fixed(CREATED_AT, ZoneOffset.UTC);
+        }
+
+        @Bean
+        @Primary
+        ControllableBookingIdGenerator bookingTestIdGenerator() {
+            return new ControllableBookingIdGenerator();
+        }
+    }
+
+    static final class ControllableBookingIdGenerator
+            implements BookingIdGenerator {
+
+        private static final long INITIAL_ID = 9_000_000L;
+
+        private final AtomicLong sequence =
+                new AtomicLong(INITIAL_ID);
+        private final AtomicLong forcedId = new AtomicLong();
+
+        @Override
+        public BookingId nextId() {
+            long forced = forcedId.getAndSet(0L);
+            return BookingId.of(
+                    forced > 0L
+                            ? forced
+                            : sequence.incrementAndGet()
+            );
+        }
+
+        void forceNext(long value) {
+            forcedId.set(value);
+        }
+
+        void reset() {
+            sequence.set(INITIAL_ID);
+            forcedId.set(0L);
+        }
     }
 }
