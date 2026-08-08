@@ -15,6 +15,7 @@ import java.util.Objects;
 @Service
 @Profile("!test")
 public class BookingExpirationApplicationService {
+
     private final BookingOrderRepository bookingOrderRepository;
     private final BookingExpirationTransaction expirationTransaction;
     private final Clock clock;
