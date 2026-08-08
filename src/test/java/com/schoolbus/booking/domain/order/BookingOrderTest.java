@@ -22,10 +22,18 @@ class BookingOrderTest {
 
         assertThat(bookingOrder.bookingId())
                 .isEqualTo(BookingId.of(5001L));
+        assertThat(bookingOrder.bookingNumber().toString())
+                .isEqualTo(
+                        "55555555-5555-5555-5555-555555555555"
+                );
+        assertThat(bookingOrder.requestNumber().value())
+                .isEqualTo("request-5001");
         assertThat(bookingOrder.userId())
                 .isEqualTo(UserId.of(1001L));
         assertThat(bookingOrder.tripReference())
                 .isEqualTo(TripReference.of(2001L));
+        assertThat(bookingOrder.seatNumber())
+                .isEqualTo(SeatNumber.of("A01"));
         assertThat(bookingOrder.amount())
                 .isEqualTo(BookingAmount.of("5.50"));
         assertThat(bookingOrder.status())
@@ -46,6 +54,9 @@ class BookingOrderTest {
                 .isEqualTo(BookingStatus.CANCELLED);
         assertThat(bookingOrder.version()).isEqualTo(1L);
         assertThat(bookingOrder.updatedAt()).isEqualTo(cancelledAt);
+        assertThat(bookingOrder.cancelledAt()).isEqualTo(cancelledAt);
+        assertThat(bookingOrder.cancellationReason())
+                .isEqualTo(CancellationReason.USER_CANCELLED);
     }
 
     @Test
@@ -103,8 +114,11 @@ class BookingOrderTest {
         assertThatThrownBy(
                 () -> BookingOrder.place(
                         BookingId.of(5001L),
+                        bookingNumber(),
+                        BookingRequestNumber.of("request-5001"),
                         UserId.of(1001L),
                         TripReference.of(2001L),
+                        SeatNumber.of("A01"),
                         BookingAmount.of("5.50"),
                         PLACED_AT,
                         PLACED_AT
@@ -137,11 +151,16 @@ class BookingOrderTest {
     void shouldRestorePersistedOrder() {
         BookingOrder bookingOrder = BookingOrder.restore(
                 BookingId.of(5001L),
+                bookingNumber(),
+                BookingRequestNumber.of("request-5001"),
                 UserId.of(1001L),
                 TripReference.of(2001L),
+                SeatNumber.of("A01"),
                 BookingAmount.of("5.50"),
                 BookingStatus.PAID,
                 EXPIRES_AT,
+                null,
+                null,
                 3L,
                 PLACED_AT,
                 PLACED_AT.plusSeconds(120)
@@ -168,11 +187,20 @@ class BookingOrderTest {
     private BookingOrder pendingOrder() {
         return BookingOrder.place(
                 BookingId.of(5001L),
+                bookingNumber(),
+                BookingRequestNumber.of("request-5001"),
                 UserId.of(1001L),
                 TripReference.of(2001L),
+                SeatNumber.of("A01"),
                 BookingAmount.of("5.50"),
                 EXPIRES_AT,
                 PLACED_AT
+        );
+    }
+
+    private BookingNumber bookingNumber() {
+        return BookingNumber.of(
+                "55555555-5555-5555-5555-555555555555"
         );
     }
 }

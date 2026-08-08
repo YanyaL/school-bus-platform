@@ -9,22 +9,32 @@ import java.util.Objects;
 public final class BookingOrder {
 
     private final BookingId bookingId;
+    private final BookingNumber bookingNumber;
+    private final BookingRequestNumber requestNumber;
     private final UserId userId;
     private final TripReference tripReference;
+    private final SeatNumber seatNumber;
     private final BookingAmount amount;
     private BookingStatus status;
     private final Instant expiresAt;
+    private Instant cancelledAt;
+    private CancellationReason cancellationReason;
     private long version;
     private final Instant createdAt;
     private Instant updatedAt;
 
     private BookingOrder(
             BookingId bookingId,
+            BookingNumber bookingNumber,
+            BookingRequestNumber requestNumber,
             UserId userId,
             TripReference tripReference,
+            SeatNumber seatNumber,
             BookingAmount amount,
             BookingStatus status,
             Instant expiresAt,
+            Instant cancelledAt,
+            CancellationReason cancellationReason,
             long version,
             Instant createdAt,
             Instant updatedAt
@@ -33,6 +43,14 @@ public final class BookingOrder {
                 bookingId,
                 "bookingId must not be null"
         );
+        this.bookingNumber = Objects.requireNonNull(
+                bookingNumber,
+                "bookingNumber must not be null"
+        );
+        this.requestNumber = Objects.requireNonNull(
+                requestNumber,
+                "requestNumber must not be null"
+        );
         this.userId = Objects.requireNonNull(
                 userId,
                 "userId must not be null"
@@ -40,6 +58,10 @@ public final class BookingOrder {
         this.tripReference = Objects.requireNonNull(
                 tripReference,
                 "tripReference must not be null"
+        );
+        this.seatNumber = Objects.requireNonNull(
+                seatNumber,
+                "seatNumber must not be null"
         );
         this.amount = Objects.requireNonNull(
                 amount,
@@ -62,6 +84,23 @@ public final class BookingOrder {
                     "expiresAt must be after createdAt"
             );
         }
+        if ((cancelledAt == null) != (cancellationReason == null)) {
+            throw new IllegalArgumentException(
+                    "cancelledAt and cancellationReason must both be present or absent"
+            );
+        }
+        if (status == BookingStatus.CANCELLED && cancelledAt == null) {
+            throw new IllegalArgumentException(
+                    "cancelled booking must contain cancellation details"
+            );
+        }
+        if (status != BookingStatus.CANCELLED && cancelledAt != null) {
+            throw new IllegalArgumentException(
+                    "only cancelled booking may contain cancellation details"
+            );
+        }
+        this.cancelledAt = cancelledAt;
+        this.cancellationReason = cancellationReason;
         if (version < 0) {
             throw new IllegalArgumentException(
                     "version must not be negative"
@@ -81,19 +120,27 @@ public final class BookingOrder {
 
     public static BookingOrder place(
             BookingId bookingId,
+            BookingNumber bookingNumber,
+            BookingRequestNumber requestNumber,
             UserId userId,
             TripReference tripReference,
+            SeatNumber seatNumber,
             BookingAmount amount,
             Instant expiresAt,
             Instant placedAt
     ) {
         return new BookingOrder(
                 bookingId,
+                bookingNumber,
+                requestNumber,
                 userId,
                 tripReference,
+                seatNumber,
                 amount,
                 BookingStatus.PENDING_PAYMENT,
                 expiresAt,
+                null,
+                null,
                 0L,
                 placedAt,
                 placedAt
@@ -102,22 +149,32 @@ public final class BookingOrder {
 
     public static BookingOrder restore(
             BookingId bookingId,
+            BookingNumber bookingNumber,
+            BookingRequestNumber requestNumber,
             UserId userId,
             TripReference tripReference,
+            SeatNumber seatNumber,
             BookingAmount amount,
             BookingStatus status,
             Instant expiresAt,
+            Instant cancelledAt,
+            CancellationReason cancellationReason,
             long version,
             Instant createdAt,
             Instant updatedAt
     ) {
         return new BookingOrder(
                 bookingId,
+                bookingNumber,
+                requestNumber,
                 userId,
                 tripReference,
+                seatNumber,
                 amount,
                 status,
                 expiresAt,
+                cancelledAt,
+                cancellationReason,
                 version,
                 createdAt,
                 updatedAt
@@ -133,6 +190,8 @@ public final class BookingOrder {
         }
         Instant operationTime = validateChangeTime(cancelledAt);
         status = BookingStatus.CANCELLED;
+        this.cancelledAt = operationTime;
+        this.cancellationReason = CancellationReason.USER_CANCELLED;
         updatedAt = operationTime;
         version++;
     }
@@ -167,6 +226,14 @@ public final class BookingOrder {
         return userId;
     }
 
+    public BookingNumber bookingNumber() {
+        return bookingNumber;
+    }
+
+    public BookingRequestNumber requestNumber() {
+        return requestNumber;
+    }
+
     public TripReference tripReference() {
         return tripReference;
     }
@@ -175,12 +242,24 @@ public final class BookingOrder {
         return amount;
     }
 
+    public SeatNumber seatNumber() {
+        return seatNumber;
+    }
+
     public BookingStatus status() {
         return status;
     }
 
     public Instant expiresAt() {
         return expiresAt;
+    }
+
+    public Instant cancelledAt() {
+        return cancelledAt;
+    }
+
+    public CancellationReason cancellationReason() {
+        return cancellationReason;
     }
 
     public long version() {
