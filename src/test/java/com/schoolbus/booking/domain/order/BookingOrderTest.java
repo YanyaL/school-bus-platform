@@ -1,0 +1,178 @@
+package com.schoolbus.booking.domain.order;
+
+import com.schoolbus.booking.domain.trip.TripReference;
+import com.schoolbus.shared.domain.identity.UserId;
+import org.junit.jupiter.api.Test;
+
+import java.time.Instant;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+class BookingOrderTest {
+
+    private static final Instant PLACED_AT =
+            Instant.parse("2026-08-08T00:00:00Z");
+    private static final Instant EXPIRES_AT =
+            Instant.parse("2026-08-08T00:15:00Z");
+
+    @Test
+    void shouldPlacePendingPaymentOrderWithPriceSnapshot() {
+        BookingOrder bookingOrder = pendingOrder();
+
+        assertThat(bookingOrder.bookingId())
+                .isEqualTo(BookingId.of(5001L));
+        assertThat(bookingOrder.userId())
+                .isEqualTo(UserId.of(1001L));
+        assertThat(bookingOrder.tripReference())
+                .isEqualTo(TripReference.of(2001L));
+        assertThat(bookingOrder.amount())
+                .isEqualTo(BookingAmount.of("5.50"));
+        assertThat(bookingOrder.status())
+                .isEqualTo(BookingStatus.PENDING_PAYMENT);
+        assertThat(bookingOrder.version()).isZero();
+        assertThat(bookingOrder.createdAt()).isEqualTo(PLACED_AT);
+        assertThat(bookingOrder.updatedAt()).isEqualTo(PLACED_AT);
+    }
+
+    @Test
+    void shouldCancelPendingPaymentOrder() {
+        BookingOrder bookingOrder = pendingOrder();
+        Instant cancelledAt = PLACED_AT.plusSeconds(60);
+
+        bookingOrder.cancel(cancelledAt);
+
+        assertThat(bookingOrder.status())
+                .isEqualTo(BookingStatus.CANCELLED);
+        assertThat(bookingOrder.version()).isEqualTo(1L);
+        assertThat(bookingOrder.updatedAt()).isEqualTo(cancelledAt);
+    }
+
+    @Test
+    void shouldRejectRepeatedCancellationWithoutMutation() {
+        BookingOrder bookingOrder = pendingOrder();
+        Instant cancelledAt = PLACED_AT.plusSeconds(60);
+        bookingOrder.cancel(cancelledAt);
+
+        assertThatThrownBy(
+                () -> bookingOrder.cancel(
+                        cancelledAt.plusSeconds(60)
+                )
+        )
+                .isInstanceOf(
+                        InvalidBookingStateTransitionException.class
+                )
+                .hasMessage(
+                        "cannot change booking status from "
+                                + "CANCELLED to CANCELLED"
+                );
+
+        assertThat(bookingOrder.version()).isEqualTo(1L);
+        assertThat(bookingOrder.updatedAt()).isEqualTo(cancelledAt);
+    }
+
+    @Test
+    void shouldRecognizePaymentExpirationAtBoundary() {
+        BookingOrder bookingOrder = pendingOrder();
+
+        assertThat(
+                bookingOrder.isPaymentExpiredAt(
+                        EXPIRES_AT.minusMillis(1)
+                )
+        ).isFalse();
+        assertThat(bookingOrder.isPaymentExpiredAt(EXPIRES_AT))
+                .isTrue();
+        assertThat(
+                bookingOrder.isPaymentExpiredAt(
+                        EXPIRES_AT.plusMillis(1)
+                )
+        ).isTrue();
+    }
+
+    @Test
+    void shouldNotTreatCancelledOrderAsPaymentExpired() {
+        BookingOrder bookingOrder = pendingOrder();
+        bookingOrder.cancel(PLACED_AT.plusSeconds(60));
+
+        assertThat(bookingOrder.isPaymentExpiredAt(EXPIRES_AT))
+                .isFalse();
+    }
+
+    @Test
+    void shouldRejectExpirationAtOrBeforePlacement() {
+        assertThatThrownBy(
+                () -> BookingOrder.place(
+                        BookingId.of(5001L),
+                        UserId.of(1001L),
+                        TripReference.of(2001L),
+                        BookingAmount.of("5.50"),
+                        PLACED_AT,
+                        PLACED_AT
+                )
+        )
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("expiresAt must be after createdAt");
+    }
+
+    @Test
+    void shouldRejectOutOfOrderCancellationWithoutMutation() {
+        BookingOrder bookingOrder = pendingOrder();
+
+        assertThatThrownBy(
+                () -> bookingOrder.cancel(
+                        PLACED_AT.minusSeconds(1)
+                )
+        )
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage(
+                        "changedAt must not be before updatedAt"
+                );
+
+        assertThat(bookingOrder.status())
+                .isEqualTo(BookingStatus.PENDING_PAYMENT);
+        assertThat(bookingOrder.version()).isZero();
+    }
+
+    @Test
+    void shouldRestorePersistedOrder() {
+        BookingOrder bookingOrder = BookingOrder.restore(
+                BookingId.of(5001L),
+                UserId.of(1001L),
+                TripReference.of(2001L),
+                BookingAmount.of("5.50"),
+                BookingStatus.PAID,
+                EXPIRES_AT,
+                3L,
+                PLACED_AT,
+                PLACED_AT.plusSeconds(120)
+        );
+
+        assertThat(bookingOrder.status())
+                .isEqualTo(BookingStatus.PAID);
+        assertThat(bookingOrder.version()).isEqualTo(3L);
+    }
+
+    @Test
+    void shouldRejectInvalidValueObjects() {
+        assertThatThrownBy(() -> BookingId.of(0L))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("bookingId must be positive");
+        assertThatThrownBy(() -> TripReference.of(-1L))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("tripReference must be positive");
+        assertThatThrownBy(() -> BookingAmount.of("-0.01"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("amount must not be negative");
+    }
+
+    private BookingOrder pendingOrder() {
+        return BookingOrder.place(
+                BookingId.of(5001L),
+                UserId.of(1001L),
+                TripReference.of(2001L),
+                BookingAmount.of("5.50"),
+                EXPIRES_AT,
+                PLACED_AT
+        );
+    }
+}
