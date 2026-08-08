@@ -136,6 +136,22 @@ class MyBatisBookingOrderRepositoryTest {
     }
 
     @Test
+    void shouldFindOrderByIdempotencyRequestNumber() {
+        BookingOrderDataObject dataObject = dataObject();
+        when(mapper.selectByRequestNo("request-5001"))
+                .thenReturn(dataObject);
+
+        Optional<BookingOrder> result = repository
+                .findByRequestNumber(
+                        BookingRequestNumber.of("request-5001")
+                );
+
+        assertThat(result).isPresent();
+        assertThat(result.orElseThrow().bookingId())
+                .isEqualTo(BookingId.of(5001L));
+    }
+
+    @Test
     void shouldCheckOnlyActiveDuplicateBooking() {
         when(mapper.existsActiveByUserIdAndTripId(1001L, 2001L))
                 .thenReturn(true);

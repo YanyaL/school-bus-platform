@@ -3,6 +3,23 @@ package com.schoolbus.shared.api;
 import org.springframework.http.HttpStatus;
 
 public enum ErrorCode {
+    TRIP_NOT_BOOKABLE(HttpStatus.CONFLICT, "trip is not bookable"),
+    BOOKING_ALREADY_EXISTS(
+            HttpStatus.CONFLICT,
+            "active booking already exists"
+    ),
+    SEAT_ALREADY_RESERVED(
+            HttpStatus.CONFLICT,
+            "seat is already reserved"
+    ),
+    SEAT_INVENTORY_NOT_FOUND(
+            HttpStatus.NOT_FOUND,
+            "seat inventory does not exist"
+    ),
+    BOOKING_CONCURRENCY_CONFLICT(
+            HttpStatus.CONFLICT,
+            "booking could not be completed because of concurrent updates"
+    ),
     INVALID_LOGIN_SESSION(HttpStatus.UNAUTHORIZED, "invalid login session"),
     INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "invalid or expired refresh token"),
     VALIDATION_ERROR(HttpStatus.BAD_REQUEST, "请求参数校验失败"),

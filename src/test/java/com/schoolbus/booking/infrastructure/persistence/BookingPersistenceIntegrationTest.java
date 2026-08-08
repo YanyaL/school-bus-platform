@@ -96,6 +96,13 @@ class BookingPersistenceIntegrationTest {
                 .isEqualTo(BookingAmount.of("5.50"));
         assertThat(restored.status())
                 .isEqualTo(BookingStatus.PENDING_PAYMENT);
+        BookingOrder foundByRequestNumber = bookingOrderRepository
+                .findByRequestNumber(
+                        BookingRequestNumber.of("request-5001")
+                )
+                .orElseThrow();
+        assertThat(foundByRequestNumber.bookingId())
+                .isEqualTo(restored.bookingId());
         assertThat(
                 bookingOrderRepository
                         .existsActiveByUserIdAndTripReference(

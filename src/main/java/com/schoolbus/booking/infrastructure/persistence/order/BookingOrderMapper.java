@@ -10,6 +10,10 @@ public interface BookingOrderMapper {
 
     BookingOrderDataObject selectById(@Param("id") Long id);
 
+    BookingOrderDataObject selectByRequestNo(
+            @Param("requestNo") String requestNo
+    );
+
     boolean existsActiveByUserIdAndTripId(
             @Param("userId") Long userId,
             @Param("tripId") Long tripId

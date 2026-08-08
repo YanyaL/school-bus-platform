@@ -11,6 +11,10 @@ public interface BookingOrderRepository {
 
     Optional<BookingOrder> findById(BookingId bookingId);
 
+    Optional<BookingOrder> findByRequestNumber(
+            BookingRequestNumber requestNumber
+    );
+
     boolean existsActiveByUserIdAndTripReference(
             UserId userId,
             TripReference tripReference

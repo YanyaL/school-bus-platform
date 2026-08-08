@@ -1,0 +1,50 @@
+package com.schoolbus.booking.application.booking;
+
+import com.schoolbus.booking.domain.order.BookingOrder;
+import com.schoolbus.booking.domain.order.BookingStatus;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.Objects;
+
+public record CreateBookingResult(
+        long bookingId,
+        String bookingNumber,
+        long userId,
+        long tripId,
+        String seatNumber,
+        BigDecimal amount,
+        BookingStatus status,
+        Instant expiresAt
+) {
+
+    public CreateBookingResult {
+        Objects.requireNonNull(
+                bookingNumber,
+                "bookingNumber must not be null"
+        );
+        Objects.requireNonNull(amount, "amount must not be null");
+        Objects.requireNonNull(status, "status must not be null");
+        Objects.requireNonNull(
+                expiresAt,
+                "expiresAt must not be null"
+        );
+    }
+
+    public static CreateBookingResult from(BookingOrder bookingOrder) {
+        BookingOrder validatedOrder = Objects.requireNonNull(
+                bookingOrder,
+                "bookingOrder must not be null"
+        );
+        return new CreateBookingResult(
+                validatedOrder.bookingId().value(),
+                validatedOrder.bookingNumber().toString(),
+                validatedOrder.userId().value(),
+                validatedOrder.tripReference().value(),
+                validatedOrder.seatNumber().value(),
+                validatedOrder.amount().amount(),
+                validatedOrder.status(),
+                validatedOrder.expiresAt()
+        );
+    }
+}

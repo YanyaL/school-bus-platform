@@ -88,6 +88,24 @@ public class MyBatisBookingOrderRepository
     }
 
     @Override
+    public Optional<BookingOrder> findByRequestNumber(
+            BookingRequestNumber requestNumber
+    ) {
+        BookingRequestNumber validatedRequestNumber =
+                Objects.requireNonNull(
+                        requestNumber,
+                        "requestNumber must not be null"
+                );
+        BookingOrderDataObject dataObject =
+                bookingOrderMapper.selectByRequestNo(
+                        validatedRequestNumber.value()
+                );
+        return dataObject == null
+                ? Optional.empty()
+                : Optional.of(toDomain(dataObject));
+    }
+
+    @Override
     public boolean existsActiveByUserIdAndTripReference(
             UserId userId,
             TripReference tripReference
