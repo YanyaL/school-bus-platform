@@ -1,6 +1,7 @@
 package com.schoolbus.booking.infrastructure.persistence.seat;
 
 import com.schoolbus.booking.application.booking.SeatLockRequest;
+import com.schoolbus.booking.application.booking.SeatReleaseRequest;
 import com.schoolbus.booking.domain.order.BookingNumber;
 import com.schoolbus.booking.domain.order.SeatNumber;
 import com.schoolbus.booking.domain.trip.TripReference;
@@ -95,6 +96,52 @@ class MyBatisTripSeatReservationTest {
                 .hasMessage(
                         "seat lock update affected an unexpected number of rows: 2"
                 );
+    }
+
+    @Test
+    void shouldReleaseOnlySeatOwnedByBooking() {
+        SeatReleaseRequest request = new SeatReleaseRequest(
+                TripReference.of(2001L),
+                SeatNumber.of("A01"),
+                BookingNumber.of(
+                        "55555555-5555-5555-5555-555555555555"
+                ),
+                EXPIRES_AT
+        );
+        when(mapper.releaseSeat(
+                2001L,
+                "A01",
+                "55555555-5555-5555-5555-555555555555",
+                toDatabaseTime(EXPIRES_AT)
+        )).thenReturn(1);
+
+        assertThat(reservation.releaseSeat(request)).isTrue();
+        verify(mapper).releaseSeat(
+                2001L,
+                "A01",
+                "55555555-5555-5555-5555-555555555555",
+                toDatabaseTime(EXPIRES_AT)
+        );
+    }
+
+    @Test
+    void shouldReturnFalseWhenSeatOwnershipChanged() {
+        SeatReleaseRequest request = new SeatReleaseRequest(
+                TripReference.of(2001L),
+                SeatNumber.of("A01"),
+                BookingNumber.of(
+                        "55555555-5555-5555-5555-555555555555"
+                ),
+                EXPIRES_AT
+        );
+        when(mapper.releaseSeat(
+                2001L,
+                "A01",
+                "55555555-5555-5555-5555-555555555555",
+                toDatabaseTime(EXPIRES_AT)
+        )).thenReturn(0);
+
+        assertThat(reservation.releaseSeat(request)).isFalse();
     }
 
     private SeatLockRequest request() {

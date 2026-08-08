@@ -78,6 +78,21 @@
         )
     </select>
 
+    <select
+            id="selectExpiredPendingOrders"
+            resultMap="BookingOrderResultMap">
+        SELECT
+            id, order_no, request_no, user_id, trip_id,
+            seat_number, price_snapshot, status, expires_at,
+            payment_no, paid_at, cancelled_at, cancel_reason,
+            version, created_at, updated_at
+        FROM booking_order
+        WHERE status = 'PENDING_PAYMENT'
+          AND expires_at &lt;= #{expiredAt}
+        ORDER BY expires_at, id
+        LIMIT #{limit}
+    </select>
+
     <update id="updateWithVersion">
         UPDATE booking_order
         SET status = #{bookingOrder.status},

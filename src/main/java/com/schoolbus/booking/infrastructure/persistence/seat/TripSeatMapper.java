@@ -16,4 +16,11 @@ public interface TripSeatMapper {
             @Param("lockExpiresAt") LocalDateTime lockExpiresAt,
             @Param("lockedAt") LocalDateTime lockedAt
     );
+
+    int releaseSeat(
+            @Param("tripId") Long tripId,
+            @Param("seatNumber") String seatNumber,
+            @Param("bookingNumber") String bookingNumber,
+            @Param("releasedAt") LocalDateTime releasedAt
+    );
 }

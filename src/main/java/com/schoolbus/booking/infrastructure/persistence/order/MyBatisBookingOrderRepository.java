@@ -20,6 +20,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.List;
 
 @Repository
 @Profile("!test")
@@ -123,6 +124,29 @@ public class MyBatisBookingOrderRepository
                 validatedUserId.value(),
                 validatedTripReference.value()
         );
+    }
+
+    @Override
+    public List<BookingOrder> findExpiredPendingOrders(
+            Instant expiredAt,
+            int limit
+    ) {
+        Instant validatedExpiration = Objects.requireNonNull(
+                expiredAt,
+                "expiredAt must not be null"
+        );
+        if (limit <= 0) {
+            throw new IllegalArgumentException(
+                    "limit must be positive"
+            );
+        }
+        return bookingOrderMapper.selectExpiredPendingOrders(
+                        toDatabaseTime(validatedExpiration),
+                        limit
+                )
+                .stream()
+                .map(this::toDomain)
+                .toList();
     }
 
     private BookingOrderDataObject toDataObject(

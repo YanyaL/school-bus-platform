@@ -52,6 +52,8 @@ school-bus:
   booking:
     payment-window: ${BOOKING_PAYMENT_WINDOW:PT15M}
     maximum-attempts: ${BOOKING_MAXIMUM_ATTEMPTS:3}
+    expiration:
+      batch-size: ${BOOKING_EXPIRATION_BATCH_SIZE:100}
   identity:
     worker-id: ${SCHOOL_BUS_WORKER_ID:0}
   security:

@@ -3,6 +3,9 @@ package com.schoolbus.booking.infrastructure.persistence.order;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import java.time.LocalDateTime;
+import java.util.List;
+
 @Mapper
 public interface BookingOrderMapper {
 
@@ -22,5 +25,10 @@ public interface BookingOrderMapper {
     int updateWithVersion(
             @Param("bookingOrder") BookingOrderDataObject bookingOrder,
             @Param("expectedVersion") Long expectedVersion
+    );
+
+    List<BookingOrderDataObject> selectExpiredPendingOrders(
+            @Param("expiredAt") LocalDateTime expiredAt,
+            @Param("limit") int limit
     );
 }

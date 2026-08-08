@@ -27,6 +27,12 @@ logging:
     org.mybatis: INFO
 
 school-bus:
+  booking:
+    expiration:
+      scheduler:
+        enabled: ${BOOKING_EXPIRATION_SCHEDULER_ENABLED:true}
+        initial-delay-ms: ${BOOKING_EXPIRATION_INITIAL_DELAY_MS:15000}
+        fixed-delay-ms: ${BOOKING_EXPIRATION_FIXED_DELAY_MS:10000}
   trip-list-cache:
     ttl: ${TRIP_LIST_CACHE_TTL:PT1M}
   trip-status:

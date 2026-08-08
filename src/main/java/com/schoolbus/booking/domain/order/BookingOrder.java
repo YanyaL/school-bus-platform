@@ -196,6 +196,26 @@ public final class BookingOrder {
         version++;
     }
 
+    public void expire(Instant expiredAt) {
+        if (status != BookingStatus.PENDING_PAYMENT) {
+            throw new InvalidBookingStateTransitionException(
+                    status,
+                    BookingStatus.CANCELLED
+            );
+        }
+        Instant operationTime = validateChangeTime(expiredAt);
+        if (operationTime.isBefore(expiresAt)) {
+            throw new IllegalStateException(
+                    "booking payment window has not expired"
+            );
+        }
+        status = BookingStatus.CANCELLED;
+        cancelledAt = operationTime;
+        cancellationReason = CancellationReason.PAYMENT_TIMEOUT;
+        updatedAt = operationTime;
+        version++;
+    }
+
     public boolean isPaymentExpiredAt(Instant instant) {
         Instant checkedInstant = Objects.requireNonNull(
                 instant,

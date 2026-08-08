@@ -101,6 +101,36 @@ class BookingOrderTest {
     }
 
     @Test
+    void shouldExpirePendingPaymentOrderAtBoundary() {
+        BookingOrder bookingOrder = pendingOrder();
+
+        bookingOrder.expire(EXPIRES_AT);
+
+        assertThat(bookingOrder.status())
+                .isEqualTo(BookingStatus.CANCELLED);
+        assertThat(bookingOrder.cancellationReason())
+                .isEqualTo(CancellationReason.PAYMENT_TIMEOUT);
+        assertThat(bookingOrder.cancelledAt()).isEqualTo(EXPIRES_AT);
+        assertThat(bookingOrder.updatedAt()).isEqualTo(EXPIRES_AT);
+        assertThat(bookingOrder.version()).isEqualTo(1L);
+    }
+
+    @Test
+    void shouldRejectExpirationBeforePaymentDeadline() {
+        BookingOrder bookingOrder = pendingOrder();
+
+        assertThatThrownBy(
+                () -> bookingOrder.expire(EXPIRES_AT.minusMillis(1))
+        )
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("booking payment window has not expired");
+
+        assertThat(bookingOrder.status())
+                .isEqualTo(BookingStatus.PENDING_PAYMENT);
+        assertThat(bookingOrder.version()).isZero();
+    }
+
+    @Test
     void shouldNotTreatCancelledOrderAsPaymentExpired() {
         BookingOrder bookingOrder = pendingOrder();
         bookingOrder.cancel(PLACED_AT.plusSeconds(60));

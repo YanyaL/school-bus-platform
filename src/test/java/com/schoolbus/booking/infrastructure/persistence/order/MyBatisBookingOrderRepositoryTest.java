@@ -22,6 +22,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Optional;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -163,6 +164,21 @@ class MyBatisBookingOrderRepositoryTest {
                 );
 
         assertThat(exists).isTrue();
+    }
+
+    @Test
+    void shouldFindExpiredPendingOrdersInBatch() {
+        when(mapper.selectExpiredPendingOrders(
+                toDatabaseTime(EXPIRES_AT),
+                100
+        )).thenReturn(List.of(dataObject()));
+
+        List<BookingOrder> result = repository
+                .findExpiredPendingOrders(EXPIRES_AT, 100);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst().bookingId())
+                .isEqualTo(BookingId.of(5001L));
     }
 
     private BookingOrder pendingOrder() {

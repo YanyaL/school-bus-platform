@@ -1,6 +1,7 @@
 package com.schoolbus.booking.infrastructure.persistence.seat;
 
 import com.schoolbus.booking.application.booking.SeatLockRequest;
+import com.schoolbus.booking.application.booking.SeatReleaseRequest;
 import com.schoolbus.booking.application.booking.TripSeatReservationPort;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
@@ -42,9 +43,32 @@ public class MyBatisTripSeatReservation
                 toDatabaseTime(validatedRequest.lockExpiresAt()),
                 toDatabaseTime(validatedRequest.lockedAt())
         );
+        return isSingleRowUpdated(updatedRows, "lock");
+    }
+
+    @Override
+    public boolean releaseSeat(SeatReleaseRequest request) {
+        SeatReleaseRequest validatedRequest = Objects.requireNonNull(
+                request,
+                "request must not be null"
+        );
+        int updatedRows = tripSeatMapper.releaseSeat(
+                validatedRequest.tripReference().value(),
+                validatedRequest.seatNumber().value(),
+                validatedRequest.bookingNumber().toString(),
+                toDatabaseTime(validatedRequest.releasedAt())
+        );
+        return isSingleRowUpdated(updatedRows, "release");
+    }
+
+    private boolean isSingleRowUpdated(
+            int updatedRows,
+            String operation
+    ) {
         if (updatedRows < 0 || updatedRows > 1) {
             throw new IllegalStateException(
-                    "seat lock update affected an unexpected number of rows: "
+                    "seat " + operation
+                            + " update affected an unexpected number of rows: "
                             + updatedRows
             );
         }
