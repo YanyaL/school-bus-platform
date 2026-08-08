@@ -1,0 +1,63 @@
+package com.schoolbus.booking.infrastructure.persistence.seat;
+
+import com.schoolbus.booking.application.booking.SeatLockRequest;
+import com.schoolbus.booking.application.booking.TripSeatReservationPort;
+import org.springframework.context.annotation.Profile;
+import org.springframework.stereotype.Repository;
+
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.util.Objects;
+
+@Repository
+@Profile("!test")
+public class MyBatisTripSeatReservation
+        implements TripSeatReservationPort {
+
+    private static final ZoneOffset DATABASE_ZONE = ZoneOffset.UTC;
+
+    private final TripSeatMapper tripSeatMapper;
+
+    public MyBatisTripSeatReservation(
+            TripSeatMapper tripSeatMapper
+    ) {
+        this.tripSeatMapper = Objects.requireNonNull(
+                tripSeatMapper,
+                "tripSeatMapper must not be null"
+        );
+    }
+
+    @Override
+    public boolean tryLockSeat(SeatLockRequest request) {
+        SeatLockRequest validatedRequest = Objects.requireNonNull(
+                request,
+                "request must not be null"
+        );
+        int updatedRows = tripSeatMapper.tryLockSeat(
+                validatedRequest.tripReference().value(),
+                validatedRequest.seatNumber().value(),
+                validatedRequest.bookingNumber().toString(),
+                validatedRequest.userId().value(),
+                toDatabaseTime(validatedRequest.lockExpiresAt()),
+                toDatabaseTime(validatedRequest.lockedAt())
+        );
+        if (updatedRows < 0 || updatedRows > 1) {
+            throw new IllegalStateException(
+                    "seat lock update affected an unexpected number of rows: "
+                            + updatedRows
+            );
+        }
+        return updatedRows == 1;
+    }
+
+    private LocalDateTime toDatabaseTime(Instant instant) {
+        return LocalDateTime.ofInstant(
+                Objects.requireNonNull(
+                        instant,
+                        "instant must not be null"
+                ),
+                DATABASE_ZONE
+        );
+    }
+}

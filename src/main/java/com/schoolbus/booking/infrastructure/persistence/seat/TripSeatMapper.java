@@ -1,0 +1,19 @@
+package com.schoolbus.booking.infrastructure.persistence.seat;
+
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+
+import java.time.LocalDateTime;
+
+@Mapper
+public interface TripSeatMapper {
+
+    int tryLockSeat(
+            @Param("tripId") Long tripId,
+            @Param("seatNumber") String seatNumber,
+            @Param("bookingNumber") String bookingNumber,
+            @Param("userId") Long userId,
+            @Param("lockExpiresAt") LocalDateTime lockExpiresAt,
+            @Param("lockedAt") LocalDateTime lockedAt
+    );
+}

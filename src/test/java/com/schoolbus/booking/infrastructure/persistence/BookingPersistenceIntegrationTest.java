@@ -1,5 +1,7 @@
 package com.schoolbus.booking.infrastructure.persistence;
 
+import com.schoolbus.booking.application.booking.SeatLockRequest;
+import com.schoolbus.booking.application.booking.TripSeatReservationPort;
 import com.schoolbus.booking.domain.inventory.NoSeatAvailableException;
 import com.schoolbus.booking.domain.inventory.SeatInventory;
 import com.schoolbus.booking.domain.inventory.SeatInventoryRepository;
@@ -68,16 +70,103 @@ class BookingPersistenceIntegrationTest {
     private SeatInventoryRepository seatInventoryRepository;
 
     @Autowired
+    private TripSeatReservationPort tripSeatReservationPort;
+
+    @Autowired
     private JdbcTemplate jdbcTemplate;
 
     @BeforeEach
     void resetDatabase() {
         jdbcTemplate.update("DELETE FROM booking_order");
         jdbcTemplate.update("DELETE FROM booking_trip_inventory");
+        jdbcTemplate.update("DELETE FROM transport_trip_seat");
         jdbcTemplate.update("DELETE FROM transport_trip");
         jdbcTemplate.update("DELETE FROM transport_route");
         jdbcTemplate.update("DELETE FROM transport_vehicle");
         seedTrip();
+    }
+
+    @Test
+    void shouldAtomicallyLockOnlyAvailableSeat() {
+        seedSeat("A01");
+        SeatLockRequest firstRequest = seatLockRequest(
+                "A01",
+                "55555555-5555-5555-5555-555555555555",
+                1001L
+        );
+        SeatLockRequest secondRequest = seatLockRequest(
+                "A01",
+                "66666666-6666-6666-6666-666666666666",
+                1002L
+        );
+
+        assertThat(tripSeatReservationPort.tryLockSeat(firstRequest))
+                .isTrue();
+        assertThat(tripSeatReservationPort.tryLockSeat(secondRequest))
+                .isFalse();
+
+        var lockedSeat = jdbcTemplate.queryForMap(
+                """
+                SELECT status, locked_by_order_no,
+                       locked_by_user_id, version
+                FROM transport_trip_seat
+                WHERE trip_id = ? AND seat_number = ?
+                """,
+                TRIP.value(),
+                "A01"
+        );
+        assertThat(lockedSeat.get("status")).isEqualTo("LOCKED");
+        assertThat(lockedSeat.get("locked_by_order_no"))
+                .isEqualTo(
+                        "55555555-5555-5555-5555-555555555555"
+                );
+        assertThat(((Number) lockedSeat.get("locked_by_user_id"))
+                .longValue()).isEqualTo(1001L);
+        assertThat(((Number) lockedSeat.get("version"))
+                .longValue()).isEqualTo(1L);
+    }
+
+    @Test
+    void shouldAllowOnlyOneConcurrentLockForSameSeat() {
+        seedSeat("B01");
+        int requests = 20;
+
+        try (ExecutorService executor =
+                     Executors.newFixedThreadPool(requests)) {
+            List<CompletableFuture<Boolean>> attempts =
+                    IntStream.range(0, requests)
+                            .mapToObj(index ->
+                                    CompletableFuture.supplyAsync(
+                                            () -> tripSeatReservationPort
+                                                    .tryLockSeat(
+                                                            seatLockRequest(
+                                                                    "B01",
+                                                                    UUID.randomUUID().toString(),
+                                                                    1100L + index
+                                                            )
+                                                    ),
+                                            executor
+                                    )
+                            )
+                            .toList();
+            long successes = attempts.stream()
+                    .map(CompletableFuture::join)
+                    .filter(Boolean::booleanValue)
+                    .count();
+
+            assertThat(successes).isEqualTo(1L);
+            Integer version = jdbcTemplate.queryForObject(
+                    """
+                    SELECT version
+                    FROM transport_trip_seat
+                    WHERE trip_id = ? AND seat_number = ?
+                    """,
+                    Integer.class,
+                    TRIP.value(),
+                    "B01"
+            );
+            assertThat(version).isEqualTo(1);
+        }
     }
 
     @Test
@@ -211,6 +300,39 @@ class BookingPersistenceIntegrationTest {
                 BookingAmount.of("5.50"),
                 EXPIRES_AT,
                 CREATED_AT
+        );
+    }
+
+    private SeatLockRequest seatLockRequest(
+            String seatNumber,
+            String bookingNumber,
+            long userId
+    ) {
+        return new SeatLockRequest(
+                TRIP,
+                SeatNumber.of(seatNumber),
+                BookingNumber.of(bookingNumber),
+                UserId.of(userId),
+                EXPIRES_AT,
+                CREATED_AT
+        );
+    }
+
+    private void seedSeat(String seatNumber) {
+        Timestamp createdAt = Timestamp.from(CREATED_AT);
+        jdbcTemplate.update(
+                """
+                INSERT INTO transport_trip_seat (
+                    trip_id, seat_number, status,
+                    version, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                TRIP.value(),
+                seatNumber,
+                "AVAILABLE",
+                0L,
+                createdAt,
+                createdAt
         );
     }
 
