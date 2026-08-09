@@ -1,4 +1,12 @@
 spring:
+  rabbitmq:
+    host: ${RABBITMQ_HOST}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME}
+    password: ${RABBITMQ_PASSWORD}
+    virtual-host: ${RABBITMQ_VIRTUAL_HOST:/}
+    connection-timeout: ${RABBITMQ_CONNECTION_TIMEOUT:3s}
+    requested-heartbeat: ${RABBITMQ_REQUESTED_HEARTBEAT:30s}
   data:
     redis:
       host: ${REDIS_HOST}

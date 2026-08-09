@@ -9,6 +9,15 @@ spring:
   jackson:
     time-zone: UTC
     default-property-inclusion: non_null
+  rabbitmq:
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
+    listener:
+      simple:
+        acknowledge-mode: manual
+        prefetch: ${RABBITMQ_LISTENER_PREFETCH:20}
 
 server:
   port: ${SERVER_PORT:8080}
@@ -65,3 +74,11 @@ school-bus:
       ttl: ${REFRESH_TOKEN_TTL:PT168H}
   payment:
     callback-secret: ${PAYMENT_CALLBACK_SECRET:local-payment-secret-change-me-1234}
+  messaging:
+    payment:
+      exchange: ${PAYMENT_EVENTS_EXCHANGE:schoolbus.payment.events}
+      refund-routing-key: ${PAYMENT_REFUND_ROUTING_KEY:payment.refund.required}
+      refund-queue: ${PAYMENT_REFUND_QUEUE:schoolbus.payment.refund}
+      dead-letter-exchange: ${PAYMENT_DLX:schoolbus.payment.dlx}
+      dead-letter-routing-key: ${PAYMENT_REFUND_DEAD_ROUTING_KEY:payment.refund.dead}
+      dead-letter-queue: ${PAYMENT_REFUND_DLQ:schoolbus.payment.refund.dlq}
