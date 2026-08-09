@@ -24,6 +24,12 @@ public enum ErrorCode {
             HttpStatus.CONFLICT,
             "requestNumber has already been used for another booking"
     ),
+    PAYMENT_BOOKING_NOT_FOUND(HttpStatus.NOT_FOUND, "booking does not exist"),
+    PAYMENT_AMOUNT_MISMATCH(HttpStatus.CONFLICT, "payment amount does not match booking amount"),
+    PAYMENT_REQUEST_CONFLICT(HttpStatus.CONFLICT, "payment callback idempotency conflict"),
+    PAYMENT_CONCURRENCY_CONFLICT(HttpStatus.CONFLICT, "payment confirmation conflicted with another update"),
+    INVALID_PAYMENT_SIGNATURE(HttpStatus.UNAUTHORIZED, "invalid payment callback signature"),
+    MALFORMED_PAYMENT_CALLBACK(HttpStatus.BAD_REQUEST, "payment callback body is invalid"),
     INVALID_LOGIN_SESSION(HttpStatus.UNAUTHORIZED, "invalid login session"),
     INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "invalid or expired refresh token"),
     VALIDATION_ERROR(HttpStatus.BAD_REQUEST, "请求参数校验失败"),

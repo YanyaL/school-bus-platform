@@ -8,6 +8,7 @@ import com.schoolbus.booking.domain.order.BookingOrderRepository;
 import com.schoolbus.booking.domain.order.BookingRequestNumber;
 import com.schoolbus.booking.domain.order.BookingStatus;
 import com.schoolbus.booking.domain.order.CancellationReason;
+import com.schoolbus.booking.domain.order.PaymentReference;
 import com.schoolbus.booking.domain.order.SeatNumber;
 import com.schoolbus.booking.domain.trip.TripReference;
 import com.schoolbus.shared.domain.identity.UserId;
@@ -83,6 +84,23 @@ public class MyBatisBookingOrderRepository
         );
         BookingOrderDataObject dataObject =
                 bookingOrderMapper.selectById(validatedId.value());
+        return dataObject == null
+                ? Optional.empty()
+                : Optional.of(toDomain(dataObject));
+    }
+
+    @Override
+    public Optional<BookingOrder> findByBookingNumber(
+            BookingNumber bookingNumber
+    ) {
+        BookingNumber validatedNumber = Objects.requireNonNull(
+                bookingNumber,
+                "bookingNumber must not be null"
+        );
+        BookingOrderDataObject dataObject =
+                bookingOrderMapper.selectByOrderNo(
+                        validatedNumber.toString()
+                );
         return dataObject == null
                 ? Optional.empty()
                 : Optional.of(toDomain(dataObject));
@@ -175,6 +193,14 @@ public class MyBatisBookingOrderRepository
         dataObject.setExpiresAt(
                 toDatabaseTime(bookingOrder.expiresAt())
         );
+        dataObject.setPaymentNo(
+                bookingOrder.paymentReference() == null
+                        ? null
+                        : bookingOrder.paymentReference().toString()
+        );
+        dataObject.setPaidAt(
+                toNullableDatabaseTime(bookingOrder.paidAt())
+        );
         dataObject.setCancelledAt(
                 toNullableDatabaseTime(bookingOrder.cancelledAt())
         );
@@ -206,6 +232,10 @@ public class MyBatisBookingOrderRepository
                 new BookingAmount(dataObject.getPriceSnapshot()),
                 BookingStatus.valueOf(dataObject.getStatus()),
                 toInstant(dataObject.getExpiresAt()),
+                dataObject.getPaymentNo() == null
+                        ? null
+                        : PaymentReference.of(dataObject.getPaymentNo()),
+                toNullableInstant(dataObject.getPaidAt()),
                 toNullableInstant(dataObject.getCancelledAt()),
                 dataObject.getCancelReason() == null
                         ? null

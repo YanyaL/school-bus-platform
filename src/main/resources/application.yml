@@ -63,3 +63,5 @@ school-bus:
       access-token-ttl: ${JWT_ACCESS_TOKEN_TTL:PT15M}
     refresh-token:
       ttl: ${REFRESH_TOKEN_TTL:PT168H}
+  payment:
+    callback-secret: ${PAYMENT_CALLBACK_SECRET:local-payment-secret-change-me-1234}

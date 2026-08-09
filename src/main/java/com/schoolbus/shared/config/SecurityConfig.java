@@ -38,7 +38,8 @@ public class SecurityConfig {
                                 HttpMethod.POST,
                                 "/api/v1/accounts",
                                 "/api/v1/auth/login",
-                                "/api/v1/auth/refresh"
+                                "/api/v1/auth/refresh",
+                                "/api/v1/payments/callback"
                         ).permitAll()
                         .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
                         .anyRequest().authenticated()

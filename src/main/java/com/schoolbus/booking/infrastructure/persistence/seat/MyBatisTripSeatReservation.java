@@ -2,6 +2,7 @@ package com.schoolbus.booking.infrastructure.persistence.seat;
 
 import com.schoolbus.booking.application.booking.SeatLockRequest;
 import com.schoolbus.booking.application.booking.SeatReleaseRequest;
+import com.schoolbus.booking.application.booking.SeatSaleRequest;
 import com.schoolbus.booking.application.booking.TripSeatReservationPort;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
@@ -59,6 +60,21 @@ public class MyBatisTripSeatReservation
                 toDatabaseTime(validatedRequest.releasedAt())
         );
         return isSingleRowUpdated(updatedRows, "release");
+    }
+
+    @Override
+    public boolean confirmSeatSold(SeatSaleRequest request) {
+        SeatSaleRequest validatedRequest = Objects.requireNonNull(
+                request,
+                "request must not be null"
+        );
+        int updatedRows = tripSeatMapper.confirmSeatSold(
+                validatedRequest.tripReference().value(),
+                validatedRequest.seatNumber().value(),
+                validatedRequest.bookingNumber().toString(),
+                toDatabaseTime(validatedRequest.soldAt())
+        );
+        return isSingleRowUpdated(updatedRows, "sale confirmation");
     }
 
     private boolean isSingleRowUpdated(

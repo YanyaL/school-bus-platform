@@ -13,6 +13,10 @@ public interface BookingOrderMapper {
 
     BookingOrderDataObject selectById(@Param("id") Long id);
 
+    BookingOrderDataObject selectByOrderNo(
+            @Param("orderNo") String orderNo
+    );
+
     BookingOrderDataObject selectByRequestNo(
             @Param("requestNo") String requestNo
     );

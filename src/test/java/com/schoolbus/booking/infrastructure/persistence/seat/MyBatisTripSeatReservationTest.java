@@ -2,6 +2,7 @@ package com.schoolbus.booking.infrastructure.persistence.seat;
 
 import com.schoolbus.booking.application.booking.SeatLockRequest;
 import com.schoolbus.booking.application.booking.SeatReleaseRequest;
+import com.schoolbus.booking.application.booking.SeatSaleRequest;
 import com.schoolbus.booking.domain.order.BookingNumber;
 import com.schoolbus.booking.domain.order.SeatNumber;
 import com.schoolbus.booking.domain.trip.TripReference;
@@ -142,6 +143,32 @@ class MyBatisTripSeatReservationTest {
         )).thenReturn(0);
 
         assertThat(reservation.releaseSeat(request)).isFalse();
+    }
+
+    @Test
+    void shouldConfirmOnlySeatLockedByBookingAsSold() {
+        SeatSaleRequest request = new SeatSaleRequest(
+                TripReference.of(2001L),
+                SeatNumber.of("A01"),
+                BookingNumber.of(
+                        "55555555-5555-5555-5555-555555555555"
+                ),
+                EXPIRES_AT
+        );
+        when(mapper.confirmSeatSold(
+                2001L,
+                "A01",
+                "55555555-5555-5555-5555-555555555555",
+                toDatabaseTime(EXPIRES_AT)
+        )).thenReturn(1);
+
+        assertThat(reservation.confirmSeatSold(request)).isTrue();
+        verify(mapper).confirmSeatSold(
+                2001L,
+                "A01",
+                "55555555-5555-5555-5555-555555555555",
+                toDatabaseTime(EXPIRES_AT)
+        );
     }
 
     private SeatLockRequest request() {

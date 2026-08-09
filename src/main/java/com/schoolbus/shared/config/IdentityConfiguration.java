@@ -5,6 +5,8 @@ import com.schoolbus.booking.domain.order.BookingNumberGenerator;
 import com.schoolbus.booking.infrastructure.identity.SnowflakeBookingIdGenerator;
 import com.schoolbus.booking.infrastructure.identity.UuidBookingNumberGenerator;
 import com.schoolbus.shared.domain.identity.UserIdGenerator;
+import com.schoolbus.payment.domain.PaymentIdGenerator;
+import com.schoolbus.payment.infrastructure.identity.SnowflakePaymentIdGenerator;
 import com.schoolbus.shared.infrastructure.identity.SnowflakeIdGenerator;
 import com.schoolbus.shared.infrastructure.identity.SnowflakeUserIdGenerator;
 import org.springframework.beans.factory.annotation.Value;
@@ -43,5 +45,12 @@ public class IdentityConfiguration {
     @Bean
     BookingNumberGenerator bookingNumberGenerator() {
         return new UuidBookingNumberGenerator();
+    }
+
+    @Bean
+    PaymentIdGenerator paymentIdGenerator(
+            SnowflakeIdGenerator snowflakeIdGenerator
+    ) {
+        return new SnowflakePaymentIdGenerator(snowflakeIdGenerator);
     }
 }

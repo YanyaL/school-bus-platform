@@ -42,6 +42,8 @@ school-bus:
     jwt:
       public-key-location: ${JWT_PUBLIC_KEY_LOCATION}
       private-key-location: ${JWT_PRIVATE_KEY_LOCATION}
+  payment:
+    callback-secret: ${PAYMENT_CALLBACK_SECRET}
 
 logging:
   level:

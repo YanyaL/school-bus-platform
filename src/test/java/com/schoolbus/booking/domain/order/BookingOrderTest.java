@@ -179,6 +179,7 @@ class BookingOrderTest {
 
     @Test
     void shouldRestorePersistedOrder() {
+        Instant paidAt = PLACED_AT.plusSeconds(60);
         BookingOrder bookingOrder = BookingOrder.restore(
                 BookingId.of(5001L),
                 bookingNumber(),
@@ -189,6 +190,10 @@ class BookingOrderTest {
                 BookingAmount.of("5.50"),
                 BookingStatus.PAID,
                 EXPIRES_AT,
+                PaymentReference.of(
+                        "77777777-7777-7777-7777-777777777777"
+                ),
+                paidAt,
                 null,
                 null,
                 3L,
@@ -198,7 +203,49 @@ class BookingOrderTest {
 
         assertThat(bookingOrder.status())
                 .isEqualTo(BookingStatus.PAID);
+        assertThat(bookingOrder.paidAt()).isEqualTo(paidAt);
         assertThat(bookingOrder.version()).isEqualTo(3L);
+    }
+
+    @Test
+    void shouldConfirmPaymentBeforeDeadline() {
+        BookingOrder bookingOrder = pendingOrder();
+        PaymentReference paymentReference = PaymentReference.of(
+                "77777777-7777-7777-7777-777777777777"
+        );
+        Instant paidAt = EXPIRES_AT.minusSeconds(1);
+        Instant confirmedAt = EXPIRES_AT.plusSeconds(5);
+
+        bookingOrder.confirmPayment(
+                paymentReference,
+                paidAt,
+                confirmedAt
+        );
+
+        assertThat(bookingOrder.status()).isEqualTo(BookingStatus.PAID);
+        assertThat(bookingOrder.paymentReference()).isEqualTo(paymentReference);
+        assertThat(bookingOrder.paidAt()).isEqualTo(paidAt);
+        assertThat(bookingOrder.updatedAt()).isEqualTo(confirmedAt);
+        assertThat(bookingOrder.version()).isEqualTo(1L);
+    }
+
+    @Test
+    void shouldRejectPaymentAtExpirationBoundary() {
+        BookingOrder bookingOrder = pendingOrder();
+
+        assertThatThrownBy(() -> bookingOrder.confirmPayment(
+                PaymentReference.of(
+                        "77777777-7777-7777-7777-777777777777"
+                ),
+                EXPIRES_AT,
+                EXPIRES_AT
+        ))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("booking payment window has expired");
+
+        assertThat(bookingOrder.status())
+                .isEqualTo(BookingStatus.PENDING_PAYMENT);
+        assertThat(bookingOrder.version()).isZero();
     }
 
     @Test

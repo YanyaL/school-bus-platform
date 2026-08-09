@@ -17,6 +17,8 @@ public final class BookingOrder {
     private final BookingAmount amount;
     private BookingStatus status;
     private final Instant expiresAt;
+    private PaymentReference paymentReference;
+    private Instant paidAt;
     private Instant cancelledAt;
     private CancellationReason cancellationReason;
     private long version;
@@ -33,6 +35,8 @@ public final class BookingOrder {
             BookingAmount amount,
             BookingStatus status,
             Instant expiresAt,
+            PaymentReference paymentReference,
+            Instant paidAt,
             Instant cancelledAt,
             CancellationReason cancellationReason,
             long version,
@@ -84,6 +88,32 @@ public final class BookingOrder {
                     "expiresAt must be after createdAt"
             );
         }
+        if ((paymentReference == null) != (paidAt == null)) {
+            throw new IllegalArgumentException(
+                    "paymentReference and paidAt must both be present or absent"
+            );
+        }
+        if ((status == BookingStatus.PAID
+                || status == BookingStatus.REFUNDED)
+                && paymentReference == null) {
+            throw new IllegalArgumentException(
+                    "paid or refunded booking must contain payment details"
+            );
+        }
+        if (status != BookingStatus.PAID
+                && status != BookingStatus.REFUNDED
+                && paymentReference != null) {
+            throw new IllegalArgumentException(
+                    "only paid or refunded booking may contain payment details"
+            );
+        }
+        if (paidAt != null && paidAt.isBefore(createdAt)) {
+            throw new IllegalArgumentException(
+                    "paidAt must not be before createdAt"
+            );
+        }
+        this.paymentReference = paymentReference;
+        this.paidAt = paidAt;
         if ((cancelledAt == null) != (cancellationReason == null)) {
             throw new IllegalArgumentException(
                     "cancelledAt and cancellationReason must both be present or absent"
@@ -141,6 +171,8 @@ public final class BookingOrder {
                 expiresAt,
                 null,
                 null,
+                null,
+                null,
                 0L,
                 placedAt,
                 placedAt
@@ -157,6 +189,8 @@ public final class BookingOrder {
             BookingAmount amount,
             BookingStatus status,
             Instant expiresAt,
+            PaymentReference paymentReference,
+            Instant paidAt,
             Instant cancelledAt,
             CancellationReason cancellationReason,
             long version,
@@ -173,12 +207,56 @@ public final class BookingOrder {
                 amount,
                 status,
                 expiresAt,
+                paymentReference,
+                paidAt,
                 cancelledAt,
                 cancellationReason,
                 version,
                 createdAt,
                 updatedAt
         );
+    }
+
+    public void confirmPayment(
+            PaymentReference paymentReference,
+            Instant paidAt,
+            Instant confirmedAt
+    ) {
+        if (status != BookingStatus.PENDING_PAYMENT) {
+            throw new InvalidBookingStateTransitionException(
+                    status,
+                    BookingStatus.PAID
+            );
+        }
+        PaymentReference validatedReference = Objects.requireNonNull(
+                paymentReference,
+                "paymentReference must not be null"
+        );
+        Instant validatedPaidAt = Objects.requireNonNull(
+                paidAt,
+                "paidAt must not be null"
+        );
+        Instant operationTime = validateChangeTime(confirmedAt);
+        if (validatedPaidAt.isBefore(createdAt)) {
+            throw new IllegalArgumentException(
+                    "paidAt must not be before createdAt"
+            );
+        }
+        if (!validatedPaidAt.isBefore(expiresAt)) {
+            throw new IllegalStateException(
+                    "booking payment window has expired"
+            );
+        }
+        if (operationTime.isBefore(validatedPaidAt)) {
+            throw new IllegalArgumentException(
+                    "confirmedAt must not be before paidAt"
+            );
+        }
+        status = BookingStatus.PAID;
+        this.paymentReference = validatedReference;
+        this.paidAt = validatedPaidAt;
+        updatedAt = operationTime;
+        version++;
     }
 
     public void cancel(Instant cancelledAt) {
@@ -272,6 +350,14 @@ public final class BookingOrder {
 
     public Instant expiresAt() {
         return expiresAt;
+    }
+
+    public PaymentReference paymentReference() {
+        return paymentReference;
+    }
+
+    public Instant paidAt() {
+        return paidAt;
     }
 
     public Instant cancelledAt() {

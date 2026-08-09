@@ -13,6 +13,10 @@ public interface BookingOrderRepository {
 
     Optional<BookingOrder> findById(BookingId bookingId);
 
+    Optional<BookingOrder> findByBookingNumber(
+            BookingNumber bookingNumber
+    );
+
     Optional<BookingOrder> findByRequestNumber(
             BookingRequestNumber requestNumber
     );

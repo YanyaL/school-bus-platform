@@ -25,6 +25,10 @@ import com.schoolbus.booking.domain.order.CancellationReason;
 import com.schoolbus.booking.domain.order.SeatNumber;
 import com.schoolbus.booking.domain.trip.TripReference;
 import com.schoolbus.shared.domain.identity.UserId;
+import com.schoolbus.payment.application.ConfirmPaymentCommand;
+import com.schoolbus.payment.application.ConfirmPaymentResult;
+import com.schoolbus.payment.application.PaymentConfirmationApplicationService;
+import com.schoolbus.payment.application.PaymentConfirmationOutcome;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -108,6 +112,9 @@ class BookingPersistenceIntegrationTest {
     private BookingExpirationTransaction expirationTransaction;
 
     @Autowired
+    private PaymentConfirmationApplicationService paymentService;
+
+    @Autowired
     private MutableClock mutableClock;
 
     @Autowired
@@ -120,6 +127,8 @@ class BookingPersistenceIntegrationTest {
     void resetDatabase() {
         mutableClock.reset();
         bookingIdGenerator.reset();
+        jdbcTemplate.update("DELETE FROM event_outbox");
+        jdbcTemplate.update("DELETE FROM payment_record");
         jdbcTemplate.update("DELETE FROM booking_order");
         jdbcTemplate.update("DELETE FROM booking_trip_inventory");
         jdbcTemplate.update("DELETE FROM transport_trip_seat");
@@ -127,6 +136,152 @@ class BookingPersistenceIntegrationTest {
         jdbcTemplate.update("DELETE FROM transport_route");
         jdbcTemplate.update("DELETE FROM transport_vehicle");
         seedTrip();
+    }
+
+    @Test
+    void shouldConfirmPaymentSellSeatAndRemainIdempotent() {
+        CreateBookingResult booking = createBookingForExpiration(
+                "P01",
+                6001L,
+                "payment-booking-6001"
+        );
+        mutableClock.set(CREATED_AT.plusSeconds(65));
+        ConfirmPaymentCommand command = new ConfirmPaymentCommand(
+                "payment-callback-6001",
+                "77777777-7777-7777-7777-777777777777",
+                booking.bookingNumber(),
+                new BigDecimal("5.50"),
+                CREATED_AT.plusSeconds(60)
+        );
+
+        ConfirmPaymentResult first = paymentService.confirmPayment(command);
+        ConfirmPaymentResult repeated = paymentService.confirmPayment(command);
+
+        assertThat(first.outcome())
+                .isEqualTo(PaymentConfirmationOutcome.CONFIRMED);
+        assertThat(repeated.paymentId()).isEqualTo(first.paymentId());
+        BookingOrder paidOrder = bookingOrderRepository
+                .findById(BookingId.of(booking.bookingId()))
+                .orElseThrow();
+        assertThat(paidOrder.status()).isEqualTo(BookingStatus.PAID);
+        assertThat(paidOrder.paymentReference().toString())
+                .isEqualTo(command.paymentNumber());
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT status FROM transport_trip_seat WHERE trip_id = ? AND seat_number = ?",
+                String.class,
+                TRIP.value(),
+                "P01"
+        )).isEqualTo("SOLD");
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM payment_record",
+                Integer.class
+        )).isEqualTo(1);
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM event_outbox",
+                Integer.class
+        )).isZero();
+    }
+
+    @Test
+    void shouldRecordLatePaymentAndRefundOutboxAfterExpiration() {
+        CreateBookingResult booking = createBookingForExpiration(
+                "P02",
+                6002L,
+                "payment-booking-6002"
+        );
+        mutableClock.set(EXPIRES_AT);
+        assertThat(expirationTransaction.expireOne(
+                BookingId.of(booking.bookingId()),
+                EXPIRES_AT
+        )).isTrue();
+
+        ConfirmPaymentResult result = paymentService.confirmPayment(
+                new ConfirmPaymentCommand(
+                        "payment-callback-6002",
+                        "88888888-8888-8888-8888-888888888888",
+                        booking.bookingNumber(),
+                        new BigDecimal("5.50"),
+                        EXPIRES_AT
+                )
+        );
+
+        assertThat(result.outcome())
+                .isEqualTo(PaymentConfirmationOutcome.REFUND_PENDING);
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT status FROM payment_record WHERE payment_no = ?",
+                String.class,
+                result.paymentNumber()
+        )).isEqualTo("REFUND_PENDING");
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM event_outbox WHERE event_type = 'PaymentRefundRequired' AND status = 'NEW'",
+                Integer.class
+        )).isEqualTo(1);
+        assertThat(bookingOrderRepository
+                .findById(BookingId.of(booking.bookingId()))
+                .orElseThrow()
+                .status()).isEqualTo(BookingStatus.CANCELLED);
+    }
+
+    @Test
+    void paymentAndExpirationRaceMustEndInOneConsistentState() {
+        CreateBookingResult booking = createBookingForExpiration(
+                "P03",
+                6003L,
+                "payment-booking-6003"
+        );
+        mutableClock.set(EXPIRES_AT);
+        ConfirmPaymentCommand command = new ConfirmPaymentCommand(
+                "payment-callback-6003",
+                "99999999-9999-9999-9999-999999999999",
+                booking.bookingNumber(),
+                new BigDecimal("5.50"),
+                EXPIRES_AT.minusMillis(1)
+        );
+
+        try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
+            CompletableFuture<ConfirmPaymentResult> payment =
+                    CompletableFuture.supplyAsync(
+                            () -> paymentService.confirmPayment(command),
+                            executor
+                    );
+            CompletableFuture<Boolean> expiration =
+                    CompletableFuture.supplyAsync(
+                            () -> tryExpire(booking.bookingId()),
+                            executor
+                    );
+            ConfirmPaymentResult paymentResult = payment.join();
+            boolean expired = expiration.join();
+
+            BookingOrder finalOrder = bookingOrderRepository
+                    .findById(BookingId.of(booking.bookingId()))
+                    .orElseThrow();
+            String seatStatus = jdbcTemplate.queryForObject(
+                    "SELECT status FROM transport_trip_seat WHERE trip_id = ? AND seat_number = ?",
+                    String.class,
+                    TRIP.value(),
+                    "P03"
+            );
+            int availableSeats = seatInventoryRepository
+                    .findByTripReference(TRIP)
+                    .orElseThrow()
+                    .availableSeats();
+
+            if (finalOrder.status() == BookingStatus.PAID) {
+                assertThat(paymentResult.outcome())
+                        .isEqualTo(PaymentConfirmationOutcome.CONFIRMED);
+                assertThat(expired).isFalse();
+                assertThat(seatStatus).isEqualTo("SOLD");
+                assertThat(availableSeats).isEqualTo(9);
+            } else {
+                assertThat(finalOrder.status())
+                        .isEqualTo(BookingStatus.CANCELLED);
+                assertThat(paymentResult.outcome())
+                        .isEqualTo(PaymentConfirmationOutcome.REFUND_PENDING);
+                assertThat(expired).isTrue();
+                assertThat(seatStatus).isEqualTo("AVAILABLE");
+                assertThat(availableSeats).isEqualTo(10);
+            }
+        }
     }
 
     @Test

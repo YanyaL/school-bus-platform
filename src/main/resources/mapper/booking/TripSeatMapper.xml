@@ -32,4 +32,16 @@
           AND locked_by_order_no = #{bookingNumber}
     </update>
 
+    <update id="confirmSeatSold">
+        UPDATE transport_trip_seat
+        SET status = 'SOLD',
+            lock_expires_at = NULL,
+            version = version + 1,
+            updated_at = #{soldAt}
+        WHERE trip_id = #{tripId}
+          AND seat_number = #{seatNumber}
+          AND status = 'LOCKED'
+          AND locked_by_order_no = #{bookingNumber}
+    </update>
+
 </mapper>
