@@ -11,11 +11,13 @@ import org.springframework.amqp.core.MessageProperties;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doThrow;
 
 class PaymentRefundListenerTest {
 
@@ -23,9 +25,27 @@ class PaymentRefundListenerTest {
             PaymentRefundApplicationService.class
     );
     private final Channel channel = mock(Channel.class);
+    private final RefundRetryPublisher retryPublisher = mock(
+            RefundRetryPublisher.class
+    );
+    private final RefundRetryAttemptResolver attemptResolver = mock(
+            RefundRetryAttemptResolver.class
+    );
+    private final RefundRetryProperties retryProperties =
+            new RefundRetryProperties(
+                    "schoolbus.payment.retry",
+                    "payment.refund.retry",
+                    "schoolbus.payment.refund.retry",
+                    Duration.ofSeconds(30),
+                    3,
+                    Duration.ofSeconds(5)
+            );
     private final PaymentRefundListener listener = new PaymentRefundListener(
             service,
-            new ObjectMapper().findAndRegisterModules()
+            new ObjectMapper().findAndRegisterModules(),
+            retryPublisher,
+            attemptResolver,
+            retryProperties
     );
 
     @Test
@@ -52,7 +72,7 @@ class PaymentRefundListenerTest {
     }
 
     @Test
-    void shouldNackTemporaryFailureWithoutImmediateRequeue()
+    void shouldScheduleTemporaryFailureAndAckOriginalMessage()
             throws IOException {
         when(service.process(any())).thenThrow(
                 new IllegalStateException("provider unavailable")
@@ -60,7 +80,40 @@ class PaymentRefundListenerTest {
 
         listener.consume(validMessage(), channel);
 
-        verify(channel).basicNack(101L, false, false);
+        verify(retryPublisher).scheduleRetry(any(Message.class));
+        verify(channel).basicAck(101L, false);
+    }
+
+    @Test
+    void shouldRejectMessageAfterMaximumRetries()
+            throws IOException {
+        Message message = validMessage();
+        when(service.process(any())).thenThrow(
+                new IllegalStateException("provider unavailable")
+        );
+        when(attemptResolver.completedRetries(
+                message,
+                retryProperties.queue()
+        )).thenReturn(3);
+
+        listener.consume(message, channel);
+
+        verify(channel).basicReject(101L, false);
+    }
+
+    @Test
+    void shouldRequeueOriginalWhenRetryPublishFails()
+            throws IOException {
+        Message message = validMessage();
+        when(service.process(any())).thenThrow(
+                new IllegalStateException("provider unavailable")
+        );
+        doThrow(new OutboxPublishException("broker unavailable"))
+                .when(retryPublisher).scheduleRetry(message);
+
+        listener.consume(message, channel);
+
+        verify(channel).basicNack(101L, false, true);
     }
 
     private Message validMessage() {

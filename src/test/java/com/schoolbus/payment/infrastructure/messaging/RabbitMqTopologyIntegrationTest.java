@@ -38,6 +38,15 @@ class RabbitMqTopologyIntegrationTest {
                     "payment.refund.dead",
                     "schoolbus.payment.refund.dlq.test"
             );
+    private static final RefundRetryProperties RETRY_PROPERTIES =
+            new RefundRetryProperties(
+                    "schoolbus.payment.retry.test",
+                    "payment.refund.retry",
+                    "schoolbus.payment.refund.retry.test",
+                    Duration.ofMillis(200),
+                    3,
+                    Duration.ofSeconds(5)
+            );
 
     @Container
     static final RabbitMQContainer RABBIT_MQ =
@@ -63,6 +72,10 @@ class RabbitMqTopologyIntegrationTest {
                 configuration.paymentEventsExchange(PROPERTIES);
         DirectExchange deadLetterExchange =
                 configuration.paymentDeadLetterExchange(PROPERTIES);
+        DirectExchange retryExchange =
+                configuration.paymentRefundRetryExchange(
+                        RETRY_PROPERTIES
+                );
         Queue refundQueue = configuration.paymentRefundQueue(
                 PROPERTIES
         );
@@ -70,6 +83,10 @@ class RabbitMqTopologyIntegrationTest {
                 configuration.paymentRefundDeadLetterQueue(
                         PROPERTIES
                 );
+        Queue retryQueue = configuration.paymentRefundRetryQueue(
+                RETRY_PROPERTIES,
+                PROPERTIES
+        );
         Binding refundBinding = configuration.paymentRefundBinding(
                 refundQueue,
                 eventsExchange,
@@ -81,14 +98,22 @@ class RabbitMqTopologyIntegrationTest {
                         deadLetterExchange,
                         PROPERTIES
                 );
+        Binding retryBinding = configuration.paymentRefundRetryBinding(
+                retryQueue,
+                retryExchange,
+                RETRY_PROPERTIES
+        );
 
         RabbitAdmin rabbitAdmin = new RabbitAdmin(connectionFactory);
         rabbitAdmin.declareExchange(eventsExchange);
         rabbitAdmin.declareExchange(deadLetterExchange);
+        rabbitAdmin.declareExchange(retryExchange);
         rabbitAdmin.declareQueue(refundQueue);
         rabbitAdmin.declareQueue(deadLetterQueue);
+        rabbitAdmin.declareQueue(retryQueue);
         rabbitAdmin.declareBinding(refundBinding);
         rabbitAdmin.declareBinding(deadLetterBinding);
+        rabbitAdmin.declareBinding(retryBinding);
 
         rabbitTemplate = new RabbitTemplate(connectionFactory);
         rabbitTemplate.setReceiveTimeout(5_000L);
@@ -141,5 +166,23 @@ class RabbitMqTopologyIntegrationTest {
                                 PROPERTIES.deadLetterQueue()
                         )
                 ).isEqualTo(rejectedMessage));
+    }
+
+    @Test
+    void shouldReturnExpiredRetryMessageToRefundQueue() {
+        String retryMessage = "refund-retry-1";
+        rabbitTemplate.convertAndSend(
+                RETRY_PROPERTIES.exchange(),
+                RETRY_PROPERTIES.routingKey(),
+                retryMessage
+        );
+
+        await()
+                .atMost(Duration.ofSeconds(5))
+                .untilAsserted(() -> assertThat(
+                        rabbitTemplate.receiveAndConvert(
+                                PROPERTIES.refundQueue()
+                        )
+                ).isEqualTo(retryMessage));
     }
 }

@@ -36,7 +36,13 @@ class RabbitMqConfigurationTest {
                             "school-bus.messaging.outbox-relay.confirm-timeout=5s",
                             "school-bus.messaging.outbox-relay.initial-retry-delay=5s",
                             "school-bus.messaging.outbox-relay.maximum-retry-delay=5m",
-                            "school-bus.messaging.outbox-relay.maximum-attempts=10"
+                            "school-bus.messaging.outbox-relay.maximum-attempts=10",
+                            "school-bus.messaging.payment-refund-retry.exchange=schoolbus.payment.retry",
+                            "school-bus.messaging.payment-refund-retry.routing-key=payment.refund.retry",
+                            "school-bus.messaging.payment-refund-retry.queue=schoolbus.payment.refund.retry",
+                            "school-bus.messaging.payment-refund-retry.delay=30s",
+                            "school-bus.messaging.payment-refund-retry.maximum-retries=3",
+                            "school-bus.messaging.payment-refund-retry.confirm-timeout=5s"
                     );
 
     @Test
@@ -84,6 +90,29 @@ class RabbitMqConfigurationTest {
             );
             assertThat(deadLetterQueue.getName())
                     .isEqualTo("schoolbus.payment.refund.dlq");
+
+            DirectExchange retryExchange = context.getBean(
+                    "paymentRefundRetryExchange",
+                    DirectExchange.class
+            );
+            assertThat(retryExchange.getName())
+                    .isEqualTo("schoolbus.payment.retry");
+            Queue retryQueue = context.getBean(
+                    "paymentRefundRetryQueue",
+                    Queue.class
+            );
+            assertThat(retryQueue.getName())
+                    .isEqualTo("schoolbus.payment.refund.retry");
+            assertThat(retryQueue.getArguments())
+                    .containsEntry("x-message-ttl", 30_000)
+                    .containsEntry(
+                            "x-dead-letter-exchange",
+                            "schoolbus.payment.events"
+                    )
+                    .containsEntry(
+                            "x-dead-letter-routing-key",
+                            "payment.refund.required"
+                    );
         });
     }
 
@@ -111,6 +140,17 @@ class RabbitMqConfigurationTest {
                     .isEqualTo("schoolbus.payment.refund.dlq");
             assertThat(deadLetterBinding.getRoutingKey())
                     .isEqualTo("payment.refund.dead");
+
+            Binding retryBinding = context.getBean(
+                    "paymentRefundRetryBinding",
+                    Binding.class
+            );
+            assertThat(retryBinding.getExchange())
+                    .isEqualTo("schoolbus.payment.retry");
+            assertThat(retryBinding.getDestination())
+                    .isEqualTo("schoolbus.payment.refund.retry");
+            assertThat(retryBinding.getRoutingKey())
+                    .isEqualTo("payment.refund.retry");
         });
     }
 

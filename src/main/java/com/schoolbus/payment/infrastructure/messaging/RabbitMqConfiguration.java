@@ -14,7 +14,8 @@ import org.springframework.beans.factory.annotation.Qualifier;
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties({
         PaymentMessagingProperties.class,
-        OutboxRelayProperties.class
+        OutboxRelayProperties.class,
+        RefundRetryProperties.class
 })
 public class RabbitMqConfiguration {
 
@@ -35,6 +36,17 @@ public class RabbitMqConfiguration {
     ) {
         return new DirectExchange(
                 properties.deadLetterExchange(),
+                true,
+                false
+        );
+    }
+
+    @Bean
+    DirectExchange paymentRefundRetryExchange(
+            RefundRetryProperties properties
+    ) {
+        return new DirectExchange(
+                properties.exchange(),
                 true,
                 false
         );
@@ -65,6 +77,23 @@ public class RabbitMqConfiguration {
     }
 
     @Bean
+    Queue paymentRefundRetryQueue(
+            RefundRetryProperties retryProperties,
+            PaymentMessagingProperties paymentProperties
+    ) {
+        return QueueBuilder
+                .durable(retryProperties.queue())
+                .ttl(Math.toIntExact(
+                        retryProperties.delay().toMillis()
+                ))
+                .deadLetterExchange(paymentProperties.exchange())
+                .deadLetterRoutingKey(
+                        paymentProperties.refundRoutingKey()
+                )
+                .build();
+    }
+
+    @Bean
     Binding paymentRefundBinding(
             @Qualifier("paymentRefundQueue")
             Queue paymentRefundQueue,
@@ -90,5 +119,19 @@ public class RabbitMqConfiguration {
                 .bind(paymentRefundDeadLetterQueue)
                 .to(paymentDeadLetterExchange)
                 .with(properties.deadLetterRoutingKey());
+    }
+
+    @Bean
+    Binding paymentRefundRetryBinding(
+            @Qualifier("paymentRefundRetryQueue")
+            Queue paymentRefundRetryQueue,
+            @Qualifier("paymentRefundRetryExchange")
+            DirectExchange paymentRefundRetryExchange,
+            RefundRetryProperties properties
+    ) {
+        return BindingBuilder
+                .bind(paymentRefundRetryQueue)
+                .to(paymentRefundRetryExchange)
+                .with(properties.routingKey());
     }
 }

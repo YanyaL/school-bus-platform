@@ -92,3 +92,10 @@ school-bus:
       dead-letter-exchange: ${PAYMENT_DLX:schoolbus.payment.dlx}
       dead-letter-routing-key: ${PAYMENT_REFUND_DEAD_ROUTING_KEY:payment.refund.dead}
       dead-letter-queue: ${PAYMENT_REFUND_DLQ:schoolbus.payment.refund.dlq}
+    payment-refund-retry:
+      exchange: ${PAYMENT_REFUND_RETRY_EXCHANGE:schoolbus.payment.retry}
+      routing-key: ${PAYMENT_REFUND_RETRY_ROUTING_KEY:payment.refund.retry}
+      queue: ${PAYMENT_REFUND_RETRY_QUEUE:schoolbus.payment.refund.retry}
+      delay: ${PAYMENT_REFUND_RETRY_DELAY:PT30S}
+      maximum-retries: ${PAYMENT_REFUND_MAXIMUM_RETRIES:3}
+      confirm-timeout: ${PAYMENT_REFUND_RETRY_CONFIRM_TIMEOUT:PT5S}

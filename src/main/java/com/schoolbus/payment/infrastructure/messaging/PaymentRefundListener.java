@@ -28,10 +28,16 @@ public class PaymentRefundListener {
 
     private final PaymentRefundApplicationService applicationService;
     private final ObjectMapper objectMapper;
+    private final RefundRetryPublisher retryPublisher;
+    private final RefundRetryAttemptResolver attemptResolver;
+    private final RefundRetryProperties retryProperties;
 
     public PaymentRefundListener(
             PaymentRefundApplicationService applicationService,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            RefundRetryPublisher retryPublisher,
+            RefundRetryAttemptResolver attemptResolver,
+            RefundRetryProperties retryProperties
     ) {
         this.applicationService = Objects.requireNonNull(
                 applicationService,
@@ -40,6 +46,18 @@ public class PaymentRefundListener {
         this.objectMapper = Objects.requireNonNull(
                 objectMapper,
                 "objectMapper must not be null"
+        );
+        this.retryPublisher = Objects.requireNonNull(
+                retryPublisher,
+                "retryPublisher must not be null"
+        );
+        this.attemptResolver = Objects.requireNonNull(
+                attemptResolver,
+                "attemptResolver must not be null"
+        );
+        this.retryProperties = Objects.requireNonNull(
+                retryProperties,
+                "retryProperties must not be null"
         );
     }
 
@@ -66,8 +84,51 @@ public class PaymentRefundListener {
             log.error("Refund event rejected as non-retryable", exception);
             channel.basicReject(deliveryTag, false);
         } catch (RuntimeException exception) {
-            log.error("Refund event processing failed", exception);
-            channel.basicNack(deliveryTag, false, false);
+            scheduleRetryOrReject(
+                    message,
+                    channel,
+                    deliveryTag,
+                    exception
+            );
+        }
+    }
+
+    private void scheduleRetryOrReject(
+            Message message,
+            Channel channel,
+            long deliveryTag,
+            RuntimeException processingFailure
+    ) throws IOException {
+        int completedRetries = attemptResolver.completedRetries(
+                message,
+                retryProperties.queue()
+        );
+        if (completedRetries >= retryProperties.maximumRetries()) {
+            log.error(
+                    "Refund event exhausted {} retries and will be dead-lettered",
+                    retryProperties.maximumRetries(),
+                    processingFailure
+            );
+            channel.basicReject(deliveryTag, false);
+            return;
+        }
+        try {
+            retryPublisher.scheduleRetry(message);
+            channel.basicAck(deliveryTag, false);
+            log.warn(
+                    "Refund event scheduled for retry {}/{} after {}",
+                    completedRetries + 1,
+                    retryProperties.maximumRetries(),
+                    retryProperties.delay(),
+                    processingFailure
+            );
+        } catch (RuntimeException retryPublishFailure) {
+            processingFailure.addSuppressed(retryPublishFailure);
+            log.error(
+                    "Failed to publish refund retry; original message will be requeued",
+                    processingFailure
+            );
+            channel.basicNack(deliveryTag, false, true);
         }
     }
 
