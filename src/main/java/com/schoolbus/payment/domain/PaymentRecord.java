@@ -13,12 +13,14 @@ public final class PaymentRecord {
     private final PaymentRequestNumber requestNumber;
     private final BookingNumber bookingNumber;
     private final BookingAmount amount;
-    private final PaymentStatus status;
+    private PaymentStatus status;
     private final String failureReason;
+    private String refundReference;
+    private Instant refundedAt;
     private final Instant completedAt;
-    private final long version;
+    private long version;
     private final Instant createdAt;
-    private final Instant updatedAt;
+    private Instant updatedAt;
 
     private PaymentRecord(
             PaymentId paymentId,
@@ -28,6 +30,8 @@ public final class PaymentRecord {
             BookingAmount amount,
             PaymentStatus status,
             String failureReason,
+            String refundReference,
+            Instant refundedAt,
             Instant completedAt,
             long version,
             Instant createdAt,
@@ -40,6 +44,8 @@ public final class PaymentRecord {
         this.amount = Objects.requireNonNull(amount, "amount must not be null");
         this.status = Objects.requireNonNull(status, "status must not be null");
         this.failureReason = normalizeFailureReason(failureReason);
+        this.refundReference = normalizeRefundReference(refundReference);
+        this.refundedAt = refundedAt;
         this.completedAt = Objects.requireNonNull(completedAt, "completedAt must not be null");
         this.createdAt = Objects.requireNonNull(createdAt, "createdAt must not be null");
         this.updatedAt = Objects.requireNonNull(updatedAt, "updatedAt must not be null");
@@ -49,11 +55,34 @@ public final class PaymentRecord {
         if (version < 0L) {
             throw new IllegalArgumentException("version must not be negative");
         }
-        if (status == PaymentStatus.REFUND_PENDING && this.failureReason == null) {
-            throw new IllegalArgumentException("refund pending payment requires a reason");
+        if ((status == PaymentStatus.REFUND_PENDING
+                || status == PaymentStatus.REFUNDED)
+                && this.failureReason == null) {
+            throw new IllegalArgumentException(
+                    "refunded payment requires a reason"
+            );
         }
         if (status == PaymentStatus.SUCCEEDED && this.failureReason != null) {
             throw new IllegalArgumentException("succeeded payment must not have a failure reason");
+        }
+        boolean hasRefundDetails = this.refundReference != null
+                || this.refundedAt != null;
+        if (status == PaymentStatus.REFUNDED
+                && (this.refundReference == null || this.refundedAt == null)) {
+            throw new IllegalArgumentException(
+                    "refunded payment requires refund details"
+            );
+        }
+        if (status != PaymentStatus.REFUNDED && hasRefundDetails) {
+            throw new IllegalArgumentException(
+                    "only refunded payment may contain refund details"
+            );
+        }
+        if (this.refundedAt != null
+                && this.refundedAt.isBefore(this.completedAt)) {
+            throw new IllegalArgumentException(
+                    "refundedAt must not be before completedAt"
+            );
         }
         this.version = version;
     }
@@ -69,7 +98,7 @@ public final class PaymentRecord {
     ) {
         return new PaymentRecord(
                 paymentId, paymentNumber, requestNumber, bookingNumber,
-                amount, PaymentStatus.SUCCEEDED, null, paidAt,
+                amount, PaymentStatus.SUCCEEDED, null, null, null, paidAt,
                 0L, recordedAt, recordedAt
         );
     }
@@ -86,7 +115,8 @@ public final class PaymentRecord {
     ) {
         return new PaymentRecord(
                 paymentId, paymentNumber, requestNumber, bookingNumber,
-                amount, PaymentStatus.REFUND_PENDING, reason, paidAt,
+                amount, PaymentStatus.REFUND_PENDING, reason,
+                null, null, paidAt,
                 0L, recordedAt, recordedAt
         );
     }
@@ -99,6 +129,8 @@ public final class PaymentRecord {
             BookingAmount amount,
             PaymentStatus status,
             String failureReason,
+            String refundReference,
+            Instant refundedAt,
             Instant completedAt,
             long version,
             Instant createdAt,
@@ -106,9 +138,44 @@ public final class PaymentRecord {
     ) {
         return new PaymentRecord(
                 paymentId, paymentNumber, requestNumber, bookingNumber,
-                amount, status, failureReason, completedAt, version,
+                amount, status, failureReason,
+                refundReference, refundedAt, completedAt, version,
                 createdAt, updatedAt
         );
+    }
+
+    public void confirmRefund(
+            String refundReference,
+            Instant refundedAt
+    ) {
+        if (status != PaymentStatus.REFUND_PENDING) {
+            throw new IllegalStateException(
+                    "only refund pending payment can be refunded"
+            );
+        }
+        String checkedReference = normalizeRefundReference(
+                refundReference
+        );
+        if (checkedReference == null) {
+            throw new IllegalArgumentException(
+                    "refundReference must not be blank"
+            );
+        }
+        Instant checkedTime = Objects.requireNonNull(
+                refundedAt,
+                "refundedAt must not be null"
+        );
+        if (checkedTime.isBefore(completedAt)
+                || checkedTime.isBefore(updatedAt)) {
+            throw new IllegalArgumentException(
+                    "refundedAt must not be before payment timestamps"
+            );
+        }
+        status = PaymentStatus.REFUNDED;
+        this.refundReference = checkedReference;
+        this.refundedAt = checkedTime;
+        updatedAt = checkedTime;
+        version++;
     }
 
     private static String normalizeFailureReason(String value) {
@@ -122,6 +189,19 @@ public final class PaymentRecord {
         return normalized;
     }
 
+    private static String normalizeRefundReference(String value) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.strip();
+        if (normalized.isEmpty() || normalized.length() > 64) {
+            throw new IllegalArgumentException(
+                    "refundReference length must be between 1 and 64"
+            );
+        }
+        return normalized;
+    }
+
     public PaymentId paymentId() { return paymentId; }
     public PaymentNumber paymentNumber() { return paymentNumber; }
     public PaymentRequestNumber requestNumber() { return requestNumber; }
@@ -129,6 +209,8 @@ public final class PaymentRecord {
     public BookingAmount amount() { return amount; }
     public PaymentStatus status() { return status; }
     public String failureReason() { return failureReason; }
+    public String refundReference() { return refundReference; }
+    public Instant refundedAt() { return refundedAt; }
     public Instant completedAt() { return completedAt; }
     public long version() { return version; }
     public Instant createdAt() { return createdAt; }

@@ -21,6 +21,7 @@ import java.time.ZoneOffset;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -70,6 +71,33 @@ class MyBatisPaymentRecordRepositoryTest {
                 .isEqualTo(PAYMENT_NO);
         assertThat(restored.status()).isEqualTo(PaymentStatus.SUCCEEDED);
         assertThat(restored.completedAt()).isEqualTo(PAID_AT);
+    }
+
+    @Test
+    void shouldUpdateRefundedPaymentWithOptimisticVersion() {
+        PaymentRecord payment = PaymentRecord.refundPending(
+                PaymentId.of(9001L),
+                PaymentNumber.of(PAYMENT_NO),
+                PaymentRequestNumber.of("callback-1"),
+                BookingNumber.of(BOOKING_NO),
+                BookingAmount.of("5.50"),
+                "PAYMENT_WINDOW_EXPIRED",
+                PAID_AT,
+                RECORDED_AT
+        );
+        Instant refundedAt = RECORDED_AT.plusSeconds(10);
+        payment.confirmRefund("refund-001", refundedAt);
+        when(mapper.updatePayment(any(), eq(0L))).thenReturn(1);
+
+        repository.save(payment);
+
+        ArgumentCaptor<PaymentRecordDataObject> captor =
+                ArgumentCaptor.forClass(PaymentRecordDataObject.class);
+        verify(mapper).updatePayment(captor.capture(), eq(0L));
+        assertThat(captor.getValue().getStatus()).isEqualTo("REFUNDED");
+        assertThat(captor.getValue().getRefundNo())
+                .isEqualTo("refund-001");
+        assertThat(captor.getValue().getVersion()).isEqualTo(1L);
     }
 
     private PaymentRecord payment() {

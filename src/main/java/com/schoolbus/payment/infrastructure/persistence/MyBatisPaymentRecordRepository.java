@@ -9,6 +9,7 @@ import com.schoolbus.payment.domain.PaymentRecordRepository;
 import com.schoolbus.payment.domain.PaymentRequestNumber;
 import com.schoolbus.payment.domain.PaymentStatus;
 import org.springframework.context.annotation.Profile;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
@@ -36,11 +37,24 @@ public class MyBatisPaymentRecordRepository
                 paymentRecord,
                 "paymentRecord must not be null"
         );
-        if (validated.version() != 0L) {
-            throw new IllegalArgumentException("only new payment records can be saved");
+        PaymentRecordDataObject dataObject = toDataObject(validated);
+        if (validated.version() == 0L) {
+            if (mapper.insertPayment(dataObject) != 1) {
+                throw new IllegalStateException(
+                        "failed to insert payment record"
+                );
+            }
+            return validated;
         }
-        if (mapper.insertPayment(toDataObject(validated)) != 1) {
-            throw new IllegalStateException("failed to insert payment record");
+        int updated = mapper.updatePayment(
+                dataObject,
+                validated.version() - 1
+        );
+        if (updated != 1) {
+            throw new OptimisticLockingFailureException(
+                    "payment record was modified concurrently: "
+                            + validated.paymentNumber()
+            );
         }
         return validated;
     }
@@ -80,6 +94,10 @@ public class MyBatisPaymentRecordRepository
         dataObject.setAmount(record.amount().amount());
         dataObject.setStatus(record.status().name());
         dataObject.setFailureReason(record.failureReason());
+        dataObject.setRefundNo(record.refundReference());
+        dataObject.setRefundedAt(
+                toNullableDatabaseTime(record.refundedAt())
+        );
         dataObject.setCompletedAt(toDatabaseTime(record.completedAt()));
         dataObject.setVersion(record.version());
         dataObject.setCreatedAt(toDatabaseTime(record.createdAt()));
@@ -96,6 +114,8 @@ public class MyBatisPaymentRecordRepository
                 new BookingAmount(dataObject.getAmount()),
                 PaymentStatus.valueOf(dataObject.getStatus()),
                 dataObject.getFailureReason(),
+                dataObject.getRefundNo(),
+                toNullableInstant(dataObject.getRefundedAt()),
                 toInstant(dataObject.getCompletedAt()),
                 dataObject.getVersion(),
                 toInstant(dataObject.getCreatedAt()),
@@ -107,7 +127,15 @@ public class MyBatisPaymentRecordRepository
         return LocalDateTime.ofInstant(instant, DATABASE_ZONE);
     }
 
+    private LocalDateTime toNullableDatabaseTime(Instant instant) {
+        return instant == null ? null : toDatabaseTime(instant);
+    }
+
     private Instant toInstant(LocalDateTime localDateTime) {
         return localDateTime.toInstant(DATABASE_ZONE);
+    }
+
+    private Instant toNullableInstant(LocalDateTime localDateTime) {
+        return localDateTime == null ? null : toInstant(localDateTime);
     }
 }

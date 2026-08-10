@@ -12,6 +12,8 @@ public class PaymentRecordDataObject {
     private BigDecimal amount;
     private String status;
     private String failureReason;
+    private String refundNo;
+    private LocalDateTime refundedAt;
     private LocalDateTime completedAt;
     private Long version;
     private LocalDateTime createdAt;
@@ -31,6 +33,10 @@ public class PaymentRecordDataObject {
     public void setStatus(String status) { this.status = status; }
     public String getFailureReason() { return failureReason; }
     public void setFailureReason(String failureReason) { this.failureReason = failureReason; }
+    public String getRefundNo() { return refundNo; }
+    public void setRefundNo(String refundNo) { this.refundNo = refundNo; }
+    public LocalDateTime getRefundedAt() { return refundedAt; }
+    public void setRefundedAt(LocalDateTime refundedAt) { this.refundedAt = refundedAt; }
     public LocalDateTime getCompletedAt() { return completedAt; }
     public void setCompletedAt(LocalDateTime completedAt) { this.completedAt = completedAt; }
     public Long getVersion() { return version; }

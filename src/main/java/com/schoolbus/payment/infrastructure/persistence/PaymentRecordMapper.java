@@ -8,6 +8,11 @@ public interface PaymentRecordMapper {
 
     int insertPayment(PaymentRecordDataObject paymentRecord);
 
+    int updatePayment(
+            @Param("paymentRecord") PaymentRecordDataObject paymentRecord,
+            @Param("expectedVersion") long expectedVersion
+    );
+
     PaymentRecordDataObject selectByRequestNo(
             @Param("requestNo") String requestNo
     );
