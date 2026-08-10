@@ -29,7 +29,14 @@ class RabbitMqConfigurationTest {
                             "school-bus.messaging.payment.refund-queue=schoolbus.payment.refund",
                             "school-bus.messaging.payment.dead-letter-exchange=schoolbus.payment.dlx",
                             "school-bus.messaging.payment.dead-letter-routing-key=payment.refund.dead",
-                            "school-bus.messaging.payment.dead-letter-queue=schoolbus.payment.refund.dlq"
+                            "school-bus.messaging.payment.dead-letter-queue=schoolbus.payment.refund.dlq",
+                            "school-bus.messaging.outbox-relay.enabled=true",
+                            "school-bus.messaging.outbox-relay.batch-size=50",
+                            "school-bus.messaging.outbox-relay.claim-timeout=30s",
+                            "school-bus.messaging.outbox-relay.confirm-timeout=5s",
+                            "school-bus.messaging.outbox-relay.initial-retry-delay=5s",
+                            "school-bus.messaging.outbox-relay.maximum-retry-delay=5m",
+                            "school-bus.messaging.outbox-relay.maximum-attempts=10"
                     );
 
     @Test

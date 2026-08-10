@@ -75,6 +75,16 @@ school-bus:
   payment:
     callback-secret: ${PAYMENT_CALLBACK_SECRET:local-payment-secret-change-me-1234}
   messaging:
+    outbox-relay:
+      enabled: ${OUTBOX_RELAY_ENABLED:true}
+      batch-size: ${OUTBOX_RELAY_BATCH_SIZE:50}
+      claim-timeout: ${OUTBOX_RELAY_CLAIM_TIMEOUT:PT30S}
+      confirm-timeout: ${OUTBOX_RELAY_CONFIRM_TIMEOUT:PT5S}
+      initial-retry-delay: ${OUTBOX_RELAY_INITIAL_RETRY_DELAY:PT5S}
+      maximum-retry-delay: ${OUTBOX_RELAY_MAXIMUM_RETRY_DELAY:PT5M}
+      maximum-attempts: ${OUTBOX_RELAY_MAXIMUM_ATTEMPTS:10}
+      initial-delay-ms: ${OUTBOX_RELAY_INITIAL_DELAY_MS:5000}
+      fixed-delay-ms: ${OUTBOX_RELAY_FIXED_DELAY_MS:1000}
     payment:
       exchange: ${PAYMENT_EVENTS_EXCHANGE:schoolbus.payment.events}
       refund-routing-key: ${PAYMENT_REFUND_ROUTING_KEY:payment.refund.required}

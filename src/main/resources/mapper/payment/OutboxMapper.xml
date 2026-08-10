@@ -19,4 +19,56 @@
         )
     </insert>
 
+    <select id="selectRelayCandidates"
+            resultType="com.schoolbus.payment.infrastructure.outbox.OutboxEventDataObject">
+        SELECT id, event_id, event_type, CAST(payload AS CHAR) AS payload,
+               trace_id, retry_count, occurred_at, version
+        FROM event_outbox
+        WHERE context_name = #{contextName}
+          AND event_type = #{eventType}
+          AND (
+              status = 'NEW'
+              OR (status IN ('FAILED', 'PROCESSING')
+                  AND next_retry_at &lt;= #{readyAt})
+          )
+        ORDER BY id
+        LIMIT #{limit}
+    </select>
+
+    <update id="tryClaim">
+        UPDATE event_outbox
+        SET status = 'PROCESSING',
+            next_retry_at = #{claimedUntil},
+            version = version + 1
+        WHERE id = #{id}
+          AND version = #{expectedVersion}
+          AND (
+              status = 'NEW'
+              OR (status IN ('FAILED', 'PROCESSING')
+                  AND next_retry_at &lt;= CURRENT_TIMESTAMP(3))
+          )
+    </update>
+
+    <update id="markPublished">
+        UPDATE event_outbox
+        SET status = 'PUBLISHED',
+            next_retry_at = NULL,
+            published_at = #{publishedAt},
+            version = version + 1
+        WHERE id = #{id}
+          AND status = 'PROCESSING'
+          AND version = #{expectedVersion}
+    </update>
+
+    <update id="markFailed">
+        UPDATE event_outbox
+        SET status = 'FAILED',
+            retry_count = retry_count + 1,
+            next_retry_at = #{nextRetryAt},
+            version = version + 1
+        WHERE id = #{id}
+          AND status = 'PROCESSING'
+          AND version = #{expectedVersion}
+    </update>
+
 </mapper>

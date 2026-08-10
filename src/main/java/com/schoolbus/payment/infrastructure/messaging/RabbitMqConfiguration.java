@@ -12,7 +12,10 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.beans.factory.annotation.Qualifier;
 
 @Configuration(proxyBeanMethods = false)
-@EnableConfigurationProperties(PaymentMessagingProperties.class)
+@EnableConfigurationProperties({
+        PaymentMessagingProperties.class,
+        OutboxRelayProperties.class
+})
 public class RabbitMqConfiguration {
 
     @Bean
