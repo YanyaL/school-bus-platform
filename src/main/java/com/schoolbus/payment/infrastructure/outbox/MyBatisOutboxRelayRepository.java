@@ -32,6 +32,25 @@ public class MyBatisOutboxRelayRepository {
             int batchSize,
             Duration claimTimeout
     ) {
+        return claimReady(
+                CONTEXT_NAME,
+                EVENT_TYPE,
+                now,
+                batchSize,
+                claimTimeout
+        );
+    }
+
+    @Transactional
+    public List<ClaimedOutboxEvent> claimReady(
+            String contextName,
+            String eventType,
+            Instant now,
+            int batchSize,
+            Duration claimTimeout
+    ) {
+        String checkedContext = requireText(contextName, "contextName");
+        String checkedEventType = requireText(eventType, "eventType");
         Instant checkedNow = Objects.requireNonNull(now, "now must not be null");
         if (batchSize <= 0) {
             throw new IllegalArgumentException("batchSize must be positive");
@@ -46,8 +65,8 @@ public class MyBatisOutboxRelayRepository {
         );
         List<ClaimedOutboxEvent> claimed = new ArrayList<>();
         for (OutboxEventDataObject candidate : mapper.selectRelayCandidates(
-                CONTEXT_NAME,
-                EVENT_TYPE,
+                checkedContext,
+                checkedEventType,
                 readyAt,
                 batchSize
         )) {
@@ -139,5 +158,12 @@ public class MyBatisOutboxRelayRepository {
             throw new IllegalArgumentException(name + " must be positive");
         }
         return checked;
+    }
+
+    private String requireText(String value, String name) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException(name + " must not be blank");
+        }
+        return value.strip();
     }
 }

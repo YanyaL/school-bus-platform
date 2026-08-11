@@ -104,6 +104,28 @@ class BookingExpirationTransactionTest {
     }
 
     @Test
+    void shouldRejectMessageForDifferentBookingNumber() {
+        when(orderRepository.findById(BookingId.of(5001L)))
+                .thenReturn(Optional.of(pendingOrder()));
+
+        assertThatThrownBy(
+                () -> transaction.expireOne(
+                        BookingId.of(5001L),
+                        BookingNumber.of(
+                                "66666666-6666-6666-6666-666666666666"
+                        ),
+                        EXPIRES_AT
+                )
+        ).isInstanceOf(
+                BookingExpirationMessageConflictException.class
+        );
+
+        verify(seatReservationPort, never()).releaseSeat(any());
+        verify(inventoryRepository, never()).save(any());
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
     void shouldReportConflictWhenSeatIsNoLongerOwnedByOrder() {
         BookingOrder order = pendingOrder();
         when(orderRepository.findById(BookingId.of(5001L)))

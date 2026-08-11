@@ -99,3 +99,13 @@ school-bus:
       delay: ${PAYMENT_REFUND_RETRY_DELAY:PT30S}
       maximum-retries: ${PAYMENT_REFUND_MAXIMUM_RETRIES:3}
       confirm-timeout: ${PAYMENT_REFUND_RETRY_CONFIRM_TIMEOUT:PT5S}
+    booking-expiration:
+      delay-exchange: ${BOOKING_EXPIRATION_DELAY_EXCHANGE:schoolbus.booking.expiration.delay}
+      delay-routing-key: ${BOOKING_EXPIRATION_DELAY_ROUTING_KEY:booking.payment.deadline.delay}
+      delay-queue: ${BOOKING_EXPIRATION_DELAY_QUEUE:schoolbus.booking.expiration.delay}
+      processing-exchange: ${BOOKING_EXPIRATION_PROCESSING_EXCHANGE:schoolbus.booking.events}
+      processing-routing-key: ${BOOKING_EXPIRATION_PROCESSING_ROUTING_KEY:booking.payment.deadline.reached}
+      processing-queue: ${BOOKING_EXPIRATION_PROCESSING_QUEUE:schoolbus.booking.expiration}
+      dead-letter-exchange: ${BOOKING_EXPIRATION_DLX:schoolbus.booking.dlx}
+      dead-letter-routing-key: ${BOOKING_EXPIRATION_DEAD_ROUTING_KEY:booking.expiration.dead}
+      dead-letter-queue: ${BOOKING_EXPIRATION_DLQ:schoolbus.booking.expiration.dlq}

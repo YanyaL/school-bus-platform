@@ -5,6 +5,7 @@ import com.schoolbus.booking.domain.inventory.SeatInventoryRepository;
 import com.schoolbus.booking.domain.order.BookingId;
 import com.schoolbus.booking.domain.order.BookingOrder;
 import com.schoolbus.booking.domain.order.BookingOrderRepository;
+import com.schoolbus.booking.domain.order.BookingNumber;
 import org.springframework.context.annotation.Profile;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
@@ -46,6 +47,15 @@ public class BookingExpirationTransaction {
             BookingId bookingId,
             Instant expiredAt
     ) {
+        return expireOne(bookingId, null, expiredAt);
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public boolean expireOne(
+            BookingId bookingId,
+            BookingNumber expectedBookingNumber,
+            Instant expiredAt
+    ) {
         BookingId validatedId = Objects.requireNonNull(
                 bookingId,
                 "bookingId must not be null"
@@ -57,7 +67,16 @@ public class BookingExpirationTransaction {
         BookingOrder order = bookingOrderRepository
                 .findById(validatedId)
                 .orElse(null);
-        if (order == null || !order.isPaymentExpiredAt(operationTime)) {
+        if (order == null) {
+            return false;
+        }
+        if (expectedBookingNumber != null
+                && !expectedBookingNumber.equals(order.bookingNumber())) {
+            throw new BookingExpirationMessageConflictException(
+                    validatedId.value()
+            );
+        }
+        if (!order.isPaymentExpiredAt(operationTime)) {
             return false;
         }
 

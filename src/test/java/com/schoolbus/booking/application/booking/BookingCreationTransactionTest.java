@@ -53,6 +53,7 @@ class BookingCreationTransactionTest {
     private BookingOrderRepository orderRepository;
     private BookingIdGenerator idGenerator;
     private BookingNumberGenerator numberGenerator;
+    private BookingExpirationOutboxPort expirationOutboxPort;
     private BookingCreationTransaction transaction;
 
     @BeforeEach
@@ -63,6 +64,7 @@ class BookingCreationTransactionTest {
         orderRepository = mock(BookingOrderRepository.class);
         idGenerator = mock(BookingIdGenerator.class);
         numberGenerator = mock(BookingNumberGenerator.class);
+        expirationOutboxPort = mock(BookingExpirationOutboxPort.class);
         transaction = new BookingCreationTransaction(
                 tripGateway,
                 seatReservationPort,
@@ -70,6 +72,7 @@ class BookingCreationTransactionTest {
                 orderRepository,
                 idGenerator,
                 numberGenerator,
+                expirationOutboxPort,
                 Clock.fixed(NOW, ZoneOffset.UTC),
                 Duration.ofMinutes(15)
         );
@@ -112,6 +115,16 @@ class BookingCreationTransactionTest {
         verify(orderRepository).save(orderCaptor.capture());
         assertThat(orderCaptor.getValue().amount())
                 .isEqualTo(BookingAmount.of("5.50"));
+
+        ArgumentCaptor<BookingPaymentDeadlineEvent> eventCaptor =
+                ArgumentCaptor.forClass(
+                        BookingPaymentDeadlineEvent.class
+                );
+        verify(expirationOutboxPort).append(eventCaptor.capture());
+        assertThat(eventCaptor.getValue().bookingId())
+                .isEqualTo(BookingId.of(5001L));
+        assertThat(eventCaptor.getValue().expiresAt())
+                .isEqualTo(result.expiresAt());
     }
 
     @Test
@@ -138,6 +151,7 @@ class BookingCreationTransactionTest {
         verify(tripGateway, never()).findByTripReference(any());
         verify(seatReservationPort, never()).tryLockSeat(any());
         verify(inventoryRepository, never()).save(any());
+        verify(expirationOutboxPort, never()).append(any());
     }
 
     @Test
@@ -170,6 +184,7 @@ class BookingCreationTransactionTest {
 
         verify(inventoryRepository, never()).save(any());
         verify(orderRepository, never()).save(any(BookingOrder.class));
+        verify(expirationOutboxPort, never()).append(any());
     }
 
     private void prepareSuccessfulCreation(Instant deadline) {

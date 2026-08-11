@@ -34,6 +34,7 @@ public class BookingCreationTransaction {
     private final BookingOrderRepository bookingOrderRepository;
     private final BookingIdGenerator bookingIdGenerator;
     private final BookingNumberGenerator bookingNumberGenerator;
+    private final BookingExpirationOutboxPort expirationOutboxPort;
     private final Clock clock;
     private final Duration paymentWindow;
 
@@ -44,6 +45,7 @@ public class BookingCreationTransaction {
             BookingOrderRepository bookingOrderRepository,
             BookingIdGenerator bookingIdGenerator,
             BookingNumberGenerator bookingNumberGenerator,
+            BookingExpirationOutboxPort expirationOutboxPort,
             Clock clock,
             @Value("${school-bus.booking.payment-window:PT15M}")
             Duration paymentWindow
@@ -71,6 +73,10 @@ public class BookingCreationTransaction {
         this.bookingNumberGenerator = Objects.requireNonNull(
                 bookingNumberGenerator,
                 "bookingNumberGenerator must not be null"
+        );
+        this.expirationOutboxPort = Objects.requireNonNull(
+                expirationOutboxPort,
+                "expirationOutboxPort must not be null"
         );
         this.clock = Objects.requireNonNull(
                 clock,
@@ -169,9 +175,17 @@ public class BookingCreationTransaction {
                 expiresAt,
                 now
         );
-        return CreateBookingResult.from(
-                bookingOrderRepository.save(order)
+        BookingOrder savedOrder = bookingOrderRepository.save(order);
+        expirationOutboxPort.append(
+                new BookingPaymentDeadlineEvent(
+                        savedOrder.bookingId(),
+                        savedOrder.bookingNumber(),
+                        savedOrder.expiresAt(),
+                        now,
+                        savedOrder.version()
+                )
         );
+        return CreateBookingResult.from(savedOrder);
     }
 
     @Transactional(
