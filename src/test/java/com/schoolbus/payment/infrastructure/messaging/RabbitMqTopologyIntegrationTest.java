@@ -4,7 +4,7 @@ import com.rabbitmq.client.GetResponse;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import com.schoolbus.testsupport.EnabledIfMessagingAcceptance;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.DirectExchange;
 import org.springframework.amqp.core.Queue;
@@ -23,10 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
 @Testcontainers(disabledWithoutDocker = true)
-@EnabledIfEnvironmentVariable(
-        named = "RUN_RABBITMQ_INTEGRATION_TESTS",
-        matches = "true"
-)
+@EnabledIfMessagingAcceptance
 class RabbitMqTopologyIntegrationTest {
 
     private static final PaymentMessagingProperties PROPERTIES =

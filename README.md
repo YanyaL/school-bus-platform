@@ -31,11 +31,42 @@
 
 管理端接口需 `ADMIN` 角色 JWT。本地可通过数据库为账号追加 `iam_account_role` 记录获得管理员权限。
 
+**学生端新增 HTTP：**
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `GET` | `/api/v1/bookings/{bookingNumber}` | 订单详情（校验归属） |
+| `POST` | `/api/v1/bookings/{bookingNumber}/cancellation` | 主动取消待支付订单 |
+| `GET` | `/api/v1/trips/{tripId}/seats` | 座位图（AVAILABLE/LOCKED/SOLD） |
+
 ### 基础设施
 
 - Flyway V1–V5 基线 schema
-- RabbitMQ：支付超时 Outbox relay、TTL/DLX 延迟取消
+- RabbitMQ：支付超时 Outbox relay、预订超时 TTL/DLX 延迟取消
 - Testcontainers 集成测试（需 Docker）
+
+**消息链路验收（阶段三）**：Outbox → RabbitMQ delay queue（TTL）→ DLX → processing queue → `BookingExpirationListener` 取消订单并释放座位/库存。
+
+| 测试类 | 范围 |
+|--------|------|
+| `RabbitMqTopologyIntegrationTest` | 支付退款 Outbox 拓扑（路由 + retry TTL + DLQ） |
+| `BookingExpirationRabbitTopologyIntegrationTest` | 预订超时 delay/processing/DLQ 拓扑 |
+| `BookingExpirationMessagingIntegrationTest` | 全链路：下单 → Outbox relay → RabbitMQ → Listener → 订单取消 |
+
+默认 `mvn test` 会跳过上述测试。需 Docker Desktop 并设置 `RUN_MESSAGING_ACCEPTANCE_TESTS=true`：
+
+```powershell
+$env:RUN_MESSAGING_ACCEPTANCE_TESTS='true'
+mvn test
+```
+
+或使用脚本（推荐）：
+
+```powershell
+.\scripts\run-messaging-acceptance.ps1
+```
+
+兼容旧变量 `RUN_RABBITMQ_INTEGRATION_TESTS=true`。
 
 ## 本地启动
 

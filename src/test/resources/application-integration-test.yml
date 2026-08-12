@@ -1,0 +1,17 @@
+school-bus:
+  booking:
+    expiration:
+      scheduler:
+        enabled: false
+  trip-status:
+    scheduler:
+      enabled: false
+  messaging:
+    outbox-relay:
+      enabled: false
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
