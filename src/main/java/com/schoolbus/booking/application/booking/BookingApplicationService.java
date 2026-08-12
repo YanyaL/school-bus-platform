@@ -37,14 +37,34 @@ public class BookingApplicationService {
     public CreateBookingResult createBooking(
             CreateBookingCommand command
     ) {
+        return createBookingOutcome(command).result();
+    }
+
+    public CreateBookingOutcome createBookingOutcome(
+            CreateBookingCommand command
+    ) {
         CreateBookingCommand validatedCommand = Objects.requireNonNull(
                 command,
                 "command must not be null"
         );
+        Optional<CreateBookingResult> existing =
+                creationTransaction.findIdempotentResult(
+                        validatedCommand
+                );
+        if (existing.isPresent()) {
+            return new CreateBookingOutcome(
+                    existing.orElseThrow(),
+                    true
+            );
+        }
+
         for (int attempt = 1; attempt <= maximumAttempts; attempt++) {
             try {
-                return creationTransaction.createOnce(
-                        validatedCommand
+                return new CreateBookingOutcome(
+                        creationTransaction.createOnce(
+                                validatedCommand
+                        ),
+                        false
                 );
             } catch (OptimisticLockingFailureException exception) {
                 if (attempt == maximumAttempts) {
@@ -55,19 +75,25 @@ public class BookingApplicationService {
                 Thread.onSpinWait();
             } catch (SeatAlreadyReservedException
                      | BookingAlreadyExistsException exception) {
-                Optional<CreateBookingResult> existing =
+                Optional<CreateBookingResult> idempotentResult =
                         creationTransaction.findIdempotentResult(
                                 validatedCommand
                         );
-                if (existing.isPresent()) {
-                    return existing.orElseThrow();
+                if (idempotentResult.isPresent()) {
+                    return new CreateBookingOutcome(
+                            idempotentResult.orElseThrow(),
+                            true
+                    );
                 }
                 throw exception;
             } catch (DuplicateKeyException exception) {
-                return creationTransaction
-                        .resolveUniqueConstraintConflict(
-                                validatedCommand
-                        );
+                return new CreateBookingOutcome(
+                        creationTransaction
+                                .resolveUniqueConstraintConflict(
+                                        validatedCommand
+                                ),
+                        true
+                );
             }
         }
         throw new IllegalStateException("unreachable booking retry state");

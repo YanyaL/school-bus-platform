@@ -42,6 +42,8 @@ class BookingApplicationServiceTest {
     void shouldRetryOptimisticConflictInFreshAttempts() {
         BookingCreationTransaction transaction =
                 mock(BookingCreationTransaction.class);
+        when(transaction.findIdempotentResult(COMMAND))
+                .thenReturn(Optional.empty());
         when(transaction.createOnce(COMMAND))
                 .thenThrow(new OptimisticLockingFailureException(
                         "conflict"
@@ -61,6 +63,8 @@ class BookingApplicationServiceTest {
     void shouldExposeBusinessConflictAfterMaximumAttempts() {
         BookingCreationTransaction transaction =
                 mock(BookingCreationTransaction.class);
+        when(transaction.findIdempotentResult(COMMAND))
+                .thenReturn(Optional.empty());
         when(transaction.createOnce(COMMAND))
                 .thenThrow(new OptimisticLockingFailureException(
                         "conflict"
@@ -82,9 +86,9 @@ class BookingApplicationServiceTest {
                         TripReference.of(2001L),
                         SeatNumber.of("A01")
                 );
-        when(transaction.createOnce(COMMAND)).thenThrow(conflict);
         when(transaction.findIdempotentResult(COMMAND))
                 .thenReturn(Optional.empty());
+        when(transaction.createOnce(COMMAND)).thenThrow(conflict);
         BookingApplicationService service =
                 new BookingApplicationService(transaction, 3);
 
@@ -97,17 +101,36 @@ class BookingApplicationServiceTest {
     void shouldRecoverConcurrentDuplicateIdempotentRequest() {
         BookingCreationTransaction transaction =
                 mock(BookingCreationTransaction.class);
+        when(transaction.findIdempotentResult(COMMAND))
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(RESULT));
         when(transaction.createOnce(COMMAND))
                 .thenThrow(new SeatAlreadyReservedException(
                         TripReference.of(2001L),
                         SeatNumber.of("A01")
                 ));
+        BookingApplicationService service =
+                new BookingApplicationService(transaction, 3);
+
+        CreateBookingOutcome outcome = service.createBookingOutcome(COMMAND);
+        assertThat(outcome.result()).isEqualTo(RESULT);
+        assertThat(outcome.idempotencyReplayed()).isTrue();
+        verify(transaction).createOnce(COMMAND);
+    }
+
+    @Test
+    void shouldReturnExistingResultForIdempotentRequest() {
+        BookingCreationTransaction transaction =
+                mock(BookingCreationTransaction.class);
         when(transaction.findIdempotentResult(COMMAND))
                 .thenReturn(Optional.of(RESULT));
         BookingApplicationService service =
                 new BookingApplicationService(transaction, 3);
 
-        assertThat(service.createBooking(COMMAND)).isEqualTo(RESULT);
-        verify(transaction).createOnce(COMMAND);
+        CreateBookingOutcome outcome = service.createBookingOutcome(COMMAND);
+        assertThat(outcome.result()).isEqualTo(RESULT);
+        assertThat(outcome.idempotencyReplayed()).isTrue();
+        verify(transaction).findIdempotentResult(COMMAND);
+        verify(transaction, times(0)).createOnce(COMMAND);
     }
 }

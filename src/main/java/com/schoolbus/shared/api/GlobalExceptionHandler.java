@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -60,6 +61,21 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .badRequest()
                 .body(ApiErrorResponse.of(ErrorCode.MALFORMED_JSON, List.of()));
+    }
+
+    @ExceptionHandler(MissingRequestHeaderException.class)
+    public ResponseEntity<ApiErrorResponse> handleMissingRequestHeader(
+            MissingRequestHeaderException exception
+    ) {
+        List<FieldErrorDetail> details = List.of(
+                new FieldErrorDetail(
+                        exception.getHeaderName(),
+                        "required request header is missing"
+                )
+        );
+        return ResponseEntity
+                .badRequest()
+                .body(ApiErrorResponse.of(ErrorCode.VALIDATION_ERROR, details));
     }
 
     @ExceptionHandler(Exception.class)
