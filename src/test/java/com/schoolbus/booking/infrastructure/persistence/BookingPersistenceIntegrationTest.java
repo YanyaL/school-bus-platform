@@ -2,12 +2,16 @@ package com.schoolbus.booking.infrastructure.persistence;
 
 import com.schoolbus.booking.application.booking.SeatLockRequest;
 import com.schoolbus.booking.application.booking.BookingApplicationService;
+import com.schoolbus.booking.application.booking.BookingCancellationApplicationService;
+import com.schoolbus.booking.application.booking.BookingCancellationView;
+import com.schoolbus.booking.application.booking.BookingNotCancellableException;
 import com.schoolbus.booking.application.booking.BookingCreationTransaction;
 import com.schoolbus.booking.application.booking.BookingExpirationApplicationService;
 import com.schoolbus.booking.application.booking.BookingExpirationResult;
 import com.schoolbus.booking.application.booking.BookingExpirationTransaction;
 import com.schoolbus.booking.application.booking.CreateBookingCommand;
 import com.schoolbus.booking.application.booking.CreateBookingResult;
+import com.schoolbus.booking.application.booking.CancelMyBookingCommand;
 import com.schoolbus.booking.application.booking.TripSeatReservationPort;
 import com.schoolbus.booking.domain.inventory.NoSeatAvailableException;
 import com.schoolbus.booking.domain.inventory.SeatInventory;
@@ -113,6 +117,9 @@ class BookingPersistenceIntegrationTest {
 
     @Autowired
     private PaymentConfirmationApplicationService paymentService;
+
+    @Autowired
+    private BookingCancellationApplicationService cancellationApplicationService;
 
     @Autowired
     private MutableClock mutableClock;
@@ -346,6 +353,216 @@ class BookingPersistenceIntegrationTest {
                 .findByTripReference(TRIP)
                 .orElseThrow()
                 .availableSeats()).isEqualTo(9);
+    }
+
+    @Test
+    void shouldCancelPendingBookingReleaseSeatAndRestoreInventory() {
+        CreateBookingResult booking = createBookingForExpiration(
+                "C01",
+                5001L,
+                "cancel-booking-5001"
+        );
+
+        BookingCancellationView cancelled = cancellationApplicationService
+                .cancelMyBooking(
+                        new CancelMyBookingCommand(
+                                5001L,
+                                booking.bookingNumber()
+                        )
+                );
+
+        assertThat(cancelled.status()).isEqualTo(BookingStatus.CANCELLED);
+        assertThat(cancelled.cancelReason())
+                .isEqualTo(CancellationReason.USER_CANCELLED);
+        assertThat(seatInventoryRepository
+                .findByTripReference(TRIP)
+                .orElseThrow()
+                .availableSeats()).isEqualTo(10);
+        assertThat(jdbcTemplate.queryForObject(
+                """
+                SELECT status FROM transport_trip_seat
+                WHERE trip_id = ? AND seat_number = ?
+                """,
+                String.class,
+                TRIP.value(),
+                "C01"
+        )).isEqualTo("AVAILABLE");
+    }
+
+    @Test
+    void shouldReturnSameResultWhenCancellingAlreadyCancelledBooking() {
+        CreateBookingResult booking = createBookingForExpiration(
+                "C02",
+                5002L,
+                "cancel-booking-5002"
+        );
+        CancelMyBookingCommand command = new CancelMyBookingCommand(
+                5002L,
+                booking.bookingNumber()
+        );
+
+        BookingCancellationView first =
+                cancellationApplicationService.cancelMyBooking(command);
+        BookingCancellationView second =
+                cancellationApplicationService.cancelMyBooking(command);
+
+        assertThat(second.status()).isEqualTo(BookingStatus.CANCELLED);
+        assertThat(second.cancelReason()).isEqualTo(first.cancelReason());
+        assertThat(seatInventoryRepository
+                .findByTripReference(TRIP)
+                .orElseThrow()
+                .availableSeats()).isEqualTo(10);
+    }
+
+    @Test
+    void shouldRejectCancellationAfterPayment() {
+        CreateBookingResult booking = createBookingForExpiration(
+                "C03",
+                5003L,
+                "cancel-booking-5003"
+        );
+        mutableClock.set(CREATED_AT.plusSeconds(65));
+        paymentService.confirmPayment(
+                new ConfirmPaymentCommand(
+                        "payment-callback-5003",
+                        "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                        booking.bookingNumber(),
+                        new BigDecimal("5.50"),
+                        CREATED_AT.plusSeconds(60)
+                )
+        );
+
+        assertThatThrownBy(() -> cancellationApplicationService.cancelMyBooking(
+                new CancelMyBookingCommand(
+                        5003L,
+                        booking.bookingNumber()
+                )
+        )).isInstanceOf(BookingNotCancellableException.class);
+    }
+
+    @Test
+    void paymentAndUserCancellationRaceMustEndInOneConsistentState() {
+        CreateBookingResult booking = createBookingForExpiration(
+                "C04",
+                5004L,
+                "cancel-booking-5004"
+        );
+        mutableClock.set(CREATED_AT.plusSeconds(65));
+        ConfirmPaymentCommand command = new ConfirmPaymentCommand(
+                "payment-callback-5004",
+                "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+                booking.bookingNumber(),
+                new BigDecimal("5.50"),
+                CREATED_AT.plusSeconds(60)
+        );
+        CancelMyBookingCommand cancelCommand = new CancelMyBookingCommand(
+                5004L,
+                booking.bookingNumber()
+        );
+
+        try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
+            CompletableFuture<ConfirmPaymentResult> payment =
+                    CompletableFuture.supplyAsync(
+                            () -> paymentService.confirmPayment(command),
+                            executor
+                    );
+            CompletableFuture<Object> cancellation =
+                    CompletableFuture.supplyAsync(
+                            () -> {
+                                try {
+                                    return cancellationApplicationService
+                                            .cancelMyBooking(cancelCommand);
+                                } catch (RuntimeException exception) {
+                                    return exception;
+                                }
+                            },
+                            executor
+                    );
+
+            ConfirmPaymentResult paymentResult = payment.join();
+            Object cancellationOutcome = cancellation.join();
+            BookingOrder finalOrder = bookingOrderRepository
+                    .findById(BookingId.of(booking.bookingId()))
+                    .orElseThrow();
+            String seatStatus = jdbcTemplate.queryForObject(
+                    "SELECT status FROM transport_trip_seat WHERE trip_id = ? AND seat_number = ?",
+                    String.class,
+                    TRIP.value(),
+                    "C04"
+            );
+            int availableSeats = seatInventoryRepository
+                    .findByTripReference(TRIP)
+                    .orElseThrow()
+                    .availableSeats();
+
+            if (finalOrder.status() == BookingStatus.PAID) {
+                assertThat(paymentResult.outcome())
+                        .isEqualTo(PaymentConfirmationOutcome.CONFIRMED);
+                assertThat(cancellationOutcome)
+                        .isInstanceOf(BookingNotCancellableException.class);
+                assertThat(seatStatus).isEqualTo("SOLD");
+                assertThat(availableSeats).isEqualTo(9);
+            } else {
+                assertThat(finalOrder.status())
+                        .isEqualTo(BookingStatus.CANCELLED);
+                assertThat(cancellationOutcome)
+                        .isInstanceOf(BookingCancellationView.class);
+                assertThat(paymentResult.outcome())
+                        .isEqualTo(PaymentConfirmationOutcome.REFUND_PENDING);
+                assertThat(seatStatus).isEqualTo("AVAILABLE");
+                assertThat(availableSeats).isEqualTo(10);
+            }
+        }
+    }
+
+    @Test
+    void userCancellationAndExpirationRaceMustEndInOneConsistentState() {
+        CreateBookingResult booking = createBookingForExpiration(
+                "C05",
+                5005L,
+                "cancel-booking-5005"
+        );
+        mutableClock.set(EXPIRES_AT);
+        CancelMyBookingCommand cancelCommand = new CancelMyBookingCommand(
+                5005L,
+                booking.bookingNumber()
+        );
+
+        try (ExecutorService executor = Executors.newFixedThreadPool(2)) {
+            CompletableFuture<BookingCancellationView> cancellation =
+                    CompletableFuture.supplyAsync(
+                            () -> cancellationApplicationService
+                                    .cancelMyBooking(cancelCommand),
+                            executor
+                    );
+            CompletableFuture<Boolean> expiration =
+                    CompletableFuture.supplyAsync(
+                            () -> tryExpire(booking.bookingId()),
+                            executor
+                    );
+
+            BookingCancellationView cancellationResult = cancellation.join();
+            boolean expired = expiration.join();
+            BookingOrder finalOrder = bookingOrderRepository
+                    .findById(BookingId.of(booking.bookingId()))
+                    .orElseThrow();
+
+            assertThat(finalOrder.status()).isEqualTo(BookingStatus.CANCELLED);
+            assertThat(cancellationResult.status())
+                    .isEqualTo(BookingStatus.CANCELLED);
+            assertThat(seatInventoryRepository
+                    .findByTripReference(TRIP)
+                    .orElseThrow()
+                    .availableSeats()).isEqualTo(10);
+            assertThat(finalOrder.cancellationReason()).isIn(
+                    CancellationReason.USER_CANCELLED,
+                    CancellationReason.PAYMENT_TIMEOUT
+            );
+            if (finalOrder.cancellationReason()
+                    == CancellationReason.USER_CANCELLED) {
+                assertThat(expired).isFalse();
+            }
+        }
     }
 
     @Test

@@ -1,6 +1,11 @@
 package com.schoolbus.booking.application.booking;
 
+import com.schoolbus.booking.domain.order.BookingNumber;
+import com.schoolbus.booking.domain.order.BookingOrder;
 import com.schoolbus.booking.domain.order.BookingOrderRepository;
+import com.schoolbus.booking.domain.order.BookingStatus;
+import com.schoolbus.shared.api.BusinessException;
+import com.schoolbus.shared.api.ErrorCode;
 import com.schoolbus.shared.domain.identity.UserId;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
@@ -53,5 +58,25 @@ public class BookingQueryApplicationService {
                 UserId.of(validatedQuery.userId()),
                 validatedQuery.status()
         );
+    }
+
+    public BookingDetailView getMyBookingDetail(
+            long userId,
+            String bookingNumber
+    ) {
+        if (bookingNumber == null || bookingNumber.isBlank()) {
+            throw new BusinessException(ErrorCode.PAYMENT_BOOKING_NOT_FOUND);
+        }
+        BookingOrder order = bookingOrderRepository
+                .findByBookingNumber(BookingNumber.of(bookingNumber.strip()))
+                .orElseThrow(() -> new BusinessException(
+                        ErrorCode.PAYMENT_BOOKING_NOT_FOUND
+                ));
+        if (!order.userId().equals(UserId.of(userId))) {
+            throw new BusinessException(
+                    ErrorCode.PAYMENT_BOOKING_NOT_FOUND
+            );
+        }
+        return BookingDetailView.from(order);
     }
 }

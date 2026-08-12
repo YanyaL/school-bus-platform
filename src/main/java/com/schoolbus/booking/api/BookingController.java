@@ -1,7 +1,9 @@
 package com.schoolbus.booking.api;
 
 import com.schoolbus.booking.application.booking.BookingApplicationService;
+import com.schoolbus.booking.application.booking.BookingCancellationApplicationService;
 import com.schoolbus.booking.application.booking.BookingQueryApplicationService;
+import com.schoolbus.booking.application.booking.CancelMyBookingCommand;
 import com.schoolbus.booking.application.booking.BookingSortOption;
 import com.schoolbus.booking.application.booking.CreateBookingCommand;
 import com.schoolbus.booking.application.booking.CreateBookingOutcome;
@@ -20,6 +22,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -42,10 +45,12 @@ public class BookingController {
 
     private final BookingApplicationService applicationService;
     private final BookingQueryApplicationService queryApplicationService;
+    private final BookingCancellationApplicationService cancellationApplicationService;
 
     public BookingController(
             BookingApplicationService applicationService,
-            BookingQueryApplicationService queryApplicationService
+            BookingQueryApplicationService queryApplicationService,
+            BookingCancellationApplicationService cancellationApplicationService
     ) {
         this.applicationService = Objects.requireNonNull(
                 applicationService,
@@ -54,6 +59,10 @@ public class BookingController {
         this.queryApplicationService = Objects.requireNonNull(
                 queryApplicationService,
                 "queryApplicationService must not be null"
+        );
+        this.cancellationApplicationService = Objects.requireNonNull(
+                cancellationApplicationService,
+                "cancellationApplicationService must not be null"
         );
     }
 
@@ -121,6 +130,38 @@ public class BookingController {
                         Boolean.toString(outcome.idempotencyReplayed())
                 )
                 .body(ApiResponse.success(response));
+    }
+
+    @GetMapping("/{bookingNumber}")
+    public ApiResponse<BookingDetailResponse> getMyBookingDetail(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable String bookingNumber
+    ) {
+        return ApiResponse.success(
+                BookingDetailResponse.from(
+                        queryApplicationService.getMyBookingDetail(
+                                Long.parseLong(jwt.getSubject()),
+                                bookingNumber
+                        )
+                )
+        );
+    }
+
+    @PostMapping("/{bookingNumber}/cancellation")
+    public ApiResponse<BookingCancellationResponse> cancelMyBooking(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable String bookingNumber
+    ) {
+        return ApiResponse.success(
+                BookingCancellationResponse.from(
+                        cancellationApplicationService.cancelMyBooking(
+                                new CancelMyBookingCommand(
+                                        Long.parseLong(jwt.getSubject()),
+                                        bookingNumber
+                                )
+                        )
+                )
+        );
     }
 
     private BookingStatus parseStatus(String status) {

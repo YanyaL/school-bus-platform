@@ -4,6 +4,9 @@ import com.schoolbus.shared.api.GlobalExceptionHandler;
 import com.schoolbus.shared.config.SecurityConfig;
 import com.schoolbus.transport.application.trip.BookableTripView;
 import com.schoolbus.transport.application.trip.TripQueryApplicationService;
+import com.schoolbus.transport.application.trip.TripSeatMapView;
+import com.schoolbus.transport.application.trip.TripSeatQueryApplicationService;
+import com.schoolbus.transport.application.trip.TripSeatView;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -38,6 +41,9 @@ class TripQueryControllerTest {
 
     @MockitoBean
     private TripQueryApplicationService applicationService;
+
+    @MockitoBean
+    private TripSeatQueryApplicationService seatQueryApplicationService;
 
     @MockitoBean
     private JwtDecoder jwtDecoder;
@@ -129,6 +135,31 @@ class TripQueryControllerTest {
                         .value("VALIDATION_ERROR"));
 
         verifyNoInteractions(applicationService);
+    }
+
+    @Test
+    void shouldReturnTripSeatMapForAuthenticatedUser() throws Exception {
+        when(seatQueryApplicationService.findTripSeatMap(1001L))
+                .thenReturn(new TripSeatMapView(
+                        1001L,
+                        Instant.parse("2026-08-05T08:30:00Z"),
+                        List.of(
+                                new TripSeatView("A01", "AVAILABLE"),
+                                new TripSeatView("A02", "LOCKED")
+                        )
+                ));
+
+        mockMvc.perform(
+                        get("/api/v1/trips/1001/seats")
+                                .with(jwt().jwt(builder -> builder.subject("1000001")))
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.tripId").value(1001L))
+                .andExpect(jsonPath("$.data.seats.length()").value(2))
+                .andExpect(jsonPath("$.data.seats[0].status")
+                        .value("AVAILABLE"));
+
+        verify(seatQueryApplicationService).findTripSeatMap(1001L);
     }
 
     private BookableTripView bookableTrip() {

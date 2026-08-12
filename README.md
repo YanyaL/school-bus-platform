@@ -19,8 +19,8 @@
 ### 学生端（已实现）
 
 - IAM：注册、登录、JWT、Redis 会话
-- Transport：可预约班次列表、座位图、Redis 班次缓存
-- Booking：下单（幂等）、我的订单、详情、取消
+- Transport：可预约班次列表、**座位图**、Redis 班次缓存
+- Booking：下单（幂等）、我的订单、**详情**、**主动取消**
 - Payment：支付回调（HMAC 验签）、超时退款 Outbox
 
 ### 管理端（已实现）

@@ -15,6 +15,8 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
@@ -67,9 +69,9 @@ class TripAdminControllerTest {
                                           "price": 5.50
                                         }
                                         """)
-                                .with(jwt().jwt(builder -> builder
-                                        .subject("9000001")
-                                        .claim("roles", List.of("ADMIN"))))
+                                .with(jwt().authorities(
+                                        new SimpleGrantedAuthority("ROLE_ADMIN")
+                                ))
                 )
                 .andExpect(status().isCreated())
                 .andExpect(header().string(
@@ -121,9 +123,9 @@ class TripAdminControllerTest {
                                           "version": 0
                                         }
                                         """)
-                                .with(jwt().jwt(builder -> builder
-                                        .subject("9000001")
-                                        .claim("roles", List.of("ADMIN"))))
+                                .with(jwt().authorities(
+                                        new SimpleGrantedAuthority("ROLE_ADMIN")
+                                ))
                 )
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status")
@@ -139,9 +141,9 @@ class TripAdminControllerTest {
 
         mockMvc.perform(
                         get("/api/v1/admin/trips/" + TRIP_NUMBER)
-                                .with(jwt().jwt(builder -> builder
-                                        .subject("9000001")
-                                        .claim("roles", List.of("ADMIN"))))
+                                .with(jwt().authorities(
+                                        new SimpleGrantedAuthority("ROLE_ADMIN")
+                                ))
                 )
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.tripId").value(1001L));

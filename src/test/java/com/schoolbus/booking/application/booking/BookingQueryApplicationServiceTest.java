@@ -10,6 +10,8 @@ import com.schoolbus.booking.domain.order.BookingStatus;
 import com.schoolbus.booking.domain.order.SeatNumber;
 import com.schoolbus.booking.domain.trip.TripReference;
 import com.schoolbus.shared.domain.identity.UserId;
+import com.schoolbus.shared.api.BusinessException;
+import com.schoolbus.shared.api.ErrorCode;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -20,6 +22,7 @@ import java.time.Instant;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -85,6 +88,42 @@ class BookingQueryApplicationServiceTest {
                 UserId.of(1001L),
                 BookingStatus.PENDING_PAYMENT
         );
+    }
+
+    @Test
+    void shouldReturnBookingDetailForOwner() {
+        BookingOrder order = pendingOrder();
+        when(bookingOrderRepository.findByBookingNumber(
+                BookingNumber.of(
+                        "55555555-5555-5555-5555-555555555555"
+                )
+        )).thenReturn(java.util.Optional.of(order));
+
+        BookingDetailView detail = service.getMyBookingDetail(
+                1001L,
+                "55555555-5555-5555-5555-555555555555"
+        );
+
+        assertThat(detail.bookingId()).isEqualTo(5001L);
+        assertThat(detail.seatNumber()).isEqualTo("A01");
+    }
+
+    @Test
+    void shouldHideBookingDetailFromOtherUsers() {
+        when(bookingOrderRepository.findByBookingNumber(
+                BookingNumber.of(
+                        "55555555-5555-5555-5555-555555555555"
+                )
+        )).thenReturn(java.util.Optional.of(pendingOrder()));
+
+        assertThatThrownBy(() -> service.getMyBookingDetail(
+                2002L,
+                "55555555-5555-5555-5555-555555555555"
+        ))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(exception -> assertThat(
+                        ((BusinessException) exception).errorCode()
+                ).isEqualTo(ErrorCode.PAYMENT_BOOKING_NOT_FOUND));
     }
 
     private BookingOrder pendingOrder() {
