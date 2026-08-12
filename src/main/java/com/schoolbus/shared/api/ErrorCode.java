@@ -57,6 +57,23 @@ public enum ErrorCode {
             HttpStatus.CONFLICT,
             "vehicle status cannot be changed"
     ),
+    ROUTE_NOT_FOUND(HttpStatus.NOT_FOUND, "route does not exist"),
+    ROUTE_CODE_ALREADY_EXISTS(
+            HttpStatus.CONFLICT,
+            "route code already exists"
+    ),
+    ROUTE_STATUS_CONFLICT(
+            HttpStatus.CONFLICT,
+            "route status cannot be changed"
+    ),
+    INVALID_ROUTE_DIRECTION(
+            HttpStatus.BAD_REQUEST,
+            "departure and arrival campus must differ"
+    ),
+    INVALID_ROUTE_DEFINITION(
+            HttpStatus.BAD_REQUEST,
+            "route definition is invalid"
+    ),
     VERSION_CONFLICT(HttpStatus.CONFLICT, "资源已被其他请求修改"),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "系统暂时无法处理请求");
 

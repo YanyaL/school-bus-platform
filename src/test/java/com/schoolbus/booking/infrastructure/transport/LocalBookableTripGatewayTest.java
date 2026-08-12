@@ -6,7 +6,7 @@ import com.schoolbus.booking.domain.trip.TripReference;
 import com.schoolbus.transport.domain.trip.BusTrip;
 import com.schoolbus.transport.domain.trip.BusTripRepository;
 import com.schoolbus.transport.domain.trip.Money;
-import com.schoolbus.transport.domain.trip.RouteId;
+import com.schoolbus.transport.domain.route.RouteId;
 import com.schoolbus.transport.domain.trip.TripId;
 import com.schoolbus.transport.domain.trip.TripNumber;
 import com.schoolbus.transport.domain.vehicle.VehicleId;

@@ -1,4 +1,4 @@
-package com.schoolbus.transport.domain.trip;
+package com.schoolbus.transport.domain.route;
 
 public record RouteId(long value) {
 
