@@ -24,7 +24,7 @@ import static org.awaitility.Awaitility.await;
 
 @Testcontainers(disabledWithoutDocker = true)
 @EnabledIfEnvironmentVariable(
-        named = "RUN_RABBITMQ_INTEGRATION_TESTS",
+        named = "RUN_MESSAGING_ACCEPTANCE_TESTS",
         matches = "true"
 )
 class RabbitMqTopologyIntegrationTest {

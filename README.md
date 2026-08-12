@@ -16,11 +16,56 @@
 
 ## 当前状态
 
-- 需求、领域、数据库和 API 设计已完成。
-- Spring Boot 工程骨架已创建。
-- 已实现统一响应、统一异常处理和请求 TraceId。
-- Flyway V1 包含 12 张基线表。
-- JWT 和具体业务模块尚未实现。
+- IAM：注册、登录、JWT、Redis 会话
+- Transport：可预约班次查询、座位图、Redis 班次列表缓存
+- Booking：下单、我的订单、详情、取消、支付超时（Outbox + RabbitMQ TTL/DLX）
+- Payment：支付回调（HMAC 验签）、退款 Outbox
+- Flyway V1–V5 已落地；集成测试需 Docker（Testcontainers）
+
+## Swagger 端到端演示
+
+1. 启动中间件（含 RabbitMQ）：
+
+```powershell
+E:\HS1\school-bus-runtime\start-runtime.ps1
+```
+
+2. 启动应用（另开终端）：
+
+```powershell
+$env:JAVA_HOME='E:\jdk-21_windows-x64_bin\jdk-21.0.6'
+$env:Path="$env:JAVA_HOME\bin;$env:Path"
+cd E:\HS1\projects\school-bus-platform
+mvn spring-boot:run
+```
+
+3. 运行演示脚本（注册 → 登录 → 查班次 → 座位图 → 下单 → 支付）：
+
+```powershell
+.\scripts\swagger-e2e-demo.ps1
+```
+
+脚本会自动写入 demo 班次（tripId=9001），并在 Swagger UI 可复现相同请求：`http://localhost:8080/swagger-ui.html`
+
+## 消息链路验收（Testcontainers）
+
+需 Docker Desktop。运行 Outbox 中继、TTL/DLX 真实验收：
+
+```powershell
+.\scripts\run-messaging-acceptance.ps1
+```
+
+或：
+
+```powershell
+$env:RUN_MESSAGING_ACCEPTANCE_TESTS='true'
+mvn test "-Dtest=BookingExpirationMessagingIntegrationTest,BookingExpirationRabbitTopologyIntegrationTest,RabbitMqTopologyIntegrationTest"
+```
+
+覆盖：
+
+- **Outbox**：下单写入 `event_outbox` → 手动/定时 relay → RabbitMQ 发布 → `PUBLISHED`
+- **TTL/DLX**：delay 队列消息过期 → processing 队列 → Listener 取消订单；拒收消息 → DLQ
 
 ## 本地启动
 

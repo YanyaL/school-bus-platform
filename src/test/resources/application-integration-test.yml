@@ -1,0 +1,17 @@
+spring:
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+school-bus:
+  trip-status:
+    scheduler:
+      enabled: false
+  booking:
+    expiration:
+      scheduler:
+        enabled: false
+  messaging:
+    outbox-relay:
+      initial-delay-ms: 999999
+      fixed-delay-ms: 999999
