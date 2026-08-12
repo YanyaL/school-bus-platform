@@ -167,6 +167,55 @@ public class MyBatisBookingOrderRepository
                 .toList();
     }
 
+    @Override
+    public List<BookingOrder> findByUserId(
+            UserId userId,
+            BookingStatus status,
+            int offset,
+            int limit,
+            boolean sortByCreatedAtAscending
+    ) {
+        UserId validatedUserId = Objects.requireNonNull(
+                userId,
+                "userId must not be null"
+        );
+        if (offset < 0) {
+            throw new IllegalArgumentException(
+                    "offset must not be negative"
+            );
+        }
+        if (limit <= 0) {
+            throw new IllegalArgumentException(
+                    "limit must be positive"
+            );
+        }
+        return bookingOrderMapper.selectByUserId(
+                        validatedUserId.value(),
+                        status == null ? null : status.name(),
+                        offset,
+                        limit,
+                        sortByCreatedAtAscending
+                )
+                .stream()
+                .map(this::toDomain)
+                .toList();
+    }
+
+    @Override
+    public long countByUserId(
+            UserId userId,
+            BookingStatus status
+    ) {
+        UserId validatedUserId = Objects.requireNonNull(
+                userId,
+                "userId must not be null"
+        );
+        return bookingOrderMapper.countByUserId(
+                validatedUserId.value(),
+                status == null ? null : status.name()
+        );
+    }
+
     private BookingOrderDataObject toDataObject(
             BookingOrder bookingOrder
     ) {

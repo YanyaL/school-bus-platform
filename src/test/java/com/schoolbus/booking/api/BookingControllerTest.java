@@ -2,7 +2,10 @@ package com.schoolbus.booking.api;
 
 import com.schoolbus.booking.application.booking.BookingAlreadyExistsException;
 import com.schoolbus.booking.application.booking.BookingApplicationService;
+import com.schoolbus.booking.application.booking.BookingQueryApplicationService;
 import com.schoolbus.booking.application.booking.BookingRequestConflictException;
+import com.schoolbus.booking.application.booking.BookingSummaryView;
+import com.schoolbus.booking.application.booking.ListMyBookingsQuery;
 import com.schoolbus.booking.application.booking.CreateBookingCommand;
 import com.schoolbus.booking.application.booking.CreateBookingOutcome;
 import com.schoolbus.booking.application.booking.CreateBookingResult;
@@ -27,11 +30,14 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.math.BigDecimal;
 import java.time.Instant;
 
+import java.util.List;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -53,6 +59,9 @@ class BookingControllerTest {
 
     @MockitoBean
     private BookingApplicationService applicationService;
+
+    @MockitoBean
+    private BookingQueryApplicationService queryApplicationService;
 
     @MockitoBean
     private JwtDecoder jwtDecoder;
@@ -364,6 +373,128 @@ class BookingControllerTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code")
                         .value("BOOKING_REQUEST_CONFLICT"));
+    }
+
+    @Test
+    void shouldListMyBookingsForAuthenticatedStudent() throws Exception {
+        when(queryApplicationService.listMyBookings(
+                any(ListMyBookingsQuery.class)
+        )).thenReturn(List.of(bookingSummary()));
+        when(queryApplicationService.countMyBookings(
+                any(ListMyBookingsQuery.class)
+        )).thenReturn(1L);
+
+        mockMvc.perform(
+                        get("/api/v1/bookings")
+                                .with(jwt().jwt(builder -> builder
+                                        .subject("1000001")
+                                        .claim(
+                                                "roles",
+                                                List.of("STUDENT")
+                                        )))
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("OK"))
+                .andExpect(jsonPath("$.data.items.length()").value(1))
+                .andExpect(jsonPath("$.data.page").value(0))
+                .andExpect(jsonPath("$.data.size").value(20))
+                .andExpect(jsonPath("$.data.totalElements").value(1))
+                .andExpect(jsonPath("$.data.totalPages").value(1))
+                .andExpect(jsonPath("$.data.items[0].bookingNumber")
+                        .value("55555555-5555-5555-5555-555555555555"))
+                .andExpect(jsonPath("$.data.items[0].status")
+                        .value("PENDING_PAYMENT"));
+
+        verify(queryApplicationService).listMyBookings(
+                new ListMyBookingsQuery(
+                        1000001L,
+                        null,
+                        0,
+                        20,
+                        false
+                )
+        );
+    }
+
+    @Test
+    void shouldFilterBookingsByStatus() throws Exception {
+        when(queryApplicationService.listMyBookings(
+                any(ListMyBookingsQuery.class)
+        )).thenReturn(List.of());
+        when(queryApplicationService.countMyBookings(
+                any(ListMyBookingsQuery.class)
+        )).thenReturn(0L);
+
+        mockMvc.perform(
+                        get("/api/v1/bookings")
+                                .param("status", "PENDING_PAYMENT")
+                                .param("page", "1")
+                                .param("size", "10")
+                                .param("sort", "createdAt,asc")
+                                .with(jwt().jwt(builder -> builder.subject("1000001")))
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.page").value(1))
+                .andExpect(jsonPath("$.data.size").value(10));
+
+        verify(queryApplicationService).listMyBookings(
+                new ListMyBookingsQuery(
+                        1000001L,
+                        BookingStatus.PENDING_PAYMENT,
+                        1,
+                        10,
+                        true
+                )
+        );
+    }
+
+    @Test
+    void shouldRejectUnauthenticatedListRequest() throws Exception {
+        mockMvc.perform(get("/api/v1/bookings"))
+                .andExpect(status().isUnauthorized());
+
+        verifyNoInteractions(queryApplicationService);
+    }
+
+    @Test
+    void shouldRejectInvalidBookingStatusFilter() throws Exception {
+        mockMvc.perform(
+                        get("/api/v1/bookings")
+                                .param("status", "UNKNOWN")
+                                .with(jwt().jwt(builder -> builder.subject("1000001")))
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code")
+                        .value("VALIDATION_ERROR"));
+
+        verifyNoInteractions(queryApplicationService);
+    }
+
+    @Test
+    void shouldRejectInvalidSortParameter() throws Exception {
+        mockMvc.perform(
+                        get("/api/v1/bookings")
+                                .param("sort", "departureTime,asc")
+                                .with(jwt().jwt(builder -> builder.subject("1000001")))
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code")
+                        .value("VALIDATION_ERROR"));
+
+        verifyNoInteractions(queryApplicationService);
+    }
+
+    private BookingSummaryView bookingSummary() {
+        return new BookingSummaryView(
+                5001L,
+                "55555555-5555-5555-5555-555555555555",
+                2001L,
+                "A01",
+                new BigDecimal("5.50"),
+                BookingStatus.PENDING_PAYMENT,
+                Instant.parse("2026-08-08T00:15:00Z"),
+                Instant.parse("2026-08-08T00:00:00Z")
+        );
     }
 
     private CreateBookingResult createBookingResult() {

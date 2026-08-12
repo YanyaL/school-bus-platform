@@ -196,6 +196,39 @@ class MyBatisBookingOrderRepositoryTest {
                 .isEqualTo(BookingId.of(5001L));
     }
 
+    @Test
+    void shouldFindBookingsByUserIdWithStatusFilter() {
+        when(mapper.selectByUserId(
+                1001L,
+                "PENDING_PAYMENT",
+                0,
+                20,
+                false
+        )).thenReturn(List.of(dataObject()));
+
+        List<BookingOrder> result = repository.findByUserId(
+                UserId.of(1001L),
+                BookingStatus.PENDING_PAYMENT,
+                0,
+                20,
+                false
+        );
+
+        assertThat(result).hasSize(1);
+    }
+
+    @Test
+    void shouldCountBookingsByUserId() {
+        when(mapper.countByUserId(1001L, null)).thenReturn(2L);
+
+        long total = repository.countByUserId(
+                UserId.of(1001L),
+                null
+        );
+
+        assertThat(total).isEqualTo(2L);
+    }
+
     private BookingOrder pendingOrder() {
         return BookingOrder.place(
                 BookingId.of(5001L),

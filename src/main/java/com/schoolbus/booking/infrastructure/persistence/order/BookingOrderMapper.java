@@ -35,4 +35,17 @@ public interface BookingOrderMapper {
             @Param("expiredAt") LocalDateTime expiredAt,
             @Param("limit") int limit
     );
+
+    List<BookingOrderDataObject> selectByUserId(
+            @Param("userId") Long userId,
+            @Param("status") String status,
+            @Param("offset") int offset,
+            @Param("limit") int limit,
+            @Param("sortByCreatedAtAscending") boolean sortByCreatedAtAscending
+    );
+
+    long countByUserId(
+            @Param("userId") Long userId,
+            @Param("status") String status
+    );
 }

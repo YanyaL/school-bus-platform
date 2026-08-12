@@ -30,4 +30,17 @@ public interface BookingOrderRepository {
             Instant expiredAt,
             int limit
     );
+
+    List<BookingOrder> findByUserId(
+            UserId userId,
+            BookingStatus status,
+            int offset,
+            int limit,
+            boolean sortByCreatedAtAscending
+    );
+
+    long countByUserId(
+            UserId userId,
+            BookingStatus status
+    );
 }

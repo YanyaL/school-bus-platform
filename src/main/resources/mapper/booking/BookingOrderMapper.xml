@@ -104,6 +104,39 @@
         LIMIT #{limit}
     </select>
 
+    <select id="selectByUserId" resultMap="BookingOrderResultMap">
+        SELECT
+            id, order_no, request_no, user_id, trip_id,
+            seat_number, price_snapshot, status, expires_at,
+            payment_no, paid_at, cancelled_at, cancel_reason,
+            version, created_at, updated_at
+        FROM booking_order
+        WHERE user_id = #{userId}
+        <if test="status != null">
+            AND status = #{status}
+        </if>
+        ORDER BY created_at
+        <choose>
+            <when test="sortByCreatedAtAscending">ASC</when>
+            <otherwise>DESC</otherwise>
+        </choose>
+        , id
+        <choose>
+            <when test="sortByCreatedAtAscending">ASC</when>
+            <otherwise>DESC</otherwise>
+        </choose>
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countByUserId" resultType="long">
+        SELECT COUNT(*)
+        FROM booking_order
+        WHERE user_id = #{userId}
+        <if test="status != null">
+            AND status = #{status}
+        </if>
+    </select>
+
     <update id="updateWithVersion">
         UPDATE booking_order
         SET status = #{bookingOrder.status},
