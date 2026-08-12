@@ -1,5 +1,6 @@
 package com.schoolbus.transport.domain.trip;
 
+import com.schoolbus.transport.domain.vehicle.VehicleId;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;

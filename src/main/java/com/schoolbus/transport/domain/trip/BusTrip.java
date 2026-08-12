@@ -1,5 +1,7 @@
 package com.schoolbus.transport.domain.trip;
 
+import com.schoolbus.transport.domain.vehicle.VehicleId;
+
 import java.time.Instant;
 import java.util.Objects;
 

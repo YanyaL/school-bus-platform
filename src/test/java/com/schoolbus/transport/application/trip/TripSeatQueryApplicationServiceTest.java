@@ -10,7 +10,7 @@ import com.schoolbus.transport.domain.trip.TripNumber;
 import com.schoolbus.transport.domain.trip.TripSeatRepository;
 import com.schoolbus.transport.domain.trip.TripSeatStatus;
 import com.schoolbus.transport.domain.trip.TripStatus;
-import com.schoolbus.transport.domain.trip.VehicleId;
+import com.schoolbus.transport.domain.vehicle.VehicleId;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;

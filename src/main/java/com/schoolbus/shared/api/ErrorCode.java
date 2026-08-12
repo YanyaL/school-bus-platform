@@ -44,6 +44,19 @@ public enum ErrorCode {
     FORBIDDEN(HttpStatus.FORBIDDEN, "没有权限执行此操作"),
     RESOURCE_NOT_FOUND(HttpStatus.NOT_FOUND, "请求的资源不存在"),
     DUPLICATE_STUDENT_NUMBER(HttpStatus.CONFLICT, "学号已被注册"),
+    VEHICLE_NOT_FOUND(HttpStatus.NOT_FOUND, "vehicle does not exist"),
+    VEHICLE_NUMBER_ALREADY_EXISTS(
+            HttpStatus.CONFLICT,
+            "vehicle number already exists"
+    ),
+    LICENSE_PLATE_ALREADY_EXISTS(
+            HttpStatus.CONFLICT,
+            "license plate already exists"
+    ),
+    VEHICLE_STATUS_CONFLICT(
+            HttpStatus.CONFLICT,
+            "vehicle status cannot be changed"
+    ),
     VERSION_CONFLICT(HttpStatus.CONFLICT, "资源已被其他请求修改"),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "系统暂时无法处理请求");
 

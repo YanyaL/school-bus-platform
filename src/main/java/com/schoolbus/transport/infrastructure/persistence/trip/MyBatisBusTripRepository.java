@@ -7,7 +7,7 @@ import com.schoolbus.transport.domain.trip.RouteId;
 import com.schoolbus.transport.domain.trip.TripId;
 import com.schoolbus.transport.domain.trip.TripNumber;
 import com.schoolbus.transport.domain.trip.TripStatus;
-import com.schoolbus.transport.domain.trip.VehicleId;
+import com.schoolbus.transport.domain.vehicle.VehicleId;
 import org.springframework.context.annotation.Profile;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Repository;

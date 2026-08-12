@@ -34,4 +34,23 @@ class SecurityConfigTest {
                             );
                 });
     }
+
+    @Test
+    void shouldConvertAdminJwtRoleToSpringAuthority() {
+        Jwt jwt = Jwt.withTokenValue("header.payload.signature")
+                .header("alg", "RS256")
+                .subject("9000001")
+                .claim("roles", List.of("ADMIN"))
+                .build();
+        JwtAuthenticationConverter converter =
+                new SecurityConfig().jwtAuthenticationConverter();
+
+        assertThat(converter.convert(jwt))
+                .isNotNull()
+                .satisfies(authentication -> assertThat(
+                        authentication.getAuthorities()
+                ).containsExactly(
+                        new SimpleGrantedAuthority("ROLE_ADMIN")
+                ));
+    }
 }

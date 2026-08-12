@@ -9,7 +9,7 @@ import com.schoolbus.transport.domain.trip.Money;
 import com.schoolbus.transport.domain.trip.RouteId;
 import com.schoolbus.transport.domain.trip.TripId;
 import com.schoolbus.transport.domain.trip.TripNumber;
-import com.schoolbus.transport.domain.trip.VehicleId;
+import com.schoolbus.transport.domain.vehicle.VehicleId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
