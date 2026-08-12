@@ -2,11 +2,13 @@ package com.schoolbus.transport.api.trip;
 
 import com.schoolbus.shared.api.ApiResponse;
 import com.schoolbus.transport.application.trip.TripQueryApplicationService;
+import com.schoolbus.transport.application.trip.TripSeatQueryApplicationService;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import org.springframework.context.annotation.Profile;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -21,13 +23,19 @@ import java.util.Objects;
 public class TripQueryController {
 
     private final TripQueryApplicationService applicationService;
+    private final TripSeatQueryApplicationService seatQueryApplicationService;
 
     public TripQueryController(
-            TripQueryApplicationService applicationService
+            TripQueryApplicationService applicationService,
+            TripSeatQueryApplicationService seatQueryApplicationService
     ) {
         this.applicationService = Objects.requireNonNull(
                 applicationService,
                 "applicationService must not be null"
+        );
+        this.seatQueryApplicationService = Objects.requireNonNull(
+                seatQueryApplicationService,
+                "seatQueryApplicationService must not be null"
         );
     }
 
@@ -44,5 +52,16 @@ public class TripQueryController {
                 .map(BookableTripResponse::from)
                 .toList();
         return ApiResponse.success(response);
+    }
+
+    @GetMapping("/{tripId}/seats")
+    public ApiResponse<TripSeatMapResponse> findTripSeats(
+            @PathVariable long tripId
+    ) {
+        return ApiResponse.success(
+                TripSeatMapResponse.from(
+                        seatQueryApplicationService.findTripSeatMap(tripId)
+                )
+        );
     }
 }

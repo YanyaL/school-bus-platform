@@ -24,6 +24,10 @@ public enum ErrorCode {
             HttpStatus.CONFLICT,
             "requestNumber has already been used for another booking"
     ),
+    BOOKING_NOT_CANCELLABLE(
+            HttpStatus.CONFLICT,
+            "booking cannot be cancelled in its current status"
+    ),
     PAYMENT_BOOKING_NOT_FOUND(HttpStatus.NOT_FOUND, "booking does not exist"),
     PAYMENT_AMOUNT_MISMATCH(HttpStatus.CONFLICT, "payment amount does not match booking amount"),
     PAYMENT_REQUEST_CONFLICT(HttpStatus.CONFLICT, "payment callback idempotency conflict"),

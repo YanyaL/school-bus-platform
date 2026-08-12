@@ -1,7 +1,10 @@
 package com.schoolbus.booking.api;
 
-import com.schoolbus.booking.application.booking.BookingAlreadyExistsException;
 import com.schoolbus.booking.application.booking.BookingApplicationService;
+import com.schoolbus.booking.application.booking.BookingCancellationApplicationService;
+import com.schoolbus.booking.application.booking.BookingDetailView;
+import com.schoolbus.booking.application.booking.BookingAlreadyExistsException;
+import com.schoolbus.booking.application.booking.CancelBookingResult;
 import com.schoolbus.booking.application.booking.BookingQueryApplicationService;
 import com.schoolbus.booking.application.booking.BookingRequestConflictException;
 import com.schoolbus.booking.application.booking.BookingSummaryView;
@@ -10,8 +13,12 @@ import com.schoolbus.booking.application.booking.CreateBookingCommand;
 import com.schoolbus.booking.application.booking.CreateBookingOutcome;
 import com.schoolbus.booking.application.booking.CreateBookingResult;
 import com.schoolbus.booking.application.booking.SeatAlreadyReservedException;
+import com.schoolbus.booking.application.booking.BookingNotCancellableException;
+import com.schoolbus.booking.application.booking.BookingNotFoundException;
+import com.schoolbus.booking.domain.order.BookingNumber;
 import com.schoolbus.booking.domain.order.BookingRequestNumber;
 import com.schoolbus.booking.domain.order.BookingStatus;
+import com.schoolbus.booking.domain.order.CancellationReason;
 import com.schoolbus.booking.domain.order.SeatNumber;
 import com.schoolbus.booking.domain.trip.TripReference;
 import com.schoolbus.shared.api.GlobalExceptionHandler;
@@ -62,6 +69,9 @@ class BookingControllerTest {
 
     @MockitoBean
     private BookingQueryApplicationService queryApplicationService;
+
+    @MockitoBean
+    private BookingCancellationApplicationService cancellationApplicationService;
 
     @MockitoBean
     private JwtDecoder jwtDecoder;
@@ -482,6 +492,121 @@ class BookingControllerTest {
                         .value("VALIDATION_ERROR"));
 
         verifyNoInteractions(queryApplicationService);
+    }
+
+    @Test
+    void shouldReturnBookingDetailForOwner() throws Exception {
+        when(queryApplicationService.getMyBookingDetail(
+                1000001L,
+                BookingNumber.of(
+                        "55555555-5555-5555-5555-555555555555"
+                )
+        )).thenReturn(bookingDetail());
+
+        mockMvc.perform(
+                        get("/api/v1/bookings/"
+                                + "55555555-5555-5555-5555-555555555555")
+                                .with(jwt().jwt(builder -> builder
+                                        .subject("1000001")))
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.bookingNumber")
+                        .value("55555555-5555-5555-5555-555555555555"))
+                .andExpect(jsonPath("$.data.status")
+                        .value("PENDING_PAYMENT"))
+                .andExpect(jsonPath("$.data.createdAt")
+                        .value("2026-08-08T00:00:00Z"));
+    }
+
+    @Test
+    void shouldReturnNotFoundForMissingBookingDetail() throws Exception {
+        when(queryApplicationService.getMyBookingDetail(
+                1000001L,
+                BookingNumber.of(
+                        "55555555-5555-5555-5555-555555555555"
+                )
+        )).thenThrow(new BookingNotFoundException(
+                BookingNumber.of(
+                        "55555555-5555-5555-5555-555555555555"
+                )
+        ));
+
+        mockMvc.perform(
+                        get("/api/v1/bookings/"
+                                + "55555555-5555-5555-5555-555555555555")
+                                .with(jwt().jwt(builder -> builder
+                                        .subject("1000001")))
+                )
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code")
+                        .value("RESOURCE_NOT_FOUND"));
+    }
+
+    @Test
+    void shouldCancelPendingBooking() throws Exception {
+        when(cancellationApplicationService.cancelMyBooking(
+                1000001L,
+                "55555555-5555-5555-5555-555555555555"
+        )).thenReturn(new CancelBookingResult(
+                "55555555-5555-5555-5555-555555555555",
+                BookingStatus.CANCELLED,
+                CancellationReason.USER_CANCELLED,
+                Instant.parse("2026-08-08T00:05:00Z"),
+                true
+        ));
+
+        mockMvc.perform(
+                        post("/api/v1/bookings/"
+                                + "55555555-5555-5555-5555-555555555555"
+                                + "/cancellation")
+                                .with(jwt().jwt(builder -> builder
+                                        .subject("1000001")))
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status")
+                        .value("CANCELLED"))
+                .andExpect(jsonPath("$.data.cancelReason")
+                        .value("USER_CANCELLED"));
+    }
+
+    @Test
+    void shouldRejectCancellationForPaidBooking() throws Exception {
+        when(cancellationApplicationService.cancelMyBooking(
+                1000001L,
+                "55555555-5555-5555-5555-555555555555"
+        )).thenThrow(new BookingNotCancellableException(
+                BookingNumber.of(
+                        "55555555-5555-5555-5555-555555555555"
+                ),
+                BookingStatus.PAID
+        ));
+
+        mockMvc.perform(
+                        post("/api/v1/bookings/"
+                                + "55555555-5555-5555-5555-555555555555"
+                                + "/cancellation")
+                                .with(jwt().jwt(builder -> builder
+                                        .subject("1000001")))
+                )
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code")
+                        .value("BOOKING_NOT_CANCELLABLE"));
+    }
+
+    private BookingDetailView bookingDetail() {
+        return new BookingDetailView(
+                5001L,
+                "55555555-5555-5555-5555-555555555555",
+                2001L,
+                "A01",
+                new BigDecimal("5.50"),
+                BookingStatus.PENDING_PAYMENT,
+                Instant.parse("2026-08-08T00:15:00Z"),
+                null,
+                null,
+                null,
+                Instant.parse("2026-08-08T00:00:00Z")
+        );
     }
 
     private BookingSummaryView bookingSummary() {

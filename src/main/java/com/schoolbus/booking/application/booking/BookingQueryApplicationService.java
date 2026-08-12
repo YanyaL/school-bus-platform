@@ -1,5 +1,7 @@
 package com.schoolbus.booking.application.booking;
 
+import com.schoolbus.booking.domain.order.BookingNumber;
+import com.schoolbus.booking.domain.order.BookingOrder;
 import com.schoolbus.booking.domain.order.BookingOrderRepository;
 import com.schoolbus.shared.domain.identity.UserId;
 import org.springframework.context.annotation.Profile;
@@ -53,5 +55,26 @@ public class BookingQueryApplicationService {
                 UserId.of(validatedQuery.userId()),
                 validatedQuery.status()
         );
+    }
+
+    public BookingDetailView getMyBookingDetail(
+            long userId,
+            BookingNumber bookingNumber
+    ) {
+        BookingNumber validatedNumber = Objects.requireNonNull(
+                bookingNumber,
+                "bookingNumber must not be null"
+        );
+        BookingOrder order = bookingOrderRepository
+                .findByBookingNumber(validatedNumber)
+                .orElseThrow(
+                        () -> new BookingNotFoundException(
+                                validatedNumber
+                        )
+                );
+        if (order.userId().value() != userId) {
+            throw new BookingNotFoundException(validatedNumber);
+        }
+        return BookingDetailView.from(order);
     }
 }
