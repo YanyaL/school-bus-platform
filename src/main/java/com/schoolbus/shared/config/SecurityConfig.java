@@ -42,6 +42,8 @@ public class SecurityConfig {
                                 "/api/v1/payments/callback"
                         ).permitAll()
                         .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
+                        .requestMatchers("/api/v1/admin/**")
+                        .hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
                 .httpBasic(httpBasic -> httpBasic.disable())

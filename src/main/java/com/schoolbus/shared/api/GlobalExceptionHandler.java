@@ -8,6 +8,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestHeaderException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -61,6 +62,13 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .badRequest()
                 .body(ApiErrorResponse.of(ErrorCode.MALFORMED_JSON, List.of()));
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiErrorResponse> handleAccessDenied() {
+        return ResponseEntity
+                .status(ErrorCode.FORBIDDEN.httpStatus())
+                .body(ApiErrorResponse.of(ErrorCode.FORBIDDEN, List.of()));
     }
 
     @ExceptionHandler(MissingRequestHeaderException.class)

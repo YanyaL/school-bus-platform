@@ -69,6 +69,33 @@
         LIMIT 1
     </select>
 
+    <select id="selectByTripNumber" resultMap="TripResultMap">
+        SELECT
+            id,
+            trip_no,
+            vehicle_id,
+            route_id,
+            departure_time,
+            booking_deadline,
+            price,
+            status,
+            version,
+            created_at,
+            updated_at
+        FROM transport_trip
+        WHERE trip_no = #{tripNumber}
+        LIMIT 1
+    </select>
+
+    <select id="countActiveTripsForVehicleDeparture" resultType="int">
+        SELECT COUNT(*)
+        FROM transport_trip
+        WHERE vehicle_id = #{vehicleId}
+          AND id &lt;&gt; #{excludingTripId}
+          AND departure_time = #{departureTime}
+          AND status NOT IN ('CANCELLED', 'COMPLETED')
+    </select>
+
     <select id="selectBookableTrips" resultMap="TripResultMap">
         SELECT
             id,

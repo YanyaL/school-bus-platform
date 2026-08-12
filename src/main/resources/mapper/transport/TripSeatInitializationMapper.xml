@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.schoolbus.transport.infrastructure.persistence.seat.TripSeatInitializationMapper">
+
+    <select id="countByTripId" resultType="int">
+        SELECT COUNT(*)
+        FROM transport_trip_seat
+        WHERE trip_id = #{tripId}
+    </select>
+
+    <insert id="insertSeats">
+        INSERT INTO transport_trip_seat (
+            trip_id, seat_number, status,
+            version, created_at, updated_at
+        ) VALUES
+        <foreach collection="seatNumbers" item="seatNumber" separator=",">
+            (
+                #{tripId},
+                #{seatNumber},
+                'AVAILABLE',
+                0,
+                #{createdAt},
+                #{createdAt}
+            )
+        </foreach>
+    </insert>
+
+</mapper>

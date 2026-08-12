@@ -41,6 +41,14 @@ public enum ErrorCode {
     RESOURCE_NOT_FOUND(HttpStatus.NOT_FOUND, "请求的资源不存在"),
     DUPLICATE_STUDENT_NUMBER(HttpStatus.CONFLICT, "学号已被注册"),
     VERSION_CONFLICT(HttpStatus.CONFLICT, "资源已被其他请求修改"),
+    TRIP_NOT_FOUND(HttpStatus.NOT_FOUND, "班次不存在"),
+    TRIP_NOT_EDITABLE(HttpStatus.CONFLICT, "当前班次状态不允许修改"),
+    TRIP_NOT_PUBLISHABLE(HttpStatus.CONFLICT, "当前班次不满足发布条件"),
+    VEHICLE_NOT_FOUND(HttpStatus.NOT_FOUND, "车辆不存在"),
+    VEHICLE_DISABLED(HttpStatus.CONFLICT, "停用车辆不能发布班次"),
+    ROUTE_NOT_FOUND(HttpStatus.NOT_FOUND, "路线不存在"),
+    ROUTE_DISABLED(HttpStatus.CONFLICT, "停用路线不能发布班次"),
+    VEHICLE_SCHEDULE_CONFLICT(HttpStatus.CONFLICT, "车辆排班时间重叠"),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "系统暂时无法处理请求");
 
     private final HttpStatus httpStatus;

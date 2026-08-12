@@ -82,6 +82,37 @@ public class MyBatisBusTripRepository
     }
 
     @Override
+    public Optional<BusTrip> findByTripNumber(TripNumber tripNumber) {
+        TripNumber validatedTripNumber = Objects.requireNonNull(
+                tripNumber,
+                "tripNumber must not be null"
+        );
+        TripDataObject dataObject = tripMapper.selectByTripNumber(
+                validatedTripNumber.toString()
+        );
+        if (dataObject == null) {
+            return Optional.empty();
+        }
+        return Optional.of(toDomain(dataObject));
+    }
+
+    @Override
+    public boolean existsActiveTripForVehicleDeparture(
+            VehicleId vehicleId,
+            TripId excludingTripId,
+            Instant departureTime
+    ) {
+        return tripMapper.countActiveTripsForVehicleDeparture(
+                vehicleId.value(),
+                excludingTripId.value(),
+                LocalDateTime.ofInstant(
+                        departureTime,
+                        DATABASE_ZONE
+                )
+        ) > 0;
+    }
+
+    @Override
     public List<BusTrip> findBookableTrips(
             Instant now,
             int limit

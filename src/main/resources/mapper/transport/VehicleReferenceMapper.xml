@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.schoolbus.transport.infrastructure.persistence.vehicle.VehicleReferenceMapper">
+
+    <select
+            id="selectByVehicleNo"
+            resultType="com.schoolbus.transport.infrastructure.persistence.vehicle.VehicleReferenceDataObject">
+        SELECT
+            id,
+            vehicle_no AS vehicleNo,
+            seat_count AS seatCount,
+            status
+        FROM transport_vehicle
+        WHERE vehicle_no = #{vehicleNo}
+        LIMIT 1
+    </select>
+
+    <select
+            id="selectById"
+            resultType="com.schoolbus.transport.infrastructure.persistence.vehicle.VehicleReferenceDataObject">
+        SELECT
+            id,
+            vehicle_no AS vehicleNo,
+            seat_count AS seatCount,
+            status
+        FROM transport_vehicle
+        WHERE id = #{id}
+        LIMIT 1
+    </select>
+
+    <select id="selectSeatNumbersByVehicleId" resultType="string">
+        SELECT seat_number
+        FROM transport_vehicle_seat
+        WHERE vehicle_id = #{vehicleId}
+        ORDER BY seat_number ASC
+    </select>
+
+</mapper>

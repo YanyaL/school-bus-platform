@@ -16,11 +16,26 @@
 
 ## 当前状态
 
-- 需求、领域、数据库和 API 设计已完成。
-- Spring Boot 工程骨架已创建。
-- 已实现统一响应、统一异常处理和请求 TraceId。
-- Flyway V1 包含 12 张基线表。
-- JWT 和具体业务模块尚未实现。
+### 学生端（已实现）
+
+- IAM：注册、登录、JWT、Redis 会话
+- Transport：可预约班次列表、座位图、Redis 班次缓存
+- Booking：下单（幂等）、我的订单、详情、取消
+- Payment：支付回调（HMAC 验签）、超时退款 Outbox
+
+### 管理端（已实现）
+
+- `POST /api/v1/admin/trips` — 创建班次草稿（`DRAFT`）
+- `GET /api/v1/admin/trips/{tripNo}` — 班次详情
+- `POST /api/v1/admin/trips/{tripNo}/publish` — 发布班次：校验车辆/路线、初始化 `transport_trip_seat` 快照与 `booking_trip_inventory` 库存，状态变为 `OPEN_FOR_BOOKING`
+
+管理端接口需 `ADMIN` 角色 JWT。本地可通过数据库为账号追加 `iam_account_role` 记录获得管理员权限。
+
+### 基础设施
+
+- Flyway V1–V5 基线 schema
+- RabbitMQ：支付超时 Outbox relay、TTL/DLX 延迟取消
+- Testcontainers 集成测试（需 Docker）
 
 ## 本地启动
 
@@ -55,6 +70,7 @@ mvn spring-boot:run
 - 健康检查：`http://localhost:8080/actuator/health`
 - 骨架接口：`http://localhost:8080/api/v1/system/ping`
 - Swagger UI：`http://localhost:8080/swagger-ui.html`
+- 管理端发布班次：`POST /api/v1/admin/trips` → `POST /api/v1/admin/trips/{tripNo}/publish`
 - OpenAPI JSON：`http://localhost:8080/v3/api-docs`
 
 ## 配置
