@@ -36,7 +36,8 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 @Testcontainers(disabledWithoutDocker = true)
-@SpringBootTest
+@SpringBootTest(properties =
+        "school-bus.transport.trip-cancellation.reconciliation.grace-period=PT0S")
 @ActiveProfiles("integration-test")
 @Import(TripPublicationTransactionIntegrationTest.FixedClockConfiguration.class)
 class TripPublicationTransactionIntegrationTest {
@@ -65,6 +66,9 @@ class TripPublicationTransactionIntegrationTest {
 
     @Autowired
     private TripCancellationCompletionTransaction cancellationCompletionTransaction;
+
+    @Autowired
+    private TripCancellationReconciliationService reconciliationService;
 
     @Autowired
     private PaymentRefundTransaction paymentRefundTransaction;
@@ -361,13 +365,12 @@ class TripPublicationTransactionIntegrationTest {
                 Integer.class
         )).isEqualTo(1);
 
-        cancellationCompletionTransaction.complete(
-                new TripCancellationSettledEnvelope(
-                        "settled-event-1",
-                        new TripCancellationSettledMessage(5001L, NOW)
-                )
-        );
+        TripCancellationReconciliationResult reconciliation =
+                reconciliationService.reconcile();
 
+        assertThat(reconciliation).isEqualTo(
+                new TripCancellationReconciliationResult(1, 1, 0)
+        );
         assertThat(jdbcTemplate.queryForObject(
                 "SELECT status FROM transport_trip WHERE id = 5001",
                 String.class

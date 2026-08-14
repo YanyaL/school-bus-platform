@@ -41,6 +41,18 @@ class TripCancellationRabbitTopologyIntegrationTest {
                     "schoolbus.transport.trip-cancellation.dlq.test"
             );
 
+    private static final TripCancellationRetryProperties RETRY_PROPERTIES =
+            new TripCancellationRetryProperties(
+                    "schoolbus.transport.cancellation.retry-test",
+                    "trip.cancellation.requested.retry",
+                    "schoolbus.booking.trip-cancellation.retry-test",
+                    "trip.cancellation.settled.retry",
+                    "schoolbus.transport.trip-cancellation-settled.retry-test",
+                    Duration.ofMillis(250),
+                    3,
+                    Duration.ofSeconds(5)
+            );
+
     @Container
     static final RabbitMQContainer RABBIT_MQ = new RabbitMQContainer(
             DockerImageName.parse("rabbitmq:4.1-management")
@@ -64,12 +76,24 @@ class TripCancellationRabbitTopologyIntegrationTest {
                 .tripCancellationExchange(PROPERTIES);
         DirectExchange deadLetterExchange = configuration
                 .tripCancellationDeadLetterExchange(PROPERTIES);
+        DirectExchange retryExchange = configuration
+                .tripCancellationRetryExchange(RETRY_PROPERTIES);
         Queue requestedQueue = configuration
                 .tripCancellationRequestedQueue(PROPERTIES);
         Queue settledQueue = configuration
                 .tripCancellationSettledQueue(PROPERTIES);
         Queue deadLetterQueue = configuration
                 .tripCancellationDeadLetterQueue(PROPERTIES);
+        Queue requestedRetryQueue = configuration
+                .tripCancellationRequestedRetryQueue(
+                        RETRY_PROPERTIES,
+                        PROPERTIES
+                );
+        Queue settledRetryQueue = configuration
+                .tripCancellationSettledRetryQueue(
+                        RETRY_PROPERTIES,
+                        PROPERTIES
+                );
         Binding requestedBinding = configuration
                 .tripCancellationRequestedBinding(
                         requestedQueue,
@@ -88,16 +112,33 @@ class TripCancellationRabbitTopologyIntegrationTest {
                         deadLetterExchange,
                         PROPERTIES
                 );
+        Binding requestedRetryBinding = configuration
+                .tripCancellationRequestedRetryBinding(
+                        requestedRetryQueue,
+                        retryExchange,
+                        RETRY_PROPERTIES
+                );
+        Binding settledRetryBinding = configuration
+                .tripCancellationSettledRetryBinding(
+                        settledRetryQueue,
+                        retryExchange,
+                        RETRY_PROPERTIES
+                );
 
         RabbitAdmin admin = new RabbitAdmin(connectionFactory);
         admin.declareExchange(exchange);
         admin.declareExchange(deadLetterExchange);
+        admin.declareExchange(retryExchange);
         admin.declareQueue(requestedQueue);
         admin.declareQueue(settledQueue);
         admin.declareQueue(deadLetterQueue);
+        admin.declareQueue(requestedRetryQueue);
+        admin.declareQueue(settledRetryQueue);
         admin.declareBinding(requestedBinding);
         admin.declareBinding(settledBinding);
         admin.declareBinding(deadLetterBinding);
+        admin.declareBinding(requestedRetryBinding);
+        admin.declareBinding(settledRetryBinding);
 
         rabbitTemplate = new RabbitTemplate(connectionFactory);
         rabbitTemplate.setReceiveTimeout(5_000L);
@@ -155,6 +196,31 @@ class TripCancellationRabbitTopologyIntegrationTest {
                 () -> assertThat(rabbitTemplate.receiveAndConvert(
                         PROPERTIES.deadLetterQueue()
                 )).isEqualTo("malformed")
+        );
+    }
+
+    @Test
+    void shouldReturnRequestedAndSettledRetriesAfterDelay() {
+        rabbitTemplate.convertAndSend(
+                RETRY_PROPERTIES.exchange(),
+                RETRY_PROPERTIES.requestedRoutingKey(),
+                "requested-retry"
+        );
+        rabbitTemplate.convertAndSend(
+                RETRY_PROPERTIES.exchange(),
+                RETRY_PROPERTIES.settledRoutingKey(),
+                "settled-retry"
+        );
+
+        await().atMost(Duration.ofSeconds(5)).untilAsserted(
+                () -> assertThat(rabbitTemplate.receiveAndConvert(
+                        PROPERTIES.requestedQueue()
+                )).isEqualTo("requested-retry")
+        );
+        await().atMost(Duration.ofSeconds(5)).untilAsserted(
+                () -> assertThat(rabbitTemplate.receiveAndConvert(
+                        PROPERTIES.settledQueue()
+                )).isEqualTo("settled-retry")
         );
     }
 }

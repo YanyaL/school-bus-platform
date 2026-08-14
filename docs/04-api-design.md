@@ -865,6 +865,12 @@ TripCancellationRequested
 `payment-refund:{paymentNumber}` 作为外部退款幂等键。请求重复提交时，
 `CANCELLATION_PENDING` 和 `CANCELLED` 都按当前状态幂等返回。
 
+临时故障不会立即无限重回原队列。取消请求和取消完成事件分别进入 TTL
+重试队列，延迟后通过 DLX 回到业务队列；超过最大重试次数后进入 DLQ。
+若完成事件丢失或进入 DLQ，数据库补偿任务会扫描已经 `SETTLED`、但班次仍为
+`CANCELLATION_PENDING` 的 Saga，在宽限期后幂等完成取消。补偿任务默认关闭，
+可通过 `TRIP_CANCELLATION_RECONCILIATION_ENABLED=true` 显式开启。
+
 ### 15.6 查询预约情况
 
 ```http

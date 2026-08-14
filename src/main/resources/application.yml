@@ -63,6 +63,14 @@ school-bus:
     maximum-attempts: ${BOOKING_MAXIMUM_ATTEMPTS:3}
     expiration:
       batch-size: ${BOOKING_EXPIRATION_BATCH_SIZE:100}
+  transport:
+    trip-cancellation:
+      reconciliation:
+        enabled: ${TRIP_CANCELLATION_RECONCILIATION_ENABLED:false}
+        grace-period: ${TRIP_CANCELLATION_RECONCILIATION_GRACE_PERIOD:PT2M}
+        batch-size: ${TRIP_CANCELLATION_RECONCILIATION_BATCH_SIZE:100}
+        initial-delay-ms: ${TRIP_CANCELLATION_RECONCILIATION_INITIAL_DELAY_MS:30000}
+        fixed-delay-ms: ${TRIP_CANCELLATION_RECONCILIATION_FIXED_DELAY_MS:30000}
   identity:
     worker-id: ${SCHOOL_BUS_WORKER_ID:0}
   security:
@@ -118,3 +126,12 @@ school-bus:
       dead-letter-exchange: ${TRIP_CANCELLATION_DLX:schoolbus.transport.dlx}
       dead-letter-routing-key: ${TRIP_CANCELLATION_DEAD_ROUTING_KEY:trip.cancellation.dead}
       dead-letter-queue: ${TRIP_CANCELLATION_DLQ:schoolbus.transport.trip-cancellation.dlq}
+    trip-cancellation-retry:
+      exchange: ${TRIP_CANCELLATION_RETRY_EXCHANGE:schoolbus.transport.cancellation.retry}
+      requested-routing-key: ${TRIP_CANCELLATION_REQUESTED_RETRY_ROUTING_KEY:trip.cancellation.requested.retry}
+      requested-queue: ${TRIP_CANCELLATION_REQUESTED_RETRY_QUEUE:schoolbus.booking.trip-cancellation.retry}
+      settled-routing-key: ${TRIP_CANCELLATION_SETTLED_RETRY_ROUTING_KEY:trip.cancellation.settled.retry}
+      settled-queue: ${TRIP_CANCELLATION_SETTLED_RETRY_QUEUE:schoolbus.transport.trip-cancellation-settled.retry}
+      delay: ${TRIP_CANCELLATION_RETRY_DELAY:PT30S}
+      maximum-retries: ${TRIP_CANCELLATION_MAXIMUM_RETRIES:3}
+      confirm-timeout: ${TRIP_CANCELLATION_RETRY_CONFIRM_TIMEOUT:PT5S}

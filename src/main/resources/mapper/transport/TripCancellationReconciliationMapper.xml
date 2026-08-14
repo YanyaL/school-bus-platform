@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.schoolbus.transport.infrastructure.persistence.trip.TripCancellationReconciliationMapper">
+
+    <select id="selectSettledAwaitingFinalization" resultType="long">
+        SELECT saga.trip_id
+        FROM booking_trip_cancellation_saga saga
+        INNER JOIN transport_trip trip ON trip.id = saga.trip_id
+        WHERE saga.status = 'SETTLED'
+          AND saga.updated_at &lt;= #{settledBefore}
+          AND trip.status = 'CANCELLATION_PENDING'
+        ORDER BY saga.updated_at ASC, saga.trip_id ASC
+        LIMIT #{limit}
+    </select>
+
+</mapper>

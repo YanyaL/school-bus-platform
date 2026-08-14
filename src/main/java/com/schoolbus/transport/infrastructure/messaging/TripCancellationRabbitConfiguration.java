@@ -12,7 +12,10 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration(proxyBeanMethods = false)
-@EnableConfigurationProperties(TripCancellationMessagingProperties.class)
+@EnableConfigurationProperties({
+        TripCancellationMessagingProperties.class,
+        TripCancellationRetryProperties.class
+})
 public class TripCancellationRabbitConfiguration {
 
     @Bean
@@ -28,6 +31,13 @@ public class TripCancellationRabbitConfiguration {
     }
 
     @Bean
+    DirectExchange tripCancellationRetryExchange(
+            TripCancellationRetryProperties p
+    ) {
+        return new DirectExchange(p.exchange(), true, false);
+    }
+
+    @Bean
     Queue tripCancellationRequestedQueue(TripCancellationMessagingProperties p) {
         return businessQueue(p.requestedQueue(), p);
     }
@@ -40,6 +50,32 @@ public class TripCancellationRabbitConfiguration {
     @Bean
     Queue tripCancellationDeadLetterQueue(TripCancellationMessagingProperties p) {
         return QueueBuilder.durable(p.deadLetterQueue()).build();
+    }
+
+    @Bean
+    Queue tripCancellationRequestedRetryQueue(
+            TripCancellationRetryProperties retry,
+            TripCancellationMessagingProperties messaging
+    ) {
+        return retryQueue(
+                retry.requestedQueue(),
+                retry.delay(),
+                messaging.exchange(),
+                messaging.requestedRoutingKey()
+        );
+    }
+
+    @Bean
+    Queue tripCancellationSettledRetryQueue(
+            TripCancellationRetryProperties retry,
+            TripCancellationMessagingProperties messaging
+    ) {
+        return retryQueue(
+                retry.settledQueue(),
+                retry.delay(),
+                messaging.exchange(),
+                messaging.settledRoutingKey()
+        );
     }
 
     @Bean
@@ -69,6 +105,28 @@ public class TripCancellationRabbitConfiguration {
         return BindingBuilder.bind(queue).to(exchange).with(p.deadLetterRoutingKey());
     }
 
+    @Bean
+    Binding tripCancellationRequestedRetryBinding(
+            @Qualifier("tripCancellationRequestedRetryQueue") Queue queue,
+            @Qualifier("tripCancellationRetryExchange") DirectExchange exchange,
+            TripCancellationRetryProperties p
+    ) {
+        return BindingBuilder.bind(queue)
+                .to(exchange)
+                .with(p.requestedRoutingKey());
+    }
+
+    @Bean
+    Binding tripCancellationSettledRetryBinding(
+            @Qualifier("tripCancellationSettledRetryQueue") Queue queue,
+            @Qualifier("tripCancellationRetryExchange") DirectExchange exchange,
+            TripCancellationRetryProperties p
+    ) {
+        return BindingBuilder.bind(queue)
+                .to(exchange)
+                .with(p.settledRoutingKey());
+    }
+
     private Queue businessQueue(
             String name,
             TripCancellationMessagingProperties p
@@ -76,6 +134,19 @@ public class TripCancellationRabbitConfiguration {
         return QueueBuilder.durable(name)
                 .deadLetterExchange(p.deadLetterExchange())
                 .deadLetterRoutingKey(p.deadLetterRoutingKey())
+                .build();
+    }
+
+    private Queue retryQueue(
+            String name,
+            java.time.Duration delay,
+            String deadLetterExchange,
+            String deadLetterRoutingKey
+    ) {
+        return QueueBuilder.durable(name)
+                .ttl(Math.toIntExact(delay.toMillis()))
+                .deadLetterExchange(deadLetterExchange)
+                .deadLetterRoutingKey(deadLetterRoutingKey)
                 .build();
     }
 }

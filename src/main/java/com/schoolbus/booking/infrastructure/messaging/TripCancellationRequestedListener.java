@@ -6,6 +6,10 @@ import com.schoolbus.booking.application.tripcancellation.TripCancellationBookin
 import com.schoolbus.booking.application.tripcancellation.TripCancellationBookingTransaction;
 import com.schoolbus.booking.application.tripcancellation.TripCancellationRequestedEnvelope;
 import com.schoolbus.booking.application.tripcancellation.TripCancellationRequestedMessage;
+import com.schoolbus.transport.infrastructure.messaging.TripCancellationRetryAttemptResolver;
+import com.schoolbus.transport.infrastructure.messaging.TripCancellationRetryLane;
+import com.schoolbus.transport.infrastructure.messaging.TripCancellationRetryProperties;
+import com.schoolbus.transport.infrastructure.messaging.TripCancellationRetryPublisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.core.Message;
@@ -26,13 +30,22 @@ public class TripCancellationRequestedListener {
 
     private final TripCancellationBookingTransaction transaction;
     private final ObjectMapper objectMapper;
+    private final TripCancellationRetryPublisher retryPublisher;
+    private final TripCancellationRetryAttemptResolver attemptResolver;
+    private final TripCancellationRetryProperties retryProperties;
 
     public TripCancellationRequestedListener(
             TripCancellationBookingTransaction transaction,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            TripCancellationRetryPublisher retryPublisher,
+            TripCancellationRetryAttemptResolver attemptResolver,
+            TripCancellationRetryProperties retryProperties
     ) {
         this.transaction = Objects.requireNonNull(transaction);
         this.objectMapper = Objects.requireNonNull(objectMapper);
+        this.retryPublisher = Objects.requireNonNull(retryPublisher);
+        this.attemptResolver = Objects.requireNonNull(attemptResolver);
+        this.retryProperties = Objects.requireNonNull(retryProperties);
     }
 
     @RabbitListener(
@@ -61,7 +74,48 @@ public class TripCancellationRequestedListener {
             log.error("Malformed trip cancellation request", exception);
             channel.basicReject(tag, false);
         } catch (RuntimeException exception) {
-            log.error("Trip cancellation booking processing failed", exception);
+            scheduleRetryOrReject(message, channel, tag, exception);
+        }
+    }
+
+    private void scheduleRetryOrReject(
+            Message message,
+            Channel channel,
+            long tag,
+            RuntimeException processingFailure
+    ) throws IOException {
+        int completedRetries = attemptResolver.completedRetries(
+                message,
+                retryProperties.requestedQueue()
+        );
+        if (completedRetries >= retryProperties.maximumRetries()) {
+            log.error(
+                    "Trip cancellation request exhausted {} retries",
+                    retryProperties.maximumRetries(),
+                    processingFailure
+            );
+            channel.basicReject(tag, false);
+            return;
+        }
+        try {
+            retryPublisher.scheduleRetry(
+                    message,
+                    TripCancellationRetryLane.REQUESTED
+            );
+            channel.basicAck(tag, false);
+            log.warn(
+                    "Trip cancellation request scheduled for retry {}/{} after {}",
+                    completedRetries + 1,
+                    retryProperties.maximumRetries(),
+                    retryProperties.delay(),
+                    processingFailure
+            );
+        } catch (RuntimeException publishFailure) {
+            processingFailure.addSuppressed(publishFailure);
+            log.error(
+                    "Failed to publish cancellation request retry; original will be requeued",
+                    processingFailure
+            );
             channel.basicNack(tag, false, true);
         }
     }

@@ -19,9 +19,9 @@
 - IAM：注册、登录、JWT、Redis 会话
 - Transport：可预约班次查询、座位图、Redis 班次列表缓存
 - Booking：下单、我的订单、详情、取消、支付超时（Outbox + RabbitMQ TTL/DLX）
-- Trip cancellation Saga：管理员取消班次后，异步取消订单、释放座位库存并驱动已支付订单退款
+- Trip cancellation Saga：管理员取消班次后，异步取消订单、释放座位库存并驱动已支付订单退款；支持有限重试、TTL 退避、DLQ 与数据库补偿
 - Payment：支付回调（HMAC 验签）、退款 Outbox
-- Flyway V1–V5 已落地；集成测试需 Docker（Testcontainers）
+- Flyway V1–V6 已落地；集成测试需 Docker（Testcontainers）
 
 ## Swagger 端到端演示
 
