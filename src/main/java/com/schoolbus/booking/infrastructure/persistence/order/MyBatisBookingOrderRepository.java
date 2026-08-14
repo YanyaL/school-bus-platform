@@ -158,6 +158,22 @@ public class MyBatisBookingOrderRepository
     }
 
     @Override
+    public List<BookingOrder> findActiveByTripReferenceForUpdate(
+            TripReference tripReference
+    ) {
+        TripReference validated = Objects.requireNonNull(
+                tripReference,
+                "tripReference must not be null"
+        );
+        return bookingOrderMapper.selectActiveByTripIdForUpdate(
+                        validated.value()
+                )
+                .stream()
+                .map(this::toDomain)
+                .toList();
+    }
+
+    @Override
     public List<BookingOrder> findExpiredPendingOrders(
             Instant expiredAt,
             int limit

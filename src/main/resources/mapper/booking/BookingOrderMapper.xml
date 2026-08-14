@@ -99,6 +99,21 @@
     </select>
 
     <select
+            id="selectActiveByTripIdForUpdate"
+            resultMap="BookingOrderResultMap">
+        SELECT
+            id, order_no, request_no, user_id, trip_id,
+            seat_number, price_snapshot, status, expires_at,
+            payment_no, paid_at, cancelled_at, cancel_reason,
+            version, created_at, updated_at
+        FROM booking_order
+        WHERE trip_id = #{tripId}
+          AND status IN ('PENDING_PAYMENT', 'PAID')
+        ORDER BY id
+        FOR UPDATE
+    </select>
+
+    <select
             id="selectExpiredPendingOrders"
             resultMap="BookingOrderResultMap">
         SELECT

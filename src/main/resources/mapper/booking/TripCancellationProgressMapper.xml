@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.schoolbus.booking.infrastructure.persistence.cancellation.TripCancellationProgressMapper">
+
+    <insert id="insertProgress">
+        INSERT INTO booking_trip_cancellation_saga (
+            trip_id, request_event_id, pending_refunds,
+            status, version, created_at, updated_at
+        ) VALUES (
+            #{tripId}, #{requestEventId}, #{pendingRefunds},
+            #{status}, 0, #{createdAt}, #{createdAt}
+        )
+    </insert>
+
+    <update id="decrementPendingRefund">
+        UPDATE booking_trip_cancellation_saga
+        SET status = CASE
+                WHEN pending_refunds = 1 THEN 'SETTLED'
+                ELSE 'PROCESSING'
+            END,
+            pending_refunds = pending_refunds - 1,
+            version = version + 1,
+            updated_at = #{updatedAt}
+        WHERE trip_id = #{tripId}
+          AND status = 'PROCESSING'
+          AND pending_refunds > 0
+    </update>
+
+    <select id="selectStatus" resultType="string">
+        SELECT status
+        FROM booking_trip_cancellation_saga
+        WHERE trip_id = #{tripId}
+    </select>
+
+</mapper>

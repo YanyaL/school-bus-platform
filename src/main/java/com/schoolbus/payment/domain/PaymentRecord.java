@@ -14,7 +14,7 @@ public final class PaymentRecord {
     private final BookingNumber bookingNumber;
     private final BookingAmount amount;
     private PaymentStatus status;
-    private final String failureReason;
+    private String failureReason;
     private String refundReference;
     private Instant refundedAt;
     private final Instant completedAt;
@@ -175,6 +175,35 @@ public final class PaymentRecord {
         this.refundReference = checkedReference;
         this.refundedAt = checkedTime;
         updatedAt = checkedTime;
+        version++;
+    }
+
+    public void requestRefund(String reason, Instant requestedAt) {
+        if (status == PaymentStatus.REFUND_PENDING
+                || status == PaymentStatus.REFUNDED) {
+            return;
+        }
+        if (status != PaymentStatus.SUCCEEDED) {
+            throw new IllegalStateException(
+                    "only succeeded payment can request a refund"
+            );
+        }
+        String checkedReason = normalizeFailureReason(reason);
+        if (checkedReason == null) {
+            throw new IllegalArgumentException("reason must not be blank");
+        }
+        Instant operationTime = Objects.requireNonNull(
+                requestedAt,
+                "requestedAt must not be null"
+        );
+        if (operationTime.isBefore(updatedAt)) {
+            throw new IllegalArgumentException(
+                    "requestedAt must not be before updatedAt"
+            );
+        }
+        status = PaymentStatus.REFUND_PENDING;
+        failureReason = checkedReason;
+        updatedAt = operationTime;
         version++;
     }
 

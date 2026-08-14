@@ -1,6 +1,7 @@
 package com.schoolbus.payment.infrastructure.persistence;
 
 import com.schoolbus.payment.application.refund.ConsumedEventRepository;
+import com.schoolbus.shared.application.messaging.ConsumedEventStore;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
@@ -12,7 +13,7 @@ import java.util.Objects;
 @Repository
 @Profile("!test")
 public class MyBatisConsumedEventRepository
-        implements ConsumedEventRepository {
+        implements ConsumedEventRepository, ConsumedEventStore {
 
     private static final ZoneOffset DATABASE_ZONE = ZoneOffset.UTC;
 

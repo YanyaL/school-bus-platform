@@ -97,6 +97,24 @@ class BusTripTest {
     }
 
     @Test
+    void shouldCompleteAsynchronousCancellationLifecycle() {
+        BusTrip trip = draftTrip();
+        trip.openForBooking(CREATED_AT.plusSeconds(60));
+
+        trip.requestCancellation(CREATED_AT.plusSeconds(120));
+
+        assertThat(trip.status())
+                .isEqualTo(TripStatus.CANCELLATION_PENDING);
+        assertThat(trip.canBookAt(CREATED_AT.plusSeconds(121)))
+                .isFalse();
+
+        trip.completeCancellation(CREATED_AT.plusSeconds(180));
+
+        assertThat(trip.status()).isEqualTo(TripStatus.CANCELLED);
+        assertThat(trip.version()).isEqualTo(3L);
+    }
+
+    @Test
     void shouldRejectInvalidStateTransitionWithoutMutation() {
         BusTrip trip = draftTrip();
 

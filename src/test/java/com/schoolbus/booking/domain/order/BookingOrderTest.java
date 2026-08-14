@@ -60,6 +60,47 @@ class BookingOrderTest {
     }
 
     @Test
+    void shouldCancelPendingOrderBecauseTripWasCancelled() {
+        BookingOrder order = pendingOrder();
+        Instant cancelledAt = PLACED_AT.plusSeconds(60);
+
+        order.cancelBecauseTripWasCancelled(cancelledAt);
+
+        assertThat(order.status()).isEqualTo(BookingStatus.CANCELLED);
+        assertThat(order.cancellationReason())
+                .isEqualTo(CancellationReason.TRIP_CANCELLED);
+        assertThat(order.cancelledAt()).isEqualTo(cancelledAt);
+    }
+
+    @Test
+    void shouldMovePaidOrderThroughRefundLifecycle() {
+        BookingOrder order = pendingOrder();
+        Instant paidAt = PLACED_AT.plusSeconds(60);
+        Instant confirmedAt = paidAt.plusSeconds(1);
+        order.confirmPayment(
+                PaymentReference.of(
+                        "77777777-7777-7777-7777-777777777777"
+                ),
+                paidAt,
+                confirmedAt
+        );
+
+        Instant requestedAt = confirmedAt.plusSeconds(1);
+        order.requestRefundBecauseTripWasCancelled(requestedAt);
+        assertThat(order.status())
+                .isEqualTo(BookingStatus.REFUND_PENDING);
+        assertThat(order.cancellationReason())
+                .isEqualTo(CancellationReason.TRIP_CANCELLED);
+
+        Instant refundedAt = requestedAt.plusSeconds(1);
+        order.confirmRefund(refundedAt);
+
+        assertThat(order.status()).isEqualTo(BookingStatus.REFUNDED);
+        assertThat(order.updatedAt()).isEqualTo(refundedAt);
+        assertThat(order.version()).isEqualTo(3L);
+    }
+
+    @Test
     void shouldRejectRepeatedCancellationWithoutMutation() {
         BookingOrder bookingOrder = pendingOrder();
         Instant cancelledAt = PLACED_AT.plusSeconds(60);

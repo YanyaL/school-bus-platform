@@ -6,5 +6,7 @@ public interface TripSeatReservationPort {
 
     boolean releaseSeat(SeatReleaseRequest request);
 
+    boolean releaseSoldSeat(SeatReleaseRequest request);
+
     boolean confirmSeatSold(SeatSaleRequest request);
 }

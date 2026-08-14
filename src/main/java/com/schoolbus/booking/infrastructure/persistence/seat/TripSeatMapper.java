@@ -24,6 +24,13 @@ public interface TripSeatMapper {
             @Param("releasedAt") LocalDateTime releasedAt
     );
 
+    int releaseSoldSeat(
+            @Param("tripId") Long tripId,
+            @Param("seatNumber") String seatNumber,
+            @Param("bookingNumber") String bookingNumber,
+            @Param("releasedAt") LocalDateTime releasedAt
+    );
+
     int confirmSeatSold(
             @Param("tripId") Long tripId,
             @Param("seatNumber") String seatNumber,

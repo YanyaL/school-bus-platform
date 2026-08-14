@@ -21,11 +21,13 @@ public class PaymentRefundTransaction {
 
     private final PaymentRecordRepository paymentRecordRepository;
     private final ConsumedEventRepository consumedEventRepository;
+    private final RefundedBookingPort refundedBookingPort;
     private final Clock clock;
 
     public PaymentRefundTransaction(
             PaymentRecordRepository paymentRecordRepository,
             ConsumedEventRepository consumedEventRepository,
+            RefundedBookingPort refundedBookingPort,
             Clock clock
     ) {
         this.paymentRecordRepository = Objects.requireNonNull(
@@ -35,6 +37,10 @@ public class PaymentRefundTransaction {
         this.consumedEventRepository = Objects.requireNonNull(
                 consumedEventRepository,
                 "consumedEventRepository must not be null"
+        );
+        this.refundedBookingPort = Objects.requireNonNull(
+                refundedBookingPort,
+                "refundedBookingPort must not be null"
         );
         this.clock = Objects.requireNonNull(clock, "clock must not be null");
     }
@@ -115,6 +121,10 @@ public class PaymentRefundTransaction {
         }
         payment.confirmRefund(
                 checkedReceipt.refundReference(),
+                checkedReceipt.refundedAt()
+        );
+        refundedBookingPort.markRefunded(
+                payment.bookingNumber(),
                 checkedReceipt.refundedAt()
         );
         paymentRecordRepository.save(payment);

@@ -94,6 +94,7 @@ public final class BookingOrder {
             );
         }
         if ((status == BookingStatus.PAID
+                || status == BookingStatus.REFUND_PENDING
                 || status == BookingStatus.REFUNDED)
                 && paymentReference == null) {
             throw new IllegalArgumentException(
@@ -101,6 +102,7 @@ public final class BookingOrder {
             );
         }
         if (status != BookingStatus.PAID
+                && status != BookingStatus.REFUND_PENDING
                 && status != BookingStatus.REFUNDED
                 && paymentReference != null) {
             throw new IllegalArgumentException(
@@ -119,12 +121,19 @@ public final class BookingOrder {
                     "cancelledAt and cancellationReason must both be present or absent"
             );
         }
-        if (status == BookingStatus.CANCELLED && cancelledAt == null) {
+        boolean cancellationDetailsRequired = status == BookingStatus.CANCELLED
+                || status == BookingStatus.REFUND_PENDING
+                || (status == BookingStatus.REFUNDED
+                    && cancellationReason == CancellationReason.TRIP_CANCELLED);
+        if (cancellationDetailsRequired && cancelledAt == null) {
             throw new IllegalArgumentException(
-                    "cancelled booking must contain cancellation details"
+                    "cancelled or refund-pending booking must contain cancellation details"
             );
         }
-        if (status != BookingStatus.CANCELLED && cancelledAt != null) {
+        if (status != BookingStatus.CANCELLED
+                && status != BookingStatus.REFUND_PENDING
+                && status != BookingStatus.REFUNDED
+                && cancelledAt != null) {
             throw new IllegalArgumentException(
                     "only cancelled booking may contain cancellation details"
             );
@@ -270,6 +279,49 @@ public final class BookingOrder {
         status = BookingStatus.CANCELLED;
         this.cancelledAt = operationTime;
         this.cancellationReason = CancellationReason.USER_CANCELLED;
+        updatedAt = operationTime;
+        version++;
+    }
+
+    public void cancelBecauseTripWasCancelled(Instant cancelledAt) {
+        if (status != BookingStatus.PENDING_PAYMENT) {
+            throw new InvalidBookingStateTransitionException(
+                    status,
+                    BookingStatus.CANCELLED
+            );
+        }
+        Instant operationTime = validateChangeTime(cancelledAt);
+        status = BookingStatus.CANCELLED;
+        this.cancelledAt = operationTime;
+        cancellationReason = CancellationReason.TRIP_CANCELLED;
+        updatedAt = operationTime;
+        version++;
+    }
+
+    public void requestRefundBecauseTripWasCancelled(Instant requestedAt) {
+        if (status != BookingStatus.PAID) {
+            throw new InvalidBookingStateTransitionException(
+                    status,
+                    BookingStatus.REFUND_PENDING
+            );
+        }
+        Instant operationTime = validateChangeTime(requestedAt);
+        status = BookingStatus.REFUND_PENDING;
+        cancelledAt = operationTime;
+        cancellationReason = CancellationReason.TRIP_CANCELLED;
+        updatedAt = operationTime;
+        version++;
+    }
+
+    public void confirmRefund(Instant refundedAt) {
+        if (status != BookingStatus.REFUND_PENDING) {
+            throw new InvalidBookingStateTransitionException(
+                    status,
+                    BookingStatus.REFUNDED
+            );
+        }
+        Instant operationTime = validateChangeTime(refundedAt);
+        status = BookingStatus.REFUNDED;
         updatedAt = operationTime;
         version++;
     }

@@ -79,6 +79,28 @@ class PaymentRecordTest {
         )).isInstanceOf(IllegalStateException.class);
     }
 
+    @Test
+    void shouldRequestRefundForSucceededPayment() {
+        PaymentRecord payment = PaymentRecord.succeeded(
+                PaymentId.of(1L),
+                PaymentNumber.of("77777777-7777-7777-7777-777777777777"),
+                PaymentRequestNumber.of("callback-1"),
+                BookingNumber.of("55555555-5555-5555-5555-555555555555"),
+                BookingAmount.of("5.50"),
+                PAID_AT,
+                RECORDED_AT
+        );
+        Instant requestedAt = RECORDED_AT.plusSeconds(1);
+
+        payment.requestRefund("TRIP_CANCELLED", requestedAt);
+
+        assertThat(payment.status())
+                .isEqualTo(PaymentStatus.REFUND_PENDING);
+        assertThat(payment.failureReason()).isEqualTo("TRIP_CANCELLED");
+        assertThat(payment.version()).isEqualTo(1L);
+        assertThat(payment.updatedAt()).isEqualTo(requestedAt);
+    }
+
     private PaymentRecord refundPending() {
         return PaymentRecord.refundPending(
                 PaymentId.of(1L),

@@ -164,6 +164,14 @@ public final class BusTrip {
         transitionTo(TripStatus.CANCELLED, cancelledAt);
     }
 
+    public void requestCancellation(Instant requestedAt) {
+        transitionTo(TripStatus.CANCELLATION_PENDING, requestedAt);
+    }
+
+    public void completeCancellation(Instant completedAt) {
+        transitionTo(TripStatus.CANCELLED, completedAt);
+    }
+
     public boolean canBookAt(Instant instant) {
         Instant checkedInstant = Objects.requireNonNull(
                 instant,
@@ -197,9 +205,12 @@ public final class BusTrip {
             case DRAFT -> targetStatus == TripStatus.OPEN_FOR_BOOKING
                     || targetStatus == TripStatus.CANCELLED;
             case OPEN_FOR_BOOKING -> targetStatus == TripStatus.CLOSED
+                    || targetStatus == TripStatus.CANCELLATION_PENDING
                     || targetStatus == TripStatus.CANCELLED;
             case CLOSED -> targetStatus == TripStatus.DEPARTED
+                    || targetStatus == TripStatus.CANCELLATION_PENDING
                     || targetStatus == TripStatus.CANCELLED;
+            case CANCELLATION_PENDING -> targetStatus == TripStatus.CANCELLED;
             case DEPARTED -> targetStatus == TripStatus.COMPLETED;
             case COMPLETED, CANCELLED -> false;
         };

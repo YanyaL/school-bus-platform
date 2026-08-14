@@ -63,6 +63,21 @@ public class MyBatisTripSeatReservation
     }
 
     @Override
+    public boolean releaseSoldSeat(SeatReleaseRequest request) {
+        SeatReleaseRequest validatedRequest = Objects.requireNonNull(
+                request,
+                "request must not be null"
+        );
+        int updatedRows = tripSeatMapper.releaseSoldSeat(
+                validatedRequest.tripReference().value(),
+                validatedRequest.seatNumber().value(),
+                validatedRequest.bookingNumber().toString(),
+                toDatabaseTime(validatedRequest.releasedAt())
+        );
+        return isSingleRowUpdated(updatedRows, "sold seat release");
+    }
+
+    @Override
     public boolean confirmSeatSold(SeatSaleRequest request) {
         SeatSaleRequest validatedRequest = Objects.requireNonNull(
                 request,

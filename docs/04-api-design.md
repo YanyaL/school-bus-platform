@@ -845,7 +845,25 @@ POST /api/v1/admin/trips/{tripId}/cancellation
 }
 ```
 
-MVP 若班次已经存在有效订单，应拒绝取消并返回 `TRIP_NOT_EDITABLE`。批量取消订单和退款属于后续版本。
+无有效订单时，班次在当前事务中直接进入 `CANCELLED`。
+
+存在有效订单时，接口接受取消请求并返回
+`CANCELLATION_PENDING`。后续通过 Outbox 和 RabbitMQ 编排：
+
+```text
+TripCancellationRequested
+→ 取消待支付订单并释放 LOCKED 座位
+→ 已支付订单进入 REFUND_PENDING 并释放 SOLD 座位
+→ 恢复汇总库存
+→ 写入 PaymentRefundRequired Outbox
+→ 等待所有退款实际完成
+→ TripCancellationBookingsSettled
+→ 班次最终进入 CANCELLED
+```
+
+消息消费者使用 `(consumer_name, event_id)` 唯一键保证幂等；退款使用
+`payment-refund:{paymentNumber}` 作为外部退款幂等键。请求重复提交时，
+`CANCELLATION_PENDING` 和 `CANCELLED` 都按当前状态幂等返回。
 
 ### 15.6 查询预约情况
 

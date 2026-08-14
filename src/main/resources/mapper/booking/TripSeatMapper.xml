@@ -32,6 +32,20 @@
           AND locked_by_order_no = #{bookingNumber}
     </update>
 
+    <update id="releaseSoldSeat">
+        UPDATE transport_trip_seat
+        SET status = 'AVAILABLE',
+            locked_by_order_no = NULL,
+            locked_by_user_id = NULL,
+            lock_expires_at = NULL,
+            version = version + 1,
+            updated_at = #{releasedAt}
+        WHERE trip_id = #{tripId}
+          AND seat_number = #{seatNumber}
+          AND status = 'SOLD'
+          AND locked_by_order_no = #{bookingNumber}
+    </update>
+
     <update id="confirmSeatSold">
         UPDATE transport_trip_seat
         SET status = 'SOLD',

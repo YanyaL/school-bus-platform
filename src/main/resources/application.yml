@@ -109,3 +109,12 @@ school-bus:
       dead-letter-exchange: ${BOOKING_EXPIRATION_DLX:schoolbus.booking.dlx}
       dead-letter-routing-key: ${BOOKING_EXPIRATION_DEAD_ROUTING_KEY:booking.expiration.dead}
       dead-letter-queue: ${BOOKING_EXPIRATION_DLQ:schoolbus.booking.expiration.dlq}
+    trip-cancellation:
+      exchange: ${TRIP_CANCELLATION_EXCHANGE:schoolbus.transport.events}
+      requested-routing-key: ${TRIP_CANCELLATION_REQUESTED_ROUTING_KEY:trip.cancellation.requested}
+      requested-queue: ${TRIP_CANCELLATION_REQUESTED_QUEUE:schoolbus.booking.trip-cancellation}
+      settled-routing-key: ${TRIP_CANCELLATION_SETTLED_ROUTING_KEY:trip.cancellation.settled}
+      settled-queue: ${TRIP_CANCELLATION_SETTLED_QUEUE:schoolbus.transport.trip-cancellation-settled}
+      dead-letter-exchange: ${TRIP_CANCELLATION_DLX:schoolbus.transport.dlx}
+      dead-letter-routing-key: ${TRIP_CANCELLATION_DEAD_ROUTING_KEY:trip.cancellation.dead}
+      dead-letter-queue: ${TRIP_CANCELLATION_DLQ:schoolbus.transport.trip-cancellation.dlq}

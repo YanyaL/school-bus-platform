@@ -43,6 +43,9 @@ class TripCancellationApplicationServiceTest {
     private TripBookingStatePort bookingStatePort;
 
     @Mock
+    private TripCancellationOutboxPort cancellationOutboxPort;
+
+    @Mock
     private ApplicationEventPublisher eventPublisher;
 
     private TripCancellationApplicationService service;
@@ -52,6 +55,7 @@ class TripCancellationApplicationServiceTest {
         service = new TripCancellationApplicationService(
                 tripRepository,
                 bookingStatePort,
+                cancellationOutboxPort,
                 eventPublisher,
                 Clock.fixed(NOW, ZoneOffset.UTC)
         );
@@ -95,19 +99,28 @@ class TripCancellationApplicationServiceTest {
     }
 
     @Test
-    void shouldRejectPublishedTripWithActiveBookings() {
+    void shouldStartSagaForPublishedTripWithActiveBookings() {
         BusTrip trip = tripIn(TripStatus.OPEN_FOR_BOOKING);
         when(tripRepository.findByIdForUpdate(TripId.of(5001L)))
                 .thenReturn(Optional.of(trip));
         when(bookingStatePort.hasActiveBookings(5001L))
                 .thenReturn(true);
 
-        assertThatThrownBy(() -> service.cancel(
-                new CancelTripCommand(5001L, 1L)
-        )).isInstanceOf(TripHasActiveBookingsException.class);
+        when(tripRepository.save(trip)).thenReturn(trip);
 
-        verify(tripRepository, never()).save(trip);
-        verifyNoInteractions(eventPublisher);
+        AdminTripView result = service.cancel(
+                new CancelTripCommand(5001L, 1L)
+        );
+
+        assertThat(result.status())
+                .isEqualTo(TripStatus.CANCELLATION_PENDING);
+        assertThat(result.version()).isEqualTo(2L);
+        verify(cancellationOutboxPort).append(
+                new TripCancellationRequestedEvent(5001L, 2L, NOW)
+        );
+        verify(eventPublisher).publishEvent(
+                new TripAvailabilityChangedEvent(NOW)
+        );
     }
 
     @Test
@@ -122,7 +135,11 @@ class TripCancellationApplicationServiceTest {
 
         assertThat(result.status()).isEqualTo(TripStatus.CANCELLED);
         verify(tripRepository, never()).save(trip);
-        verifyNoInteractions(bookingStatePort, eventPublisher);
+        verifyNoInteractions(
+                bookingStatePort,
+                cancellationOutboxPort,
+                eventPublisher
+        );
     }
 
     @Test

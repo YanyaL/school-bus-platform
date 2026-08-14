@@ -41,15 +41,18 @@ class PaymentRefundTransactionTest {
 
     private PaymentRecordRepository paymentRepository;
     private ConsumedEventRepository consumedRepository;
+    private RefundedBookingPort refundedBookingPort;
     private PaymentRefundTransaction transaction;
 
     @BeforeEach
     void setUp() {
         paymentRepository = mock(PaymentRecordRepository.class);
         consumedRepository = mock(ConsumedEventRepository.class);
+        refundedBookingPort = mock(RefundedBookingPort.class);
         transaction = new PaymentRefundTransaction(
                 paymentRepository,
                 consumedRepository,
+                refundedBookingPort,
                 Clock.fixed(NOW, ZoneOffset.UTC)
         );
     }
@@ -94,6 +97,10 @@ class PaymentRefundTransactionTest {
                 NOW
         );
         verify(paymentRepository).save(payment);
+        verify(refundedBookingPort).markRefunded(
+                BookingNumber.of(BOOKING_NO),
+                NOW
+        );
     }
 
     @Test

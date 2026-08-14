@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.schoolbus.transport.infrastructure.outbox.TripCancellationOutboxMapper">
+
+    <insert id="insertEvent">
+        INSERT INTO event_outbox (
+            event_id, context_name, aggregate_type, aggregate_id,
+            aggregate_version, event_type, payload, trace_id,
+            status, retry_count, next_retry_at, occurred_at,
+            created_at, published_at, version
+        ) VALUES (
+            #{eventId}, #{contextName}, #{aggregateType}, #{aggregateId},
+            #{aggregateVersion}, #{eventType}, CAST(#{payload} AS JSON),
+            #{traceId}, 'NEW', 0, NULL, #{occurredAt},
+            #{createdAt}, NULL, 0
+        )
+    </insert>
+
+</mapper>
