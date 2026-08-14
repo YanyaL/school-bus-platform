@@ -15,6 +15,8 @@ public interface VehicleMapper {
 
     VehicleDataObject selectById(@Param("id") long id);
 
+    VehicleDataObject selectByIdForUpdate(@Param("id") long id);
+
     VehicleDataObject selectByVehicleNumber(
             @Param("vehicleNumber") String vehicleNumber
     );

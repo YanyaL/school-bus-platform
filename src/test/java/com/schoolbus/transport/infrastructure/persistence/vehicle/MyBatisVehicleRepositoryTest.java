@@ -140,6 +140,21 @@ class MyBatisVehicleRepositoryTest {
     }
 
     @Test
+    void shouldFindVehicleByIdForUpdate() {
+        VehicleDataObject dataObject = dataObject();
+        when(vehicleMapper.selectByIdForUpdate(3001L))
+                .thenReturn(dataObject);
+
+        Optional<Vehicle> vehicle = repository.findByIdForUpdate(
+                VehicleId.of(3001L)
+        );
+
+        assertThat(vehicle).isPresent();
+        assertThat(vehicle.orElseThrow().id())
+                .isEqualTo(VehicleId.of(3001L));
+    }
+
+    @Test
     void shouldBatchInsertSeatTemplate() {
         when(vehicleSeatMapper.insertSeats(
                 eq(3001L),

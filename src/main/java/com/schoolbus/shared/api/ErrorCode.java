@@ -74,6 +74,23 @@ public enum ErrorCode {
             HttpStatus.BAD_REQUEST,
             "route definition is invalid"
     ),
+    TRIP_NOT_FOUND(HttpStatus.NOT_FOUND, "trip does not exist"),
+    INVALID_TRIP_SCHEDULE(
+            HttpStatus.BAD_REQUEST,
+            "trip schedule is invalid"
+    ),
+    VEHICLE_NOT_AVAILABLE_FOR_TRIP(
+            HttpStatus.CONFLICT,
+            "vehicle is not available for trip scheduling"
+    ),
+    ROUTE_NOT_AVAILABLE_FOR_TRIP(
+            HttpStatus.CONFLICT,
+            "route is not available for trip scheduling"
+    ),
+    VEHICLE_SCHEDULE_CONFLICT(
+            HttpStatus.CONFLICT,
+            "vehicle already has an overlapping trip"
+    ),
     VERSION_CONFLICT(HttpStatus.CONFLICT, "资源已被其他请求修改"),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "系统暂时无法处理请求");
 

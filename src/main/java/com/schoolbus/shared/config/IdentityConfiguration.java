@@ -9,6 +9,8 @@ import com.schoolbus.payment.domain.PaymentIdGenerator;
 import com.schoolbus.payment.infrastructure.identity.SnowflakePaymentIdGenerator;
 import com.schoolbus.shared.infrastructure.identity.SnowflakeIdGenerator;
 import com.schoolbus.shared.infrastructure.identity.SnowflakeUserIdGenerator;
+import com.schoolbus.transport.domain.trip.TripIdGenerator;
+import com.schoolbus.transport.infrastructure.identity.SnowflakeTripIdGenerator;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -52,5 +54,12 @@ public class IdentityConfiguration {
             SnowflakeIdGenerator snowflakeIdGenerator
     ) {
         return new SnowflakePaymentIdGenerator(snowflakeIdGenerator);
+    }
+
+    @Bean
+    TripIdGenerator tripIdGenerator(
+            SnowflakeIdGenerator snowflakeIdGenerator
+    ) {
+        return new SnowflakeTripIdGenerator(snowflakeIdGenerator);
     }
 }

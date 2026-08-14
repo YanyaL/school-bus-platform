@@ -65,6 +65,21 @@
         WHERE id = #{id}
     </select>
 
+    <select id="selectByIdForUpdate" resultMap="VehicleResultMap">
+        SELECT
+            id,
+            vehicle_no,
+            license_plate,
+            seat_count,
+            status,
+            version,
+            created_at,
+            updated_at
+        FROM transport_vehicle
+        WHERE id = #{id}
+        FOR UPDATE
+    </select>
+
     <select id="selectByVehicleNumber" resultMap="VehicleResultMap">
         SELECT
             id,

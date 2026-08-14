@@ -151,6 +151,32 @@ class TripMapperIntegrationTest {
                 .containsExactly(1301L);
     }
 
+    @Test
+    void shouldDetectOverlappingVehicleSchedule() {
+        insertTrip(1501L, "DRAFT", 30, 60);
+
+        boolean conflict = tripMapper.existsVehicleScheduleConflict(
+                3101L,
+                NOW.plusMinutes(90),
+                NOW.plusMinutes(130)
+        );
+
+        assertThat(conflict).isTrue();
+    }
+
+    @Test
+    void shouldAllowBackToBackVehicleSchedule() {
+        insertTrip(1601L, "DRAFT", 30, 60);
+
+        boolean conflict = tripMapper.existsVehicleScheduleConflict(
+                3101L,
+                NOW.plusMinutes(120),
+                NOW.plusMinutes(160)
+        );
+
+        assertThat(conflict).isFalse();
+    }
+
     private void insertTrip(
             long id,
             String status,

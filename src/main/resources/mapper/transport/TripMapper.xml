@@ -69,6 +69,43 @@
         LIMIT 1
     </select>
 
+    <select id="selectAll" resultMap="TripResultMap">
+        SELECT
+            id,
+            trip_no,
+            vehicle_id,
+            route_id,
+            departure_time,
+            booking_deadline,
+            price,
+            status,
+            version,
+            created_at,
+            updated_at
+        FROM transport_trip
+        <where>
+            <if test="status != null">
+                status = #{status}
+            </if>
+        </where>
+        ORDER BY departure_time DESC, id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="existsVehicleScheduleConflict" resultType="boolean">
+        SELECT CASE WHEN COUNT(*) &gt; 0 THEN TRUE ELSE FALSE END
+        FROM transport_trip trip
+        INNER JOIN transport_route route
+                ON route.id = trip.route_id
+        WHERE trip.vehicle_id = #{vehicleId}
+          AND trip.status NOT IN ('COMPLETED', 'CANCELLED')
+          AND trip.departure_time &lt; #{arrivalTime}
+          AND DATE_ADD(
+                trip.departure_time,
+                INTERVAL route.estimated_duration_minutes MINUTE
+              ) &gt; #{departureTime}
+    </select>
+
     <select id="selectBookableTrips" resultMap="TripResultMap">
         SELECT
             id,

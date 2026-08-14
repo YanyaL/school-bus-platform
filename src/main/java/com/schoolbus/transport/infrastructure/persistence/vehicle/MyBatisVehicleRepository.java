@@ -87,6 +87,18 @@ public class MyBatisVehicleRepository implements VehicleRepository {
     }
 
     @Override
+    public Optional<Vehicle> findByIdForUpdate(VehicleId vehicleId) {
+        VehicleId validatedId = Objects.requireNonNull(
+                vehicleId,
+                "vehicleId must not be null"
+        );
+        VehicleDataObject dataObject = vehicleMapper.selectByIdForUpdate(
+                validatedId.value()
+        );
+        return Optional.ofNullable(dataObject).map(this::toDomain);
+    }
+
+    @Override
     public Optional<Vehicle> findByVehicleNumber(VehicleNumber vehicleNumber) {
         VehicleNumber validatedNumber = Objects.requireNonNull(
                 vehicleNumber,

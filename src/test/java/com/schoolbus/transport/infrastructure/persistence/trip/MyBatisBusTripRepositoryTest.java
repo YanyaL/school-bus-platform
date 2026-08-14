@@ -129,6 +129,44 @@ class MyBatisBusTripRepositoryTest {
     }
 
     @Test
+    void shouldListTripsForAdminWithStatusAndPagination() {
+        TripDataObject dataObject = dataObject();
+        when(tripMapper.selectAll("DRAFT", 20, 20))
+                .thenReturn(List.of(dataObject));
+
+        List<BusTrip> result = repository.findAll(
+                TripStatus.DRAFT,
+                20,
+                20
+        );
+
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst().status()).isEqualTo(TripStatus.DRAFT);
+    }
+
+    @Test
+    void shouldCheckVehicleScheduleConflictUsingUtcTimes() {
+        LocalDateTime departure = LocalDateTime.ofInstant(
+                DEPARTURE_TIME,
+                ZoneOffset.UTC
+        );
+        LocalDateTime arrival = departure.plusMinutes(40);
+        when(tripMapper.existsVehicleScheduleConflict(
+                3001L,
+                departure,
+                arrival
+        )).thenReturn(true);
+
+        boolean result = repository.existsVehicleScheduleConflict(
+                VehicleId.of(3001L),
+                DEPARTURE_TIME,
+                DEPARTURE_TIME.plusSeconds(40 * 60L)
+        );
+
+        assertThat(result).isTrue();
+    }
+
+    @Test
     void shouldRestoreDueOpenTrips() {
         TripDataObject dataObject = dataObject();
         dataObject.setStatus("OPEN_FOR_BOOKING");

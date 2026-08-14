@@ -82,6 +82,57 @@ public class MyBatisBusTripRepository
     }
 
     @Override
+    public List<BusTrip> findAll(
+            TripStatus status,
+            int offset,
+            int limit
+    ) {
+        if (offset < 0) {
+            throw new IllegalArgumentException(
+                    "offset must not be negative"
+            );
+        }
+        return tripMapper.selectAll(
+                        status == null ? null : status.name(),
+                        offset,
+                        requirePositiveLimit(limit)
+                )
+                .stream()
+                .map(this::toDomain)
+                .toList();
+    }
+
+    @Override
+    public boolean existsVehicleScheduleConflict(
+            VehicleId vehicleId,
+            Instant departureTime,
+            Instant arrivalTime
+    ) {
+        VehicleId validatedVehicleId = Objects.requireNonNull(
+                vehicleId,
+                "vehicleId must not be null"
+        );
+        Instant validatedDepartureTime = Objects.requireNonNull(
+                departureTime,
+                "departureTime must not be null"
+        );
+        Instant validatedArrivalTime = Objects.requireNonNull(
+                arrivalTime,
+                "arrivalTime must not be null"
+        );
+        if (!validatedDepartureTime.isBefore(validatedArrivalTime)) {
+            throw new IllegalArgumentException(
+                    "departureTime must be before arrivalTime"
+            );
+        }
+        return tripMapper.existsVehicleScheduleConflict(
+                validatedVehicleId.value(),
+                toDatabaseTime(validatedDepartureTime),
+                toDatabaseTime(validatedArrivalTime)
+        );
+    }
+
+    @Override
     public List<BusTrip> findBookableTrips(
             Instant now,
             int limit

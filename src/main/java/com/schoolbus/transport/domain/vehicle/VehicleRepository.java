@@ -9,6 +9,8 @@ public interface VehicleRepository {
 
     Optional<Vehicle> findById(VehicleId vehicleId);
 
+    Optional<Vehicle> findByIdForUpdate(VehicleId vehicleId);
+
     Optional<Vehicle> findByVehicleNumber(VehicleNumber vehicleNumber);
 
     Optional<Vehicle> findByLicensePlate(LicensePlate licensePlate);

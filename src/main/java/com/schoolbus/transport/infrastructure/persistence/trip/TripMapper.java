@@ -13,6 +13,18 @@ public interface TripMapper {
 
     TripDataObject selectById(@Param("id") Long id);
 
+    List<TripDataObject> selectAll(
+            @Param("status") String status,
+            @Param("offset") int offset,
+            @Param("limit") int limit
+    );
+
+    boolean existsVehicleScheduleConflict(
+            @Param("vehicleId") long vehicleId,
+            @Param("departureTime") LocalDateTime departureTime,
+            @Param("arrivalTime") LocalDateTime arrivalTime
+    );
+
     List<TripDataObject> selectBookableTrips(
             @Param("now") LocalDateTime now,
             @Param("limit") int limit
