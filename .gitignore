@@ -19,3 +19,6 @@ application-local-private.yml
 
 hs_err_pid*
 replay_pid*
+
+scripts/load-test/results/*.json
+!scripts/load-test/results/.gitkeep
