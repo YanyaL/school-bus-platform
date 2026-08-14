@@ -1,9 +1,11 @@
 package com.schoolbus.transport.infrastructure.persistence.route;
 
+import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
 
+@Mapper
 public interface RouteMapper {
 
     int insertRoute(RouteDataObject route);

@@ -6,6 +6,7 @@ import com.schoolbus.booking.application.booking.BookingCreationTransaction;
 import com.schoolbus.booking.application.booking.BookingExpirationApplicationService;
 import com.schoolbus.booking.application.booking.BookingExpirationResult;
 import com.schoolbus.booking.application.booking.BookingExpirationTransaction;
+import com.schoolbus.booking.application.booking.BookingPaymentDeadlineEvent;
 import com.schoolbus.booking.application.booking.CreateBookingCommand;
 import com.schoolbus.booking.application.booking.CreateBookingResult;
 import com.schoolbus.booking.application.booking.TripSeatReservationPort;
@@ -177,9 +178,15 @@ class BookingPersistenceIntegrationTest {
                 Integer.class
         )).isEqualTo(1);
         assertThat(jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM event_outbox",
-                Integer.class
-        )).isZero();
+                """
+                SELECT COUNT(*)
+                FROM event_outbox
+                WHERE event_type = ?
+                  AND status = 'NEW'
+                """,
+                Integer.class,
+                BookingPaymentDeadlineEvent.TYPE
+        )).isEqualTo(1);
     }
 
     @Test

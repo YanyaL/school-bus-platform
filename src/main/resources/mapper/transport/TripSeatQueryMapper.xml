@@ -5,6 +5,27 @@
 
 <mapper namespace="com.schoolbus.transport.infrastructure.persistence.seat.TripSeatQueryMapper">
 
+    <insert id="insertAvailableSeats">
+        INSERT INTO transport_trip_seat (
+            trip_id,
+            seat_number,
+            status,
+            version,
+            created_at,
+            updated_at
+        ) VALUES
+        <foreach collection="seatNumbers" item="seatNumber" separator=",">
+            (
+                #{tripId},
+                #{seatNumber},
+                'AVAILABLE',
+                0,
+                #{initializedAt},
+                #{initializedAt}
+            )
+        </foreach>
+    </insert>
+
     <resultMap
             id="TripSeatStatusResultMap"
             type="com.schoolbus.transport.infrastructure.persistence.seat.TripSeatStatusDataObject">

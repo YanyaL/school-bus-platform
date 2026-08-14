@@ -3,8 +3,12 @@ package com.schoolbus.transport.api.admin;
 import com.schoolbus.shared.api.GlobalExceptionHandler;
 import com.schoolbus.shared.config.SecurityConfig;
 import com.schoolbus.transport.application.trip.AdminTripView;
+import com.schoolbus.transport.application.trip.TripCancellationApplicationService;
+import com.schoolbus.transport.application.trip.TripHasActiveBookingsException;
 import com.schoolbus.transport.application.trip.TripManagementApplicationService;
 import com.schoolbus.transport.application.trip.TripNotFoundException;
+import com.schoolbus.transport.application.trip.TripNotPublishableException;
+import com.schoolbus.transport.application.trip.TripPublicationApplicationService;
 import com.schoolbus.transport.application.trip.VehicleScheduleConflictException;
 import com.schoolbus.transport.domain.trip.TripStatus;
 import org.junit.jupiter.api.Test;
@@ -51,6 +55,12 @@ class AdminTripControllerTest {
 
     @MockitoBean
     private TripManagementApplicationService applicationService;
+
+    @MockitoBean
+    private TripPublicationApplicationService publicationService;
+
+    @MockitoBean
+    private TripCancellationApplicationService cancellationService;
 
     @MockitoBean
     private JwtDecoder jwtDecoder;
@@ -210,6 +220,192 @@ class AdminTripControllerTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code")
                         .value("VEHICLE_SCHEDULE_CONFLICT"));
+    }
+
+    @Test
+    void shouldPublishDraftForAdmin() throws Exception {
+        AdminTripView published = new AdminTripView(
+                5001L,
+                "33333333-3333-3333-3333-333333333333",
+                3001L,
+                2001L,
+                DEPARTURE_TIME,
+                BOOKING_DEADLINE,
+                new BigDecimal("5.00"),
+                TripStatus.OPEN_FOR_BOOKING,
+                1L,
+                Instant.parse("2026-08-14T00:00:00Z"),
+                Instant.parse("2026-08-14T00:05:00Z")
+        );
+        when(publicationService.publish(any())).thenReturn(published);
+
+        mockMvc.perform(
+                        post("/api/v1/admin/trips/5001/publication")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"version\":0}")
+                                .with(jwt().authorities(
+                                        new SimpleGrantedAuthority(
+                                                "ROLE_ADMIN"
+                                        )
+                                ))
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status")
+                        .value("OPEN_FOR_BOOKING"))
+                .andExpect(jsonPath("$.data.version").value(1));
+
+        verify(publicationService).publish(any());
+    }
+
+    @Test
+    void shouldRejectStudentPublication() throws Exception {
+        mockMvc.perform(
+                        post("/api/v1/admin/trips/5001/publication")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"version\":0}")
+                                .with(jwt().authorities(
+                                        new SimpleGrantedAuthority(
+                                                "ROLE_STUDENT"
+                                        )
+                                ))
+                )
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(publicationService);
+    }
+
+    @Test
+    void shouldRejectInvalidPublicationVersion() throws Exception {
+        mockMvc.perform(
+                        post("/api/v1/admin/trips/5001/publication")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"version\":-1}")
+                                .with(jwt().authorities(
+                                        new SimpleGrantedAuthority(
+                                                "ROLE_ADMIN"
+                                        )
+                                ))
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code")
+                        .value("VALIDATION_ERROR"));
+
+        verifyNoInteractions(publicationService);
+    }
+
+    @Test
+    void shouldReturnConflictWhenTripCannotBePublished() throws Exception {
+        when(publicationService.publish(any()))
+                .thenThrow(new TripNotPublishableException(
+                        5001L,
+                        "only DRAFT trips can be published"
+                ));
+
+        mockMvc.perform(
+                        post("/api/v1/admin/trips/5001/publication")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"version\":1}")
+                                .with(jwt().authorities(
+                                        new SimpleGrantedAuthority(
+                                                "ROLE_ADMIN"
+                                        )
+                                ))
+                )
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code")
+                        .value("TRIP_NOT_PUBLISHABLE"));
+    }
+
+    @Test
+    void shouldCancelTripForAdmin() throws Exception {
+        AdminTripView cancelled = new AdminTripView(
+                5001L,
+                "33333333-3333-3333-3333-333333333333",
+                3001L,
+                2001L,
+                DEPARTURE_TIME,
+                BOOKING_DEADLINE,
+                new BigDecimal("5.00"),
+                TripStatus.CANCELLED,
+                1L,
+                Instant.parse("2026-08-14T00:00:00Z"),
+                Instant.parse("2026-08-14T00:05:00Z")
+        );
+        when(cancellationService.cancel(any())).thenReturn(cancelled);
+
+        mockMvc.perform(
+                        post("/api/v1/admin/trips/5001/cancellation")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"version\":0}")
+                                .with(jwt().authorities(
+                                        new SimpleGrantedAuthority(
+                                                "ROLE_ADMIN"
+                                        )
+                                ))
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status")
+                        .value("CANCELLED"))
+                .andExpect(jsonPath("$.data.version").value(1));
+
+        verify(cancellationService).cancel(any());
+    }
+
+    @Test
+    void shouldRejectStudentCancellation() throws Exception {
+        mockMvc.perform(
+                        post("/api/v1/admin/trips/5001/cancellation")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"version\":0}")
+                                .with(jwt().authorities(
+                                        new SimpleGrantedAuthority(
+                                                "ROLE_STUDENT"
+                                        )
+                                ))
+                )
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(cancellationService);
+    }
+
+    @Test
+    void shouldRejectInvalidCancellationVersion() throws Exception {
+        mockMvc.perform(
+                        post("/api/v1/admin/trips/5001/cancellation")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"version\":-1}")
+                                .with(jwt().authorities(
+                                        new SimpleGrantedAuthority(
+                                                "ROLE_ADMIN"
+                                        )
+                                ))
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code")
+                        .value("VALIDATION_ERROR"));
+
+        verifyNoInteractions(cancellationService);
+    }
+
+    @Test
+    void shouldReturnConflictWhenTripHasActiveBookings()
+            throws Exception {
+        when(cancellationService.cancel(any()))
+                .thenThrow(new TripHasActiveBookingsException(5001L));
+
+        mockMvc.perform(
+                        post("/api/v1/admin/trips/5001/cancellation")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"version\":1}")
+                                .with(jwt().authorities(
+                                        new SimpleGrantedAuthority(
+                                                "ROLE_ADMIN"
+                                        )
+                                ))
+                )
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code")
+                        .value("TRIP_HAS_ACTIVE_BOOKINGS"));
     }
 
     private String validRequest() {

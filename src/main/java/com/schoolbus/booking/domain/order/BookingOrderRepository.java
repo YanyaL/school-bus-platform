@@ -26,6 +26,10 @@ public interface BookingOrderRepository {
             TripReference tripReference
     );
 
+    boolean existsActiveByTripReference(
+            TripReference tripReference
+    );
+
     List<BookingOrder> findExpiredPendingOrders(
             Instant expiredAt,
             int limit

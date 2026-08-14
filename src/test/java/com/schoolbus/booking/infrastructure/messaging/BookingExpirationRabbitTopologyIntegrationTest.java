@@ -143,11 +143,16 @@ class BookingExpirationRabbitTopologyIntegrationTest {
 
         await()
                 .atMost(Duration.ofSeconds(5))
-                .untilAsserted(() -> assertThat(
-                        rabbitTemplate.receiveAndConvert(
-                                PROPERTIES.processingQueue()
-                        )
-                ).isEqualTo(payload));
+                .untilAsserted(() -> {
+                    Object received = rabbitTemplate.receiveAndConvert(
+                            PROPERTIES.processingQueue()
+                    );
+                    assertThat(received).isInstanceOf(byte[].class);
+                    assertThat(new String(
+                            (byte[]) received,
+                            StandardCharsets.UTF_8
+                    )).isEqualTo(payload);
+                });
     }
 
     @Test

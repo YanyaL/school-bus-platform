@@ -39,7 +39,9 @@ public class LocalBookableTripGateway
                 "tripReference must not be null"
         );
         return busTripRepository
-                .findById(TripId.of(validatedReference.value()))
+                .findByIdForShare(
+                        TripId.of(validatedReference.value())
+                )
                 .map(this::toSnapshot);
     }
 

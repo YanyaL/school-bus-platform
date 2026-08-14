@@ -12,6 +12,10 @@ public interface BusTripRepository {
 
     Optional<BusTrip> findById(TripId tripId);
 
+    Optional<BusTrip> findByIdForShare(TripId tripId);
+
+    Optional<BusTrip> findByIdForUpdate(TripId tripId);
+
     List<BusTrip> findAll(
             TripStatus status,
             int offset,

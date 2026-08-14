@@ -48,7 +48,7 @@ class LocalBookableTripGatewayTest {
     void shouldTranslateTransportTripToBookingSnapshot() {
         BusTrip trip = draftTrip();
         trip.openForBooking(CREATED_AT.plusSeconds(60));
-        when(busTripRepository.findById(TripId.of(2001L)))
+        when(busTripRepository.findByIdForShare(TripId.of(2001L)))
                 .thenReturn(Optional.of(trip));
 
         BookableTripSnapshot snapshot = gateway
@@ -66,7 +66,7 @@ class LocalBookableTripGatewayTest {
 
     @Test
     void shouldReturnEmptyWhenTransportTripDoesNotExist() {
-        when(busTripRepository.findById(TripId.of(2001L)))
+        when(busTripRepository.findByIdForShare(TripId.of(2001L)))
                 .thenReturn(Optional.empty());
 
         assertThat(

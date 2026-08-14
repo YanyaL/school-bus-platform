@@ -810,7 +810,7 @@ MVP 只允许修改 `DRAFT`。已发布班次如需变更，后续版本应制�
 ### 15.4 发布班次
 
 ```http
-POST /api/v1/admin/trips/{tripNo}/publish
+POST /api/v1/admin/trips/{tripId}/publication
 ```
 
 请求：
@@ -834,7 +834,7 @@ POST /api/v1/admin/trips/{tripNo}/publish
 ### 15.5 取消班次
 
 ```http
-POST /api/v1/admin/trips/{tripNo}/cancellation
+POST /api/v1/admin/trips/{tripId}/cancellation
 ```
 
 请求：
@@ -875,8 +875,8 @@ GET /api/v1/admin/trips/{tripNo}/bookings?page=0&size=50
 | `GET` | `/api/v1/admin/trips` | 管理员班次列表 |
 | `GET` | `/api/v1/admin/trips/{tripNo}` | 管理员班次详情 |
 | `PUT` | `/api/v1/admin/trips/{tripNo}` | 修改班次草稿 |
-| `POST` | `/api/v1/admin/trips/{tripNo}/publish` | 发布班次 |
-| `POST` | `/api/v1/admin/trips/{tripNo}/cancellation` | 取消班次 |
+| `POST` | `/api/v1/admin/trips/{tripId}/publication` | 发布班次 |
+| `POST` | `/api/v1/admin/trips/{tripId}/cancellation` | 取消班次 |
 | `GET` | `/api/v1/admin/trips/{tripNo}/bookings` | 查询预约情况 |
 
 ## 17. 并发与幂等契约

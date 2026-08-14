@@ -30,9 +30,10 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 import java.math.BigDecimal;
-import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -52,7 +53,7 @@ import static org.awaitility.Awaitility.await;
 class BookingExpirationMessagingIntegrationTest {
 
     private static final TripReference TRIP = TripReference.of(9101L);
-    private static final Instant BASE_TIME = Instant.parse("2026-08-12T10:00:00Z");
+    private static final Instant BASE_TIME = Instant.now();
     private static final int REDIS_PORT = 6379;
 
     @Container
@@ -191,7 +192,10 @@ class BookingExpirationMessagingIntegrationTest {
     }
 
     private void seedTrip() {
-        Timestamp createdAt = Timestamp.from(BASE_TIME);
+        LocalDateTime createdAt = LocalDateTime.ofInstant(
+                BASE_TIME,
+                ZoneOffset.UTC
+        );
         jdbcTemplate.update(
                 """
                 INSERT INTO transport_vehicle (
@@ -240,8 +244,14 @@ class BookingExpirationMessagingIntegrationTest {
                 UUID.randomUUID().toString(),
                 9102L,
                 9102L,
-                Timestamp.from(BASE_TIME.plusSeconds(7200)),
-                Timestamp.from(BASE_TIME.plusSeconds(3600)),
+                LocalDateTime.ofInstant(
+                        BASE_TIME.plusSeconds(7200),
+                        ZoneOffset.UTC
+                ),
+                LocalDateTime.ofInstant(
+                        BASE_TIME.plusSeconds(3600),
+                        ZoneOffset.UTC
+                ),
                 new BigDecimal("5.50"),
                 "OPEN_FOR_BOOKING",
                 0L,
@@ -251,7 +261,10 @@ class BookingExpirationMessagingIntegrationTest {
     }
 
     private void seedSeat(String seatNumber) {
-        Timestamp createdAt = Timestamp.from(BASE_TIME);
+        LocalDateTime createdAt = LocalDateTime.ofInstant(
+                BASE_TIME,
+                ZoneOffset.UTC
+        );
         jdbcTemplate.update(
                 """
                 INSERT INTO transport_trip_seat (

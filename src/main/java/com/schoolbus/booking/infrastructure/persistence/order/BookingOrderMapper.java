@@ -26,6 +26,8 @@ public interface BookingOrderMapper {
             @Param("tripId") Long tripId
     );
 
+    boolean existsActiveByTripId(@Param("tripId") Long tripId);
+
     int updateWithVersion(
             @Param("bookingOrder") BookingOrderDataObject bookingOrder,
             @Param("expectedVersion") Long expectedVersion

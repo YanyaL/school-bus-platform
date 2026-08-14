@@ -82,6 +82,22 @@ public class MyBatisBusTripRepository
     }
 
     @Override
+    public Optional<BusTrip> findByIdForShare(TripId tripId) {
+        return findByIdUsing(
+                tripId,
+                tripMapper::selectByIdForShare
+        );
+    }
+
+    @Override
+    public Optional<BusTrip> findByIdForUpdate(TripId tripId) {
+        return findByIdUsing(
+                tripId,
+                tripMapper::selectByIdForUpdate
+        );
+    }
+
+    @Override
     public List<BusTrip> findAll(
             TripStatus status,
             int offset,
@@ -238,6 +254,23 @@ public class MyBatisBusTripRepository
                 ),
                 DATABASE_ZONE
         );
+    }
+
+    private Optional<BusTrip> findByIdUsing(
+            TripId tripId,
+            java.util.function.Function<Long, TripDataObject> query
+    ) {
+        TripId validatedTripId = Objects.requireNonNull(
+                tripId,
+                "tripId must not be null"
+        );
+        TripDataObject dataObject = Objects.requireNonNull(
+                query,
+                "query must not be null"
+        ).apply(validatedTripId.value());
+        return dataObject == null
+                ? Optional.empty()
+                : Optional.of(toDomain(dataObject));
     }
 
     private int requirePositiveLimit(int limit) {

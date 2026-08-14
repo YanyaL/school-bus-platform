@@ -89,6 +89,15 @@
         )
     </select>
 
+    <select id="existsActiveByTripId" resultType="boolean">
+        SELECT EXISTS (
+            SELECT 1
+            FROM booking_order
+            WHERE trip_id = #{tripId}
+              AND status IN ('PENDING_PAYMENT', 'PAID')
+        )
+    </select>
+
     <select
             id="selectExpiredPendingOrders"
             resultMap="BookingOrderResultMap">

@@ -226,18 +226,6 @@ public class TripManagementApplicationService {
     }
 
     private AdminTripView toView(BusTrip trip) {
-        return new AdminTripView(
-                trip.tripId().value(),
-                trip.tripNumber().toString(),
-                trip.vehicleId().value(),
-                trip.routeId().value(),
-                trip.departureTime(),
-                trip.bookingDeadline(),
-                trip.price().amount(),
-                trip.status(),
-                trip.version(),
-                trip.createdAt(),
-                trip.updatedAt()
-        );
+        return AdminTripView.from(trip);
     }
 }

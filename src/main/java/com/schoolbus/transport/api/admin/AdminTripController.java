@@ -2,8 +2,12 @@ package com.schoolbus.transport.api.admin;
 
 import com.schoolbus.shared.api.ApiResponse;
 import com.schoolbus.transport.application.trip.AdminTripView;
+import com.schoolbus.transport.application.trip.CancelTripCommand;
 import com.schoolbus.transport.application.trip.CreateTripDraftCommand;
+import com.schoolbus.transport.application.trip.PublishTripCommand;
 import com.schoolbus.transport.application.trip.TripManagementApplicationService;
+import com.schoolbus.transport.application.trip.TripCancellationApplicationService;
+import com.schoolbus.transport.application.trip.TripPublicationApplicationService;
 import com.schoolbus.transport.domain.trip.TripStatus;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -32,13 +36,25 @@ import java.util.Objects;
 public class AdminTripController {
 
     private final TripManagementApplicationService applicationService;
+    private final TripPublicationApplicationService publicationService;
+    private final TripCancellationApplicationService cancellationService;
 
     public AdminTripController(
-            TripManagementApplicationService applicationService
+            TripManagementApplicationService applicationService,
+            TripPublicationApplicationService publicationService,
+            TripCancellationApplicationService cancellationService
     ) {
         this.applicationService = Objects.requireNonNull(
                 applicationService,
                 "applicationService must not be null"
+        );
+        this.publicationService = Objects.requireNonNull(
+                publicationService,
+                "publicationService must not be null"
+        );
+        this.cancellationService = Objects.requireNonNull(
+                cancellationService,
+                "cancellationService must not be null"
         );
     }
 
@@ -91,5 +107,30 @@ public class AdminTripController {
                         applicationService.findById(tripId)
                 )
         );
+    }
+
+    @PostMapping("/{tripId}/publication")
+    public ApiResponse<AdminTripResponse> publishTrip(
+            @PathVariable long tripId,
+            @Valid @RequestBody PublishTripRequest request
+    ) {
+        AdminTripView view = publicationService.publish(
+                new PublishTripCommand(
+                        tripId,
+                        request.version()
+                )
+        );
+        return ApiResponse.success(AdminTripResponse.from(view));
+    }
+
+    @PostMapping("/{tripId}/cancellation")
+    public ApiResponse<AdminTripResponse> cancelTrip(
+            @PathVariable long tripId,
+            @Valid @RequestBody CancelTripRequest request
+    ) {
+        AdminTripView view = cancellationService.cancel(
+                new CancelTripCommand(tripId, request.version())
+        );
+        return ApiResponse.success(AdminTripResponse.from(view));
     }
 }

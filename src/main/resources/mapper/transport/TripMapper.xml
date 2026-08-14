@@ -69,6 +69,44 @@
         LIMIT 1
     </select>
 
+    <select id="selectByIdForShare" resultMap="TripResultMap">
+        SELECT
+            id,
+            trip_no,
+            vehicle_id,
+            route_id,
+            departure_time,
+            booking_deadline,
+            price,
+            status,
+            version,
+            created_at,
+            updated_at
+        FROM transport_trip
+        WHERE id = #{id}
+        LIMIT 1
+        FOR SHARE
+    </select>
+
+    <select id="selectByIdForUpdate" resultMap="TripResultMap">
+        SELECT
+            id,
+            trip_no,
+            vehicle_id,
+            route_id,
+            departure_time,
+            booking_deadline,
+            price,
+            status,
+            version,
+            created_at,
+            updated_at
+        FROM transport_trip
+        WHERE id = #{id}
+        LIMIT 1
+        FOR UPDATE
+    </select>
+
     <select id="selectAll" resultMap="TripResultMap">
         SELECT
             id,

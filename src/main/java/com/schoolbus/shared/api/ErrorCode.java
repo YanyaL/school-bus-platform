@@ -91,6 +91,22 @@ public enum ErrorCode {
             HttpStatus.CONFLICT,
             "vehicle already has an overlapping trip"
     ),
+    TRIP_NOT_PUBLISHABLE(
+            HttpStatus.CONFLICT,
+            "trip cannot be published"
+    ),
+    TRIP_SEAT_TEMPLATE_INVALID(
+            HttpStatus.CONFLICT,
+            "vehicle seat template is missing or inconsistent"
+    ),
+    TRIP_NOT_CANCELLABLE(
+            HttpStatus.CONFLICT,
+            "trip cannot be cancelled in its current status"
+    ),
+    TRIP_HAS_ACTIVE_BOOKINGS(
+            HttpStatus.CONFLICT,
+            "trip has active bookings and requires coordinated cancellation"
+    ),
     VERSION_CONFLICT(HttpStatus.CONFLICT, "资源已被其他请求修改"),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "系统暂时无法处理请求");
 
