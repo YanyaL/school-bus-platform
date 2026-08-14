@@ -974,7 +974,9 @@ normalized request body
 
 ## 18. 安全约束
 
-1. 注册和登录需要按 IP、学号维度限流。
+1. 当前使用 Sentinel 对登录、创建订单和支付回调做单实例资源级 QPS 限流，
+   被拒绝时统一返回 `429 RATE_LIMITED`。按 IP、学号或用户维度的热点参数限流
+   留到网关或 Sentinel 参数流控阶段实现。
 2. 密码只进入认证命令，禁止写入普通日志。
 3. JWT 签名密钥从环境变量或密钥系统读取，不能提交到 Git。
 4. 管理员接口使用方法级授权作为第二道保护。
@@ -982,6 +984,18 @@ normalized request body
 6. 金额、状态、用户 ID、过期时间都不能信任客户端。
 7. 对日志中的学号、手机号进行脱敏。
 8. CORS 只允许明确配置的前端来源。
+
+本地启用及阈值配置：
+
+```text
+SENTINEL_RATE_LIMIT_ENABLED=true
+SENTINEL_LOGIN_QPS=10
+SENTINEL_CREATE_BOOKING_QPS=30
+SENTINEL_PAYMENT_CALLBACK_QPS=100
+```
+
+当前规则由应用启动时加载，适合模块化单体演示。规则尚未接入 Nacos 或 Sentinel
+Dashboard 动态持久化，也不是多实例共享的集群流控。
 
 ## 19. 可观测性
 

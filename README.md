@@ -13,6 +13,7 @@
 - Spring Security
 - Springdoc OpenAPI
 - Spring Boot Actuator
+- Sentinel 1.8.10
 
 ## 当前状态
 
@@ -21,6 +22,7 @@
 - Booking：下单、我的订单、详情、取消、支付超时（Outbox + RabbitMQ TTL/DLX）
 - Trip cancellation Saga：管理员取消班次后，异步取消订单、释放座位库存并驱动已支付订单退款；支持有限重试、TTL 退避、DLQ 与数据库补偿
 - Payment：支付回调（HMAC 验签）、退款 Outbox
+- Stability：Sentinel 保护登录、下单和支付回调入口，统一返回 HTTP 429
 - Flyway V1–V6 已落地；集成测试需 Docker（Testcontainers）
 
 ## Swagger 端到端演示

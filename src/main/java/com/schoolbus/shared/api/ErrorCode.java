@@ -3,6 +3,10 @@ package com.schoolbus.shared.api;
 import org.springframework.http.HttpStatus;
 
 public enum ErrorCode {
+    RATE_LIMITED(
+            HttpStatus.TOO_MANY_REQUESTS,
+            "too many requests; please retry later"
+    ),
     TRIP_NOT_BOOKABLE(HttpStatus.CONFLICT, "trip is not bookable"),
     BOOKING_ALREADY_EXISTS(
             HttpStatus.CONFLICT,

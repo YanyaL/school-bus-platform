@@ -58,6 +58,11 @@ springdoc:
 
 
 school-bus:
+  rate-limit:
+    enabled: ${SENTINEL_RATE_LIMIT_ENABLED:false}
+    login-qps: ${SENTINEL_LOGIN_QPS:10}
+    create-booking-qps: ${SENTINEL_CREATE_BOOKING_QPS:30}
+    payment-callback-qps: ${SENTINEL_PAYMENT_CALLBACK_QPS:100}
   booking:
     payment-window: ${BOOKING_PAYMENT_WINDOW:PT15M}
     maximum-attempts: ${BOOKING_MAXIMUM_ATTEMPTS:3}
