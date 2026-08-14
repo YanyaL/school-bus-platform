@@ -66,6 +66,9 @@ mvn spring-boot:run
 | accessToken | Pinia 内存 |
 | refreshToken | `localStorage`（键：`school-bus.refreshToken`） |
 
+为保证刷新页面后仍能展示当前账号，非敏感的学号另存为
+`localStorage` 的 `school-bus.studentNumber`；登出时与 refreshToken 一并清除。
+
 页面刷新后，如存在 `refreshToken`，会先调用 `POST /api/v1/auth/refresh` 恢复登录，再访问受保护页面。
 
 Axios 拦截器在 **401** 时只允许自动刷新 **一次**；并发 401 共享同一个 refresh Promise。刷新失败会清理本地状态并跳转 `/login`。刷新请求使用**独立 Axios 实例**，避免无限重试循环。

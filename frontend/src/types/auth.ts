@@ -54,3 +54,4 @@ export interface AuthSession {
 }
 
 export const REFRESH_TOKEN_STORAGE_KEY = 'school-bus.refreshToken';
+export const STUDENT_NUMBER_STORAGE_KEY = 'school-bus.studentNumber';

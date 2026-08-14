@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
-import { REFRESH_TOKEN_STORAGE_KEY, type LoginResponse } from '@/types/auth';
+import {
+  REFRESH_TOKEN_STORAGE_KEY,
+  STUDENT_NUMBER_STORAGE_KEY,
+  type LoginResponse,
+} from '@/types/auth';
 import { useAuthStore } from '@/stores/auth';
 
 const loginResponse: LoginResponse = {
@@ -55,6 +59,7 @@ describe('auth store', () => {
     expect(store.accessToken).toBe('access-token');
     expect(store.studentNumber).toBe('S20260001');
     expect(localStorage.getItem(REFRESH_TOKEN_STORAGE_KEY)).toBe('refresh-token');
+    expect(localStorage.getItem(STUDENT_NUMBER_STORAGE_KEY)).toBe('S20260001');
   });
 
   it('clears session on logout', async () => {
@@ -69,5 +74,19 @@ describe('auth store', () => {
     expect(store.isAuthenticated).toBe(false);
     expect(store.accessToken).toBeNull();
     expect(localStorage.getItem(REFRESH_TOKEN_STORAGE_KEY)).toBeNull();
+    expect(localStorage.getItem(STUDENT_NUMBER_STORAGE_KEY)).toBeNull();
+  });
+
+  it('restores the non-sensitive student number for display after reload', async () => {
+    const firstStore = useAuthStore();
+    await firstStore.login({
+      studentNumber: 'S20260001',
+      password: 'Password!2026',
+    });
+
+    setActivePinia(createPinia());
+    const restoredStore = useAuthStore();
+
+    expect(restoredStore.displayName).toBe('S20260001');
   });
 });

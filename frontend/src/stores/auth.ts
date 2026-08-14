@@ -4,7 +4,7 @@ import { createBookingsApi } from '@/api/bookings';
 import { createHttpClient } from '@/api/http';
 import { createTripsApi } from '@/api/trips';
 import type { AuthSession, LoginRequest } from '@/types/auth';
-import { REFRESH_TOKEN_STORAGE_KEY } from '@/types/auth';
+import { REFRESH_TOKEN_STORAGE_KEY, STUDENT_NUMBER_STORAGE_KEY } from '@/types/auth';
 
 interface AuthState {
   accessToken: string | null;
@@ -25,6 +25,18 @@ function writeStoredRefreshToken(token: string | null): void {
     return;
   }
   localStorage.setItem(REFRESH_TOKEN_STORAGE_KEY, token);
+}
+
+function readStoredStudentNumber(): string | null {
+  return localStorage.getItem(STUDENT_NUMBER_STORAGE_KEY);
+}
+
+function writeStoredStudentNumber(studentNumber: string | null): void {
+  if (!studentNumber) {
+    localStorage.removeItem(STUDENT_NUMBER_STORAGE_KEY);
+    return;
+  }
+  localStorage.setItem(STUDENT_NUMBER_STORAGE_KEY, studentNumber);
 }
 
 function buildSessionFromLogin(response: {
@@ -51,7 +63,7 @@ export const useAuthStore = defineStore('auth', {
   state: (): AuthState => ({
     accessToken: null,
     userId: null,
-    studentNumber: null,
+    studentNumber: readStoredStudentNumber(),
     roles: [],
     initialized: false,
     initializing: false,
@@ -59,8 +71,7 @@ export const useAuthStore = defineStore('auth', {
 
   getters: {
     isAuthenticated: (state) => Boolean(state.accessToken),
-    displayName: (state) =>
-      state.studentNumber ?? (state.userId ? `用户 ${state.userId}` : ''),
+    displayName: (state) => state.studentNumber || '已登录',
   },
 
   actions: {
@@ -89,6 +100,7 @@ export const useAuthStore = defineStore('auth', {
       this.studentNumber = session.studentNumber;
       this.roles = session.roles;
       writeStoredRefreshToken(session.refreshToken);
+      writeStoredStudentNumber(session.studentNumber);
     },
 
     clearSession() {
@@ -97,6 +109,7 @@ export const useAuthStore = defineStore('auth', {
       this.studentNumber = null;
       this.roles = [];
       writeStoredRefreshToken(null);
+      writeStoredStudentNumber(null);
     },
 
     async login(payload: LoginRequest): Promise<void> {
