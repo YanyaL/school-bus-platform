@@ -9,6 +9,8 @@ import com.schoolbus.transport.application.route.RouteView;
 import com.schoolbus.transport.domain.route.Campus;
 import com.schoolbus.transport.domain.route.RouteStatus;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
@@ -82,7 +84,7 @@ class AdminRouteControllerTest {
                         "/api/v1/admin/routes/2001"
                 ))
                 .andExpect(jsonPath("$.code").value("OK"))
-                .andExpect(jsonPath("$.data.routeId").value(2001L))
+                .andExpect(jsonPath("$.data.routeId").value("2001"))
                 .andExpect(jsonPath("$.data.routeCode")
                         .value("MAIN-EAST-01"))
                 .andExpect(jsonPath("$.data.departureCampus")
@@ -201,7 +203,7 @@ class AdminRouteControllerTest {
                                 ))
                 )
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.routeId").value(2001L));
+                .andExpect(jsonPath("$.data.routeId").value("2001"));
     }
 
     @Test
@@ -224,7 +226,7 @@ class AdminRouteControllerTest {
                                 ))
                 )
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[0].routeId").value(2001L));
+                .andExpect(jsonPath("$.data[0].routeId").value("2001"));
     }
 
     @Test
@@ -267,6 +269,27 @@ class AdminRouteControllerTest {
                 )
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("ROUTE_NOT_FOUND"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "abc",
+            "0",
+            "9223372036854775808"
+    })
+    void shouldRejectInvalidRouteId(String routeId) throws Exception {
+        mockMvc.perform(
+                        get("/api/v1/admin/routes/" + routeId)
+                                .with(jwt().authorities(
+                                        new SimpleGrantedAuthority(
+                                                "ROLE_ADMIN"
+                                        )
+                                ))
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+
+        verifyNoInteractions(applicationService);
     }
 
     @Test

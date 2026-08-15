@@ -2,13 +2,14 @@ package com.schoolbus.iam.api.authentication;
 
 import com.schoolbus.iam.application.authentication.AuthenticationResult;
 import com.schoolbus.iam.domain.account.Account;
+import com.schoolbus.shared.api.HttpResourceId;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 
 public record LoginResponse(
-        long userId,
+        String userId,
         String studentNumber,
         List<String> roles,
         String tokenType,
@@ -32,7 +33,7 @@ public record LoginResponse(
                 .toList();
 
         return new LoginResponse(
-                account.userId().value(),
+                HttpResourceId.format(account.userId().value()),
                 account.studentNumber().value(),
                 roleNames,
                 validatedResult.accessToken().tokenType(),

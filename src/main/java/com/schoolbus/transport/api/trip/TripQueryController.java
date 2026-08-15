@@ -1,6 +1,7 @@
 package com.schoolbus.transport.api.trip;
 
 import com.schoolbus.shared.api.ApiResponse;
+import com.schoolbus.shared.api.HttpResourceId;
 import com.schoolbus.transport.application.trip.TripQueryApplicationService;
 import com.schoolbus.transport.application.trip.TripSeatQueryApplicationService;
 import jakarta.validation.constraints.Max;
@@ -56,11 +57,12 @@ public class TripQueryController {
 
     @GetMapping("/{tripId}/seats")
     public ApiResponse<TripSeatMapResponse> findTripSeats(
-            @PathVariable long tripId
+            @PathVariable String tripId
     ) {
+        long parsedTripId = HttpResourceId.parse(tripId, "tripId");
         return ApiResponse.success(
                 TripSeatMapResponse.from(
-                        seatQueryApplicationService.findTripSeatMap(tripId)
+                        seatQueryApplicationService.findTripSeatMap(parsedTripId)
                 )
         );
     }

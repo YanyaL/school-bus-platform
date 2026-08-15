@@ -1,6 +1,7 @@
 package com.schoolbus.transport.api.admin;
 
 import com.schoolbus.shared.api.ApiResponse;
+import com.schoolbus.shared.api.HttpResourceId;
 import com.schoolbus.transport.application.trip.AdminTripView;
 import com.schoolbus.transport.application.trip.CancelTripCommand;
 import com.schoolbus.transport.application.trip.CreateTripDraftCommand;
@@ -64,15 +65,15 @@ public class AdminTripController {
     ) {
         AdminTripView view = applicationService.createDraft(
                 new CreateTripDraftCommand(
-                        request.vehicleId(),
-                        request.routeId(),
+                        HttpResourceId.parse(request.vehicleId(), "vehicleId"),
+                        HttpResourceId.parse(request.routeId(), "routeId"),
                         request.departureTime(),
                         request.bookingDeadline(),
                         request.price()
                 )
         );
         URI location = URI.create(
-                "/api/v1/admin/trips/" + view.tripId()
+                "/api/v1/admin/trips/" + HttpResourceId.format(view.tripId())
         );
         return ResponseEntity
                 .created(location)
@@ -100,23 +101,25 @@ public class AdminTripController {
 
     @GetMapping("/{tripId}")
     public ApiResponse<AdminTripResponse> findTrip(
-            @PathVariable long tripId
+            @PathVariable String tripId
     ) {
+        long parsedTripId = HttpResourceId.parse(tripId, "tripId");
         return ApiResponse.success(
                 AdminTripResponse.from(
-                        applicationService.findById(tripId)
+                        applicationService.findById(parsedTripId)
                 )
         );
     }
 
     @PostMapping("/{tripId}/publication")
     public ApiResponse<AdminTripResponse> publishTrip(
-            @PathVariable long tripId,
+            @PathVariable String tripId,
             @Valid @RequestBody PublishTripRequest request
     ) {
+        long parsedTripId = HttpResourceId.parse(tripId, "tripId");
         AdminTripView view = publicationService.publish(
                 new PublishTripCommand(
-                        tripId,
+                        parsedTripId,
                         request.version()
                 )
         );
@@ -125,11 +128,12 @@ public class AdminTripController {
 
     @PostMapping("/{tripId}/cancellation")
     public ApiResponse<AdminTripResponse> cancelTrip(
-            @PathVariable long tripId,
+            @PathVariable String tripId,
             @Valid @RequestBody CancelTripRequest request
     ) {
+        long parsedTripId = HttpResourceId.parse(tripId, "tripId");
         AdminTripView view = cancellationService.cancel(
-                new CancelTripCommand(tripId, request.version())
+                new CancelTripCommand(parsedTripId, request.version())
         );
         return ApiResponse.success(AdminTripResponse.from(view));
     }

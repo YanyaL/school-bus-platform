@@ -4,7 +4,7 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
-  userId: number;
+  userId: string;
   studentNumber: string;
   roles: string[];
   tokenType: string;
@@ -27,7 +27,7 @@ export interface RefreshTokenResponse {
 }
 
 export interface CurrentUserResponse {
-  userId: number;
+  userId: string;
   roles: string[];
 }
 
@@ -37,7 +37,7 @@ export interface RegisterAccountRequest {
 }
 
 export interface RegisterAccountResponse {
-  userId: number;
+  userId: string;
   studentNumber: string;
   status: string;
   roles: string[];
@@ -48,7 +48,7 @@ export interface AuthSession {
   accessTokenExpiresAt: string;
   refreshToken: string;
   refreshTokenExpiresAt: string;
-  userId: number;
+  userId: string;
   studentNumber: string;
   roles: string[];
 }

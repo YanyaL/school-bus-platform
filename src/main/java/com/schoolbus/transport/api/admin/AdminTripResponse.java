@@ -1,5 +1,6 @@
 package com.schoolbus.transport.api.admin;
 
+import com.schoolbus.shared.api.HttpResourceId;
 import com.schoolbus.transport.application.trip.AdminTripView;
 import com.schoolbus.transport.domain.trip.TripStatus;
 
@@ -7,10 +8,10 @@ import java.math.BigDecimal;
 import java.time.Instant;
 
 public record AdminTripResponse(
-        long tripId,
+        String tripId,
         String tripNumber,
-        long vehicleId,
-        long routeId,
+        String vehicleId,
+        String routeId,
         Instant departureTime,
         Instant bookingDeadline,
         BigDecimal price,
@@ -22,10 +23,10 @@ public record AdminTripResponse(
 
     public static AdminTripResponse from(AdminTripView trip) {
         return new AdminTripResponse(
-                trip.tripId(),
+                HttpResourceId.format(trip.tripId()),
                 trip.tripNumber(),
-                trip.vehicleId(),
-                trip.routeId(),
+                HttpResourceId.format(trip.vehicleId()),
+                HttpResourceId.format(trip.routeId()),
                 trip.departureTime(),
                 trip.bookingDeadline(),
                 trip.price(),

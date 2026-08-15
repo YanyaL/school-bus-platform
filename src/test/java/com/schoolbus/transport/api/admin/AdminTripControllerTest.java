@@ -12,6 +12,8 @@ import com.schoolbus.transport.application.trip.TripPublicationApplicationServic
 import com.schoolbus.transport.application.trip.VehicleScheduleConflictException;
 import com.schoolbus.transport.domain.trip.TripStatus;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
@@ -86,7 +88,9 @@ class AdminTripControllerTest {
                         "/api/v1/admin/trips/5001"
                 ))
                 .andExpect(jsonPath("$.code").value("OK"))
-                .andExpect(jsonPath("$.data.tripId").value(5001L))
+                .andExpect(jsonPath("$.data.tripId").value("5001"))
+                .andExpect(jsonPath("$.data.vehicleId").value("3001"))
+                .andExpect(jsonPath("$.data.routeId").value("2001"))
                 .andExpect(jsonPath("$.data.status").value("DRAFT"))
                 .andExpect(jsonPath("$.data.price").value(5.00));
 
@@ -130,8 +134,8 @@ class AdminTripControllerTest {
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("""
                                         {
-                                          "vehicleId": 0,
-                                          "routeId": -1,
+                                          "vehicleId": "0",
+                                          "routeId": "-1",
                                           "departureTime": "2020-01-01T00:00:00Z",
                                           "bookingDeadline": "2020-01-01T00:00:00Z",
                                           "price": -1.00
@@ -164,7 +168,7 @@ class AdminTripControllerTest {
                                 ))
                 )
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[0].tripId").value(5001L))
+                .andExpect(jsonPath("$.data[0].tripId").value("5001"))
                 .andExpect(jsonPath("$.data[0].status").value("DRAFT"));
     }
 
@@ -182,7 +186,9 @@ class AdminTripControllerTest {
                                 ))
                 )
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.tripId").value(5001L));
+                .andExpect(jsonPath("$.data.tripId").value("5001"))
+                .andExpect(jsonPath("$.data.vehicleId").value("3001"))
+                .andExpect(jsonPath("$.data.routeId").value("2001"));
     }
 
     @Test
@@ -408,11 +414,95 @@ class AdminTripControllerTest {
                         .value("TRIP_HAS_ACTIVE_BOOKINGS"));
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "abc",
+            "0",
+            "9223372036854775808"
+    })
+    void shouldRejectInvalidVehicleId(String vehicleId)
+            throws Exception {
+        mockMvc.perform(
+                        post("/api/v1/admin/trips")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("""
+                                        {
+                                          "vehicleId": "%s",
+                                          "routeId": "2001",
+                                          "departureTime": "2027-08-15T08:00:00Z",
+                                          "bookingDeadline": "2027-08-15T07:30:00Z",
+                                          "price": 5.00
+                                        }
+                                        """.formatted(vehicleId))
+                                .with(jwt().authorities(
+                                        new SimpleGrantedAuthority(
+                                                "ROLE_ADMIN"
+                                        )
+                                ))
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+
+        verifyNoInteractions(applicationService);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "abc",
+            "0",
+            "9223372036854775808"
+    })
+    void shouldRejectInvalidRouteId(String routeId) throws Exception {
+        mockMvc.perform(
+                        post("/api/v1/admin/trips")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("""
+                                        {
+                                          "vehicleId": "3001",
+                                          "routeId": "%s",
+                                          "departureTime": "2027-08-15T08:00:00Z",
+                                          "bookingDeadline": "2027-08-15T07:30:00Z",
+                                          "price": 5.00
+                                        }
+                                        """.formatted(routeId))
+                                .with(jwt().authorities(
+                                        new SimpleGrantedAuthority(
+                                                "ROLE_ADMIN"
+                                        )
+                                ))
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+
+        verifyNoInteractions(applicationService);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "abc",
+            "0",
+            "9223372036854775808"
+    })
+    void shouldRejectInvalidTripId(String tripId) throws Exception {
+        mockMvc.perform(
+                        get("/api/v1/admin/trips/" + tripId)
+                                .with(jwt().authorities(
+                                        new SimpleGrantedAuthority(
+                                                "ROLE_ADMIN"
+                                        )
+                                ))
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+
+        verifyNoInteractions(applicationService);
+    }
+
     private String validRequest() {
         return """
                 {
-                  "vehicleId": 3001,
-                  "routeId": 2001,
+                  "vehicleId": "3001",
+                  "routeId": "2001",
                   "departureTime": "2027-08-15T08:00:00Z",
                   "bookingDeadline": "2027-08-15T07:30:00Z",
                   "price": 5.00

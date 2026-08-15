@@ -2,15 +2,16 @@ package com.schoolbus.booking.api;
 
 import com.schoolbus.booking.application.booking.BookingSummaryView;
 import com.schoolbus.booking.domain.order.BookingStatus;
+import com.schoolbus.shared.api.HttpResourceId;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Objects;
 
 public record BookingSummaryResponse(
-        long bookingId,
+        String bookingId,
         String bookingNumber,
-        long tripId,
+        String tripId,
         String seatNumber,
         BigDecimal amount,
         BookingStatus status,
@@ -37,9 +38,9 @@ public record BookingSummaryResponse(
                 "view must not be null"
         );
         return new BookingSummaryResponse(
-                validatedView.bookingId(),
+                HttpResourceId.format(validatedView.bookingId()),
                 validatedView.bookingNumber(),
-                validatedView.tripId(),
+                HttpResourceId.format(validatedView.tripId()),
                 validatedView.seatNumber(),
                 validatedView.amount(),
                 validatedView.status(),

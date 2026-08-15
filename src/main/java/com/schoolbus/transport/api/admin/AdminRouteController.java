@@ -3,6 +3,7 @@ package com.schoolbus.transport.api.admin;
 import com.schoolbus.shared.api.ApiResponse;
 import com.schoolbus.shared.api.BusinessException;
 import com.schoolbus.shared.api.ErrorCode;
+import com.schoolbus.shared.api.HttpResourceId;
 import com.schoolbus.transport.application.route.CreateRouteCommand;
 import com.schoolbus.transport.application.route.RouteManagementApplicationService;
 import com.schoolbus.transport.application.route.RouteView;
@@ -67,7 +68,7 @@ public class AdminRouteController {
                 )
         );
         URI location = URI.create(
-                "/api/v1/admin/routes/" + view.routeId()
+                "/api/v1/admin/routes/" + HttpResourceId.format(view.routeId())
         );
         return ResponseEntity
                 .created(location)
@@ -95,23 +96,25 @@ public class AdminRouteController {
 
     @GetMapping("/{routeId}")
     public ApiResponse<RouteResponse> findRoute(
-            @PathVariable long routeId
+            @PathVariable String routeId
     ) {
+        long parsedRouteId = HttpResourceId.parse(routeId, "routeId");
         return ApiResponse.success(
                 RouteResponse.from(
-                        applicationService.findById(routeId)
+                        applicationService.findById(parsedRouteId)
                 )
         );
     }
 
     @PatchMapping("/{routeId}/status")
     public ApiResponse<RouteResponse> updateRouteStatus(
-            @PathVariable long routeId,
+            @PathVariable String routeId,
             @Valid @RequestBody UpdateRouteStatusRequest request
     ) {
+        long parsedRouteId = HttpResourceId.parse(routeId, "routeId");
         RouteView view = applicationService.updateStatus(
                 new UpdateRouteStatusCommand(
-                        routeId,
+                        parsedRouteId,
                         request.status(),
                         request.version()
                 )

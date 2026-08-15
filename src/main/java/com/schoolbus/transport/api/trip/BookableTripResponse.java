@@ -1,15 +1,16 @@
 package com.schoolbus.transport.api.trip;
 
+import com.schoolbus.shared.api.HttpResourceId;
 import com.schoolbus.transport.application.trip.BookableTripView;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 
 public record BookableTripResponse(
-        long tripId,
+        String tripId,
         String tripNumber,
-        long vehicleId,
-        long routeId,
+        String vehicleId,
+        String routeId,
         Instant departureTime,
         Instant bookingDeadline,
         BigDecimal price
@@ -19,10 +20,10 @@ public record BookableTripResponse(
             BookableTripView trip
     ) {
         return new BookableTripResponse(
-                trip.tripId(),
+                HttpResourceId.format(trip.tripId()),
                 trip.tripNumber(),
-                trip.vehicleId(),
-                trip.routeId(),
+                HttpResourceId.format(trip.vehicleId()),
+                HttpResourceId.format(trip.routeId()),
                 trip.departureTime(),
                 trip.bookingDeadline(),
                 trip.price()

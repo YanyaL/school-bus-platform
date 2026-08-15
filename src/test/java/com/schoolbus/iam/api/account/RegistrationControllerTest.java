@@ -83,7 +83,7 @@ class RegistrationControllerTest {
                 .andExpect(jsonPath("$.code").value("OK"))
                 .andExpect(
                         jsonPath("$.data.userId")
-                                .value(1000001L)
+                                .value("1000001")
                 )
                 .andExpect(
                         jsonPath("$.data.studentNumber")

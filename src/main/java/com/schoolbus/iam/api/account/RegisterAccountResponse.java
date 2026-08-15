@@ -1,12 +1,13 @@
 package com.schoolbus.iam.api.account;
 
 import com.schoolbus.iam.domain.account.Account;
+import com.schoolbus.shared.api.HttpResourceId;
 
 import java.util.List;
 import java.util.Objects;
 
 public record RegisterAccountResponse(
-        long userId,
+        String userId,
         String studentNumber,
         String status,
         List<String> roles
@@ -27,7 +28,7 @@ public record RegisterAccountResponse(
                 .toList();
 
         return new RegisterAccountResponse(
-                validatedAccount.userId().value(),
+                HttpResourceId.format(validatedAccount.userId().value()),
                 validatedAccount.studentNumber().value(),
                 validatedAccount.status().name(),
                 roleNames

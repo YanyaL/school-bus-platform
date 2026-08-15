@@ -53,12 +53,23 @@ API 不暴露数据库自增主键。
 
 | 对象 | API 字段 | 格式 |
 |---|---|---|
-| 用户 | `userId` | 字符串形式的业务标识 |
-| 车辆 | `vehicleNo` | UUID |
-| 路线 | `routeNo` | UUID |
-| 班次 | `tripNo` | UUID |
-| 订单 | `orderNo` | UUID |
+| 用户 | `userId` | 十进制字符串形式的内部资源 ID（Snowflake） |
+| 车辆 | `vehicleId` / `vehicleNo` | HTTP 边界使用字符串 `vehicleId`；业务稳定编号为 UUID `vehicleNo` |
+| 路线 | `routeId` / `routeNo` | HTTP 边界使用字符串 `routeId`；业务稳定编号为 UUID `routeNo` |
+| 班次 | `tripId` / `tripNo` / `tripNumber` | HTTP 边界使用字符串 `tripId`；业务稳定编号为 UUID |
+| 订单 | `bookingId` / `bookingNumber` | HTTP 边界使用字符串 `bookingId`；业务稳定编号为 UUID |
 | 支付 | `paymentNo` | UUID |
+
+#### 64 位资源 ID 的 JSON 表示
+
+- 数据库内部：`BIGINT`
+- Java 领域与持久化：`long` / `Long`
+- HTTP 请求与响应中的资源 ID（`userId`、`bookingId`、`tripId`、`vehicleId`、`routeId`）：**JSON string**
+- `version`、`page`、`size`、`totalElements`、`totalPages`、`seatCount`、`amount` 等普通数字：**仍为 JSON number**
+
+原因：JavaScript `Number` 仅有 53 位安全整数精度（`Number.MAX_SAFE_INTEGER`）。Snowflake 等 64 位 ID 若以 JSON number 传输，浏览器解析后末几位可能丢失，造成静默错单。字符串化只是精度保护，**不是加密或安全措施**。
+
+当前学生端班次路径仍为 `GET /api/v1/trips/{tripId}/seats`；下一阶段才会正式切换到 `tripNumber`（UUID）路径。
 
 `routeCode` 和 `licensePlate` 是业务属性，不代替稳定的资源编号。
 

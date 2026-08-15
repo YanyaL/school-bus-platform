@@ -8,7 +8,7 @@ import { REFRESH_TOKEN_STORAGE_KEY, STUDENT_NUMBER_STORAGE_KEY } from '@/types/a
 
 interface AuthState {
   accessToken: string | null;
-  userId: number | null;
+  userId: string | null;
   studentNumber: string | null;
   roles: string[];
   initialized: boolean;
@@ -40,7 +40,7 @@ function writeStoredStudentNumber(studentNumber: string | null): void {
 }
 
 function buildSessionFromLogin(response: {
-  userId: number;
+  userId: string;
   studentNumber: string;
   roles: string[];
   accessToken: string;
@@ -129,7 +129,7 @@ export const useAuthStore = defineStore('auth', {
       const { auth } = this.createApis();
       const response = await auth.refresh({ refreshToken });
       const currentStudentNumber = this.studentNumber ?? '';
-      const currentUserId = this.userId ?? 0;
+      const currentUserId = this.userId ?? '';
       const currentRoles = this.roles.length > 0 ? this.roles : ['STUDENT'];
 
       this.applySession({

@@ -101,7 +101,7 @@ class AuthenticationControllerTest {
                 .andExpect(jsonPath("$.code").value("OK"))
                 .andExpect(
                         jsonPath("$.data.userId")
-                                .value(1000001L)
+                                .value("1000001")
                 )
                 .andExpect(
                         jsonPath("$.data.studentNumber")
@@ -138,6 +138,54 @@ class AuthenticationControllerTest {
                         "StrongPass!2026"
                 )
         );
+    }
+
+    @Test
+    void shouldKeepSnowflakeUserIdAsJsonStringOnLogin()
+            throws Exception {
+        Instant issuedAt = Instant.parse("2026-08-02T05:00:00Z");
+        Account account = Account.register(
+                UserId.of(81_765_424_194_125_824L),
+                StudentNumber.of("S4789503"),
+                PasswordHash.of(
+                        "{bcrypt}$2a$10$encodedPassword"
+                ),
+                issuedAt
+        );
+        when(service.authenticate(any())).thenReturn(
+                new AuthenticationResult(
+                        account,
+                        new AccessToken(
+                                "header.payload.signature",
+                                AccessToken.BEARER_TYPE,
+                                issuedAt,
+                                issuedAt.plusSeconds(900)
+                        ),
+                        new RefreshToken(
+                                "raw-refresh-token",
+                                issuedAt,
+                                issuedAt.plusSeconds(604800)
+                        )
+                )
+        );
+
+        mockMvc.perform(
+                        post("/api/v1/auth/login")
+                                .contentType(
+                                        MediaType.APPLICATION_JSON
+                                )
+                                .content("""
+                                        {
+                                          "studentNumber": "s4789503",
+                                          "password": "StrongPass!2026"
+                                        }
+                                        """)
+                )
+                .andExpect(status().isOk())
+                .andExpect(
+                        jsonPath("$.data.userId")
+                                .value("81765424194125824")
+                );
     }
 
     @Test
@@ -400,7 +448,7 @@ class AuthenticationControllerTest {
                 .andExpect(jsonPath("$.code").value("OK"))
                 .andExpect(
                         jsonPath("$.data.userId")
-                                .value(1000001L)
+                                .value("1000001")
                 )
                 .andExpect(
                         jsonPath("$.data.roles[0]")

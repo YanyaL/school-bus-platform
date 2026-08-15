@@ -8,6 +8,8 @@ import com.schoolbus.transport.application.trip.TripSeatMapView;
 import com.schoolbus.transport.application.trip.TripSeatQueryApplicationService;
 import com.schoolbus.transport.application.trip.TripSeatStatusView;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
@@ -67,15 +69,15 @@ class TripQueryControllerTest {
                 .andExpect(jsonPath("$.code").value("OK"))
                 .andExpect(jsonPath("$.data.length()").value(1))
                 .andExpect(jsonPath("$.data[0].tripId")
-                        .value(1001L))
+                        .value("1001"))
                 .andExpect(jsonPath("$.data[0].tripNumber")
                         .value(
                                 "11111111-1111-1111-1111-111111111111"
                         ))
                 .andExpect(jsonPath("$.data[0].vehicleId")
-                        .value(3001L))
+                        .value("3001"))
                 .andExpect(jsonPath("$.data[0].routeId")
-                        .value(2001L))
+                        .value("2001"))
                 .andExpect(jsonPath("$.data[0].departureTime")
                         .value("2026-08-05T09:00:00Z"))
                 .andExpect(jsonPath("$.data[0].price")
@@ -161,7 +163,7 @@ class TripQueryControllerTest {
                                         .subject("1000001")))
                 )
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.tripId").value(1001L))
+                .andExpect(jsonPath("$.data.tripId").value("1001"))
                 .andExpect(jsonPath("$.data.seats.length()").value(2))
                 .andExpect(jsonPath("$.data.seats[0].seatNumber")
                         .value("A01"))
@@ -169,6 +171,51 @@ class TripQueryControllerTest {
                         .value("LOCKED"));
 
         verify(seatQueryApplicationService).findTripSeatMap(1001L);
+    }
+
+    @Test
+    void shouldKeepSnowflakeIdsAsJsonStrings() throws Exception {
+        when(applicationService.findBookableTrips(20))
+                .thenReturn(List.of(new BookableTripView(
+                        81_765_424_194_125_824L,
+                        "11111111-1111-1111-1111-111111111111",
+                        81_765_424_194_125_824L,
+                        81_765_424_194_125_824L,
+                        Instant.parse("2026-08-05T09:00:00Z"),
+                        Instant.parse("2026-08-05T08:30:00Z"),
+                        new BigDecimal("5.00")
+                )));
+
+        mockMvc.perform(
+                        get("/api/v1/trips")
+                                .with(jwt().jwt(builder -> builder
+                                        .subject("1000001")))
+                )
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].tripId")
+                        .value("81765424194125824"))
+                .andExpect(jsonPath("$.data[0].vehicleId")
+                        .value("81765424194125824"))
+                .andExpect(jsonPath("$.data[0].routeId")
+                        .value("81765424194125824"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "abc",
+            "0",
+            "9223372036854775808"
+    })
+    void shouldRejectInvalidTripId(String tripId) throws Exception {
+        mockMvc.perform(
+                        get("/api/v1/trips/" + tripId + "/seats")
+                                .with(jwt())
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code")
+                        .value("VALIDATION_ERROR"));
+
+        verifyNoInteractions(seatQueryApplicationService);
     }
 
     private BookableTripView bookableTrip() {

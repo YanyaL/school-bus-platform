@@ -9,7 +9,7 @@ export function createTripsApi(http: AxiosInstance) {
       return unwrapApiResponse(response);
     },
 
-    async getTripSeats(tripId: number): Promise<TripSeatMap> {
+    async getTripSeats(tripId: string): Promise<TripSeatMap> {
       const response = await http.get(`/trips/${tripId}/seats`);
       return unwrapApiResponse(response);
     },

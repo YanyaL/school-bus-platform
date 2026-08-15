@@ -8,7 +8,7 @@ import {
 import { useAuthStore } from '@/stores/auth';
 
 const loginResponse: LoginResponse = {
-  userId: 1001,
+  userId: '1001',
   studentNumber: 'S20260001',
   roles: ['STUDENT'],
   tokenType: 'Bearer',
@@ -29,7 +29,7 @@ vi.mock('@/api/auth', () => ({
       refreshTokenExpiresAt: '2026-08-23T01:00:00.000Z',
     })),
     logout: vi.fn(async () => undefined),
-    me: vi.fn(async () => ({ userId: 1001, roles: ['STUDENT'] })),
+    me: vi.fn(async () => ({ userId: '1001', roles: ['STUDENT'] })),
     register: vi.fn(),
   })),
 }));

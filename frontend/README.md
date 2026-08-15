@@ -48,6 +48,22 @@ npm run dev
 
 前端 Axios `baseURL` 固定为 `/api/v1`，无需修改后端 CORS。
 
+## HTTP 资源 ID 与前端类型
+
+后端 HTTP 边界将 64 位资源 ID 序列化为 **JSON string**，前端对应字段一律使用 `string`：
+
+- `userId`、`bookingId`、`tripId`、`vehicleId`、`routeId`
+
+数据库与 Java 领域层仍使用 `BIGINT` / `long`。`version`、分页计数、`amount` 等保持 JSON number / TypeScript `number`。
+
+原因是 JavaScript `Number` 只有 53 位安全整数；Snowflake ID 以 number 传输会丢失末几位。字符串化用于精度保护，不是加密。
+
+约束：
+
+- 不要使用 `Number(tripId)` / `parseInt(tripId)` / `BigInt(tripId)`
+- ID 只作为不透明标识做字符串相等比较
+- 当前路由仍为 `/trips/:tripId/seats`；下一阶段再切到 `tripNumber`
+
 ## 后端启动
 
 在项目根目录：

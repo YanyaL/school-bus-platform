@@ -2,15 +2,16 @@ package com.schoolbus.booking.api;
 
 import com.schoolbus.booking.application.booking.CreateBookingResult;
 import com.schoolbus.booking.domain.order.BookingStatus;
+import com.schoolbus.shared.api.HttpResourceId;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Objects;
 
 public record CreateBookingResponse(
-        long bookingId,
+        String bookingId,
         String bookingNumber,
-        long tripId,
+        String tripId,
         String seatNumber,
         BigDecimal amount,
         BookingStatus status,
@@ -35,9 +36,9 @@ public record CreateBookingResponse(
                 "result must not be null"
         );
         return new CreateBookingResponse(
-                validatedResult.bookingId(),
+                HttpResourceId.format(validatedResult.bookingId()),
                 validatedResult.bookingNumber(),
-                validatedResult.tripId(),
+                HttpResourceId.format(validatedResult.tripId()),
                 validatedResult.seatNumber(),
                 validatedResult.amount(),
                 validatedResult.status(),

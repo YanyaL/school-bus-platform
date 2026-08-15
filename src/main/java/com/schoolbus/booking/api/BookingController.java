@@ -12,6 +12,7 @@ import com.schoolbus.booking.domain.order.BookingStatus;
 import com.schoolbus.shared.api.ApiResponse;
 import com.schoolbus.shared.api.BusinessException;
 import com.schoolbus.shared.api.ErrorCode;
+import com.schoolbus.shared.api.HttpResourceId;
 import com.schoolbus.shared.api.PageResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -139,7 +140,7 @@ public class BookingController {
 
         CreateBookingCommand command = new CreateBookingCommand(
                 Long.parseLong(jwt.getSubject()),
-                request.tripId(),
+                HttpResourceId.parse(request.tripId(), "tripId"),
                 request.seatNumber(),
                 idempotencyKey
         );

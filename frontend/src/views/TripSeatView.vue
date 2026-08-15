@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import AppEmpty from '@/components/AppEmpty.vue';
@@ -28,8 +28,6 @@ const seatMap = ref<TripSeatMap | null>(null);
 const trip = ref<BookableTrip | null>(null);
 const selectedSeat = ref<string | null>(null);
 
-const numericTripId = computed(() => Number(props.tripId));
-
 async function loadPageData() {
   loading.value = true;
   errorMessage.value = '';
@@ -40,10 +38,10 @@ async function loadPageData() {
     const { trips } = authStore.createApis();
     const [tripsList, seats] = await Promise.all([
       trips.listBookableTrips(100),
-      trips.getTripSeats(numericTripId.value),
+      trips.getTripSeats(props.tripId),
     ]);
     seatMap.value = seats;
-    trip.value = tripsList.find((item) => item.tripId === numericTripId.value) ?? null;
+    trip.value = tripsList.find((item) => item.tripId === props.tripId) ?? null;
   } catch (error) {
     const apiError = parseApiError(error);
     errorMessage.value = resolveUserMessage(apiError);
@@ -79,7 +77,7 @@ async function submitBooking() {
     const { bookings } = authStore.createApis();
     const result = await bookings.createBooking(
       {
-        tripId: numericTripId.value,
+        tripId: props.tripId,
         seatNumber: selectedSeat.value,
       },
       idempotencyKey,

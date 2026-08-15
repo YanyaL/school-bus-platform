@@ -1,5 +1,6 @@
 package com.schoolbus.transport.api.admin;
 
+import com.schoolbus.shared.api.HttpResourceId;
 import com.schoolbus.transport.application.route.RouteView;
 import com.schoolbus.transport.domain.route.Campus;
 import com.schoolbus.transport.domain.route.RouteStatus;
@@ -7,7 +8,7 @@ import com.schoolbus.transport.domain.route.RouteStatus;
 import java.time.Instant;
 
 public record RouteResponse(
-        long routeId,
+        String routeId,
         String routeNumber,
         String routeCode,
         Campus departureCampus,
@@ -21,7 +22,7 @@ public record RouteResponse(
 
     public static RouteResponse from(RouteView view) {
         return new RouteResponse(
-                view.routeId(),
+                HttpResourceId.format(view.routeId()),
                 view.routeNumber(),
                 view.routeCode(),
                 view.departureCampus(),

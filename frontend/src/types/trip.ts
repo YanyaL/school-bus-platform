@@ -1,8 +1,8 @@
 export interface BookableTrip {
-  tripId: number;
+  tripId: string;
   tripNumber: string;
-  vehicleId: number;
-  routeId: number;
+  vehicleId: string;
+  routeId: string;
   departureTime: string;
   bookingDeadline: string;
   price: number;
@@ -16,7 +16,7 @@ export interface TripSeat {
 }
 
 export interface TripSeatMap {
-  tripId: number;
+  tripId: string;
   bookingDeadline: string;
   seats: TripSeat[];
 }

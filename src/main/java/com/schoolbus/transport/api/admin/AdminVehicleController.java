@@ -1,6 +1,7 @@
 package com.schoolbus.transport.api.admin;
 
 import com.schoolbus.shared.api.ApiResponse;
+import com.schoolbus.shared.api.HttpResourceId;
 import com.schoolbus.transport.application.vehicle.CreateVehicleCommand;
 import com.schoolbus.transport.application.vehicle.UpdateVehicleStatusCommand;
 import com.schoolbus.transport.application.vehicle.VehicleManagementApplicationService;
@@ -55,7 +56,7 @@ public class AdminVehicleController {
                 )
         );
         URI location = URI.create(
-                "/api/v1/admin/vehicles/" + view.vehicleId()
+                "/api/v1/admin/vehicles/" + HttpResourceId.format(view.vehicleId())
         );
         return ResponseEntity
                 .created(location)
@@ -83,23 +84,25 @@ public class AdminVehicleController {
 
     @GetMapping("/{vehicleId}")
     public ApiResponse<VehicleResponse> findVehicle(
-            @PathVariable long vehicleId
+            @PathVariable String vehicleId
     ) {
+        long parsedVehicleId = HttpResourceId.parse(vehicleId, "vehicleId");
         return ApiResponse.success(
                 VehicleResponse.from(
-                        applicationService.findById(vehicleId)
+                        applicationService.findById(parsedVehicleId)
                 )
         );
     }
 
     @PatchMapping("/{vehicleId}/status")
     public ApiResponse<VehicleResponse> updateVehicleStatus(
-            @PathVariable long vehicleId,
+            @PathVariable String vehicleId,
             @Valid @RequestBody UpdateVehicleStatusRequest request
     ) {
+        long parsedVehicleId = HttpResourceId.parse(vehicleId, "vehicleId");
         VehicleView view = applicationService.updateStatus(
                 new UpdateVehicleStatusCommand(
-                        vehicleId,
+                        parsedVehicleId,
                         request.status(),
                         request.version()
                 )

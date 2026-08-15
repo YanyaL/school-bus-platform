@@ -25,7 +25,7 @@ describe('router auth guard', () => {
     store.$patch({
       initialized: true,
       accessToken: 'token',
-      userId: 1,
+      userId: '1',
       studentNumber: 'S20260001',
     });
 
@@ -38,7 +38,7 @@ describe('router auth guard', () => {
     store.$patch({
       initialized: true,
       accessToken: 'token',
-      userId: 1,
+      userId: '1',
       studentNumber: 'S20260001',
     });
 

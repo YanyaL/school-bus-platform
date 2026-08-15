@@ -31,7 +31,7 @@ async function loadTrips() {
   }
 }
 
-function openSeatMap(tripId: number) {
+function openSeatMap(tripId: string) {
   router.push(`/trips/${tripId}/seats`);
 }
 

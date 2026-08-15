@@ -7,6 +7,8 @@ import com.schoolbus.transport.application.vehicle.VehicleNotFoundException;
 import com.schoolbus.transport.application.vehicle.VehicleView;
 import com.schoolbus.transport.domain.vehicle.VehicleStatus;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
@@ -78,7 +80,7 @@ class AdminVehicleControllerTest {
                         "/api/v1/admin/vehicles/3001"
                 ))
                 .andExpect(jsonPath("$.code").value("OK"))
-                .andExpect(jsonPath("$.data.vehicleId").value(3001L))
+                .andExpect(jsonPath("$.data.vehicleId").value("3001"))
                 .andExpect(jsonPath("$.data.vehicleNumber")
                         .value(VEHICLE_NUMBER))
                 .andExpect(jsonPath("$.data.licensePlate")
@@ -166,7 +168,7 @@ class AdminVehicleControllerTest {
                                 ))
                 )
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.vehicleId").value(3001L))
+                .andExpect(jsonPath("$.data.vehicleId").value("3001"))
                 .andExpect(jsonPath("$.data.vehicleNumber")
                         .value(VEHICLE_NUMBER));
     }
@@ -191,7 +193,7 @@ class AdminVehicleControllerTest {
                                 ))
                 )
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[0].vehicleId").value(3001L));
+                .andExpect(jsonPath("$.data[0].vehicleId").value("3001"));
     }
 
     @Test
@@ -235,6 +237,28 @@ class AdminVehicleControllerTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code")
                         .value("VEHICLE_NOT_FOUND"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "abc",
+            "0",
+            "9223372036854775808"
+    })
+    void shouldRejectInvalidVehicleId(String vehicleId)
+            throws Exception {
+        mockMvc.perform(
+                        get("/api/v1/admin/vehicles/" + vehicleId)
+                                .with(jwt().authorities(
+                                        new SimpleGrantedAuthority(
+                                                "ROLE_ADMIN"
+                                        )
+                                ))
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+
+        verifyNoInteractions(applicationService);
     }
 
     private VehicleView vehicleView(

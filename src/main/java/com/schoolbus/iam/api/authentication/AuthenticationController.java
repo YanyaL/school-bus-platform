@@ -88,7 +88,7 @@ public class AuthenticationController {
         List<String> roles = jwt.getClaimAsStringList("roles");
 
         return ApiResponse.success(
-                new CurrentUserResponse(
+                CurrentUserResponse.of(
                         userId,
                         roles == null ? List.of() : roles
                 )
