@@ -36,7 +36,11 @@ if ([string]::IsNullOrWhiteSpace($accessToken)) {
     throw 'Nacos login did not return an access token.'
 }
 
-foreach ($dataId in @('school-bus-core.yml', 'school-bus-gateway.yml')) {
+foreach ($dataId in @(
+    'school-bus-core.yml',
+    'school-bus-gateway.yml',
+    'school-bus-transport-query.yml'
+)) {
     $content = Get-Content -Raw -LiteralPath (Join-Path $configDirectory $dataId)
     $publishUri = "$NacosBaseUrl/nacos/v3/admin/cs/config" +
         "?dataId=$([uri]::EscapeDataString($dataId))" +

@@ -1,0 +1,35 @@
+spring:
+  cloud:
+    nacos:
+      config:
+        enabled: false
+        health-indicator:
+          enabled: false
+      discovery:
+        enabled: false
+        health-indicator:
+          enabled: false
+  flyway:
+    enabled: false
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
+
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+
+school-bus:
+  security:
+    jwt:
+      issuer: https://school-bus.local
+      audience: school-bus-api
+      access-token-ttl: PT15M
+      public-key-location: classpath:does-not-matter-for-webmvctest.pem
+
+management:
+  health:
+    redis:
+      enabled: false

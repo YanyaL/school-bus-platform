@@ -5,10 +5,13 @@ import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.io.Resource;
+import org.springframework.security.converter.RsaKeyConverters;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
@@ -20,7 +23,10 @@ import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
+import org.springframework.util.StringUtils;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
@@ -34,7 +40,20 @@ public class JwtConfiguration {
 
     @Bean
     @Profile("!prod")
-    KeyPair jwtKeyPair() {
+    KeyPair jwtKeyPair(
+            @Value("${school-bus.security.jwt.public-key-location:}")
+            String publicKeyLocation,
+            @Value("${school-bus.security.jwt.private-key-location:}")
+            String privateKeyLocation,
+            org.springframework.core.io.ResourceLoader resourceLoader
+    ) {
+        if (StringUtils.hasText(publicKeyLocation)
+                && StringUtils.hasText(privateKeyLocation)) {
+            return loadKeyPair(
+                    resourceLoader.getResource(publicKeyLocation),
+                    resourceLoader.getResource(privateKeyLocation)
+            );
+        }
         try {
             KeyPairGenerator generator =
                     KeyPairGenerator.getInstance("RSA");
@@ -43,6 +62,29 @@ public class JwtConfiguration {
         } catch (NoSuchAlgorithmException exception) {
             throw new IllegalStateException(
                     "RSA algorithm is not available",
+                    exception
+            );
+        }
+    }
+
+    private static KeyPair loadKeyPair(
+            Resource publicKeyResource,
+            Resource privateKeyResource
+    ) {
+        try (
+                InputStream publicKeyInput =
+                        publicKeyResource.getInputStream();
+                InputStream privateKeyInput =
+                        privateKeyResource.getInputStream()
+        ) {
+            RSAPublicKey publicKey = (RSAPublicKey)
+                    RsaKeyConverters.x509().convert(publicKeyInput);
+            RSAPrivateKey privateKey = (RSAPrivateKey)
+                    RsaKeyConverters.pkcs8().convert(privateKeyInput);
+            return new KeyPair(publicKey, privateKey);
+        } catch (IOException exception) {
+            throw new IllegalStateException(
+                    "Unable to load shared JWT key pair for non-prod cloud",
                     exception
             );
         }

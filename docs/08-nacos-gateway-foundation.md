@@ -41,10 +41,15 @@ Nacos 控制台：`http://localhost:18080/`。Nacos 2.4.0 以后不再内置管�
 
 容器名为 `school-bus-nacos-3`，避免与旧版 Nacos 1.x 开发容器冲突。
 
-脚本在 Nacos 的 `DEFAULT_GROUP` 中发布两个 YAML 配置：
+脚本在 Nacos 的 `DEFAULT_GROUP` 中发布三个 YAML 配置：
 
 - Data ID `school-bus-core.yml`，内容来自 `cloud/nacos-config/school-bus-core.yml`
 - Data ID `school-bus-gateway.yml`，内容来自 `cloud/nacos-config/school-bus-gateway.yml`
+- Data ID `school-bus-transport-query.yml`，内容来自 `cloud/nacos-config/school-bus-transport-query.yml`
+
+下一阶段只读拆分见 `docs/09-transport-query-strangler.md`：Gateway 将
+`GET /api/v1/trips` 与 `GET /api/v1/trips/{tripNumber}/seats` 精确路由到
+`school-bus-transport-query`，其余 `/api/**` 仍走 core。
 
 示例配置可以不发布；因为应用使用 `optional:nacos:`，本地默认值仍可启动。发布后可通过
 Actuator `info.cloud.config-source=nacos` 验证配置确实来自 Nacos。

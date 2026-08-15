@@ -5,3 +5,4 @@ info:
 school-bus:
   gateway:
     core-service-id: school-bus-core
+    transport-query-service-id: school-bus-transport-query

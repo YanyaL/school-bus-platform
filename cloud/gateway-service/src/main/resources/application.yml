@@ -43,6 +43,7 @@ management:
 school-bus:
   gateway:
     core-service-id: ${CORE_SERVICE_ID:school-bus-core}
+    transport-query-service-id: ${TRANSPORT_QUERY_SERVICE_ID:school-bus-transport-query}
 
 info:
   app:

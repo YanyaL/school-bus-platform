@@ -1,12 +1,15 @@
 package com.schoolbus.gateway.routing;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.route.Route;
 import org.springframework.cloud.gateway.route.RouteLocator;
+import org.springframework.http.HttpMethod;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.server.MockServerWebExchange;
 import org.springframework.web.server.ServerWebExchange;
@@ -23,10 +26,24 @@ class CoreServiceRoutesTest {
     @Autowired
     private RouteLocator routeLocator;
 
-    @Test
-    void routesApiRequestsThroughServiceDiscovery() {
+    @ParameterizedTest
+    @CsvSource({
+            "GET, /api/v1/trips, school-bus-transport-query-trips, lb://school-bus-transport-query",
+            "GET, /api/v1/trips/11111111-1111-1111-1111-111111111111/seats, school-bus-transport-query-seats, lb://school-bus-transport-query",
+            "GET, /api/v1/admin/trips, school-bus-core-api, lb://school-bus-core",
+            "POST, /api/v1/admin/trips, school-bus-core-api, lb://school-bus-core",
+            "GET, /api/v1/bookings, school-bus-core-api, lb://school-bus-core",
+            "POST, /api/v1/auth/login, school-bus-core-api, lb://school-bus-core",
+            "POST, /api/v1/trips, school-bus-core-api, lb://school-bus-core"
+    })
+    void routesRequestsToExpectedService(
+            String method,
+            String path,
+            String expectedRouteId,
+            String expectedUri
+    ) {
         MockServerWebExchange exchange = MockServerWebExchange.from(
-                MockServerHttpRequest.get("/api/v1/trips").build()
+                MockServerHttpRequest.method(HttpMethod.valueOf(method), path).build()
         );
 
         Route route = routeLocator.getRoutes()
@@ -34,8 +51,8 @@ class CoreServiceRoutesTest {
                 .blockFirst();
 
         assertThat(route).isNotNull();
-        assertThat(route.getId()).isEqualTo("school-bus-core-api");
-        assertThat(route.getUri()).isEqualTo(URI.create("lb://school-bus-core"));
+        assertThat(route.getId()).isEqualTo(expectedRouteId);
+        assertThat(route.getUri()).isEqualTo(URI.create(expectedUri));
     }
 
     @Test
