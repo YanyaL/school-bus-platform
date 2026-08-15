@@ -1,0 +1,7 @@
+info:
+  cloud:
+    config-source: nacos
+
+school-bus:
+  gateway:
+    core-service-id: school-bus-core

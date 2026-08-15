@@ -1,0 +1,17 @@
+spring:
+  application:
+    name: school-bus-core
+  cloud:
+    nacos:
+      config:
+        enabled: true
+      discovery:
+        enabled: true
+
+server:
+  port: ${CORE_SERVER_PORT:8081}
+
+info:
+  cloud:
+    role: core-service
+    registry: nacos

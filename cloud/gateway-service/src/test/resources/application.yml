@@ -1,0 +1,21 @@
+spring:
+  config:
+    import:
+      - optional:nacos:school-bus-gateway-test.yml
+  cloud:
+    nacos:
+      config:
+        enabled: false
+        health-indicator:
+          enabled: false
+      discovery:
+        enabled: false
+        health-indicator:
+          enabled: false
+
+management:
+  health:
+    nacos-config:
+      enabled: false
+    nacos-discovery:
+      enabled: false
