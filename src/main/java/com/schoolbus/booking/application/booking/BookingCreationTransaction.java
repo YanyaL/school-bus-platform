@@ -10,6 +10,7 @@ import com.schoolbus.booking.domain.order.BookingOrder;
 import com.schoolbus.booking.domain.order.BookingOrderRepository;
 import com.schoolbus.booking.domain.order.BookingRequestNumber;
 import com.schoolbus.booking.domain.order.SeatNumber;
+import com.schoolbus.booking.domain.trip.PublicTripNumber;
 import com.schoolbus.booking.domain.trip.TripReference;
 import com.schoolbus.shared.domain.identity.UserId;
 import org.springframework.beans.factory.annotation.Value;
@@ -106,18 +107,19 @@ public class BookingCreationTransaction {
 
         Instant now = clock.instant();
         UserId userId = UserId.of(validatedCommand.userId());
-        TripReference tripReference = TripReference.of(
-                validatedCommand.tripId()
+        PublicTripNumber tripNumber = PublicTripNumber.of(
+                validatedCommand.tripNumber()
         );
         SeatNumber seatNumber = SeatNumber.of(
                 validatedCommand.seatNumber()
         );
         BookableTripSnapshot trip = bookableTripGateway
-                .findByTripReference(tripReference)
+                .findByTripNumber(tripNumber)
                 .filter(snapshot -> snapshot.canBookAt(now))
                 .orElseThrow(
-                        () -> new TripNotBookableException(tripReference)
+                        () -> new TripNotBookableException(tripNumber)
                 );
+        TripReference tripReference = trip.tripReference();
 
         if (bookingOrderRepository
                 .existsActiveByUserIdAndTripReference(
@@ -170,6 +172,7 @@ public class BookingCreationTransaction {
                 requestNumber,
                 userId,
                 tripReference,
+                trip.tripNumber(),
                 seatNumber,
                 trip.price(),
                 expiresAt,
@@ -224,9 +227,15 @@ public class BookingCreationTransaction {
         }
 
         UserId userId = UserId.of(validatedCommand.userId());
-        TripReference tripReference = TripReference.of(
-                validatedCommand.tripId()
+        PublicTripNumber tripNumber = PublicTripNumber.of(
+                validatedCommand.tripNumber()
         );
+        TripReference tripReference = bookableTripGateway
+                .findByTripNumber(tripNumber)
+                .map(BookableTripSnapshot::tripReference)
+                .orElseThrow(
+                        () -> new TripNotBookableException(tripNumber)
+                );
         if (bookingOrderRepository
                 .existsActiveByUserIdAndTripReference(
                         userId,
@@ -237,7 +246,7 @@ public class BookingCreationTransaction {
                     tripReference
             );
         }
-        throw new BookingConcurrencyException(tripReference);
+        throw new BookingConcurrencyException(tripNumber);
     }
 
     private Optional<CreateBookingResult> findIdempotentResult(
@@ -258,7 +267,9 @@ public class BookingCreationTransaction {
             BookingRequestNumber requestNumber
     ) {
         boolean sameRequest = order.userId().value() == command.userId()
-                && order.tripReference().value() == command.tripId()
+                && order.tripNumber().toString().equals(
+                        command.tripNumber()
+                )
                 && order.seatNumber().value().equals(
                         command.seatNumber()
                 );

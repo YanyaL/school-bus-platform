@@ -75,7 +75,7 @@ export function loginRequest() {
 
 export function bookingRequest() {
     const payload = JSON.stringify({
-        tripId: parseInt(__ENV.TEST_TRIP_ID, 10),
+        tripNumber: __ENV.TEST_TRIP_NUMBER,
         seatNumber: __ENV.TEST_SEAT_NUMBER,
     });
     const response = http.post(`${baseUrl}/api/v1/bookings`, payload, {

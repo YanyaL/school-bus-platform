@@ -2,6 +2,7 @@ package com.schoolbus.booking.infrastructure.transport;
 
 import com.schoolbus.booking.application.booking.BookableTripSnapshot;
 import com.schoolbus.booking.domain.order.BookingAmount;
+import com.schoolbus.booking.domain.trip.PublicTripNumber;
 import com.schoolbus.booking.domain.trip.TripReference;
 import com.schoolbus.transport.domain.trip.BusTrip;
 import com.schoolbus.transport.domain.trip.BusTripRepository;
@@ -31,6 +32,8 @@ class LocalBookableTripGatewayTest {
             Instant.parse("2026-08-08T01:00:00Z");
     private static final Instant DEPARTURE =
             Instant.parse("2026-08-08T02:00:00Z");
+    private static final String TRIP_NUMBER_VALUE =
+            "22222222-2222-2222-2222-222222222222";
 
     @Mock
     private BusTripRepository busTripRepository;
@@ -48,15 +51,20 @@ class LocalBookableTripGatewayTest {
     void shouldTranslateTransportTripToBookingSnapshot() {
         BusTrip trip = draftTrip();
         trip.openForBooking(CREATED_AT.plusSeconds(60));
-        when(busTripRepository.findByIdForShare(TripId.of(2001L)))
-                .thenReturn(Optional.of(trip));
+        when(busTripRepository.findByTripNumberForShare(
+                TripNumber.of(TRIP_NUMBER_VALUE)
+        )).thenReturn(Optional.of(trip));
 
         BookableTripSnapshot snapshot = gateway
-                .findByTripReference(TripReference.of(2001L))
+                .findByTripNumber(
+                        PublicTripNumber.of(TRIP_NUMBER_VALUE)
+                )
                 .orElseThrow();
 
         assertThat(snapshot.tripReference())
                 .isEqualTo(TripReference.of(2001L));
+        assertThat(snapshot.tripNumber())
+                .isEqualTo(PublicTripNumber.of(TRIP_NUMBER_VALUE));
         assertThat(snapshot.price())
                 .isEqualTo(BookingAmount.of("5.50"));
         assertThat(snapshot.openForBooking()).isTrue();
@@ -66,12 +74,13 @@ class LocalBookableTripGatewayTest {
 
     @Test
     void shouldReturnEmptyWhenTransportTripDoesNotExist() {
-        when(busTripRepository.findByIdForShare(TripId.of(2001L)))
-                .thenReturn(Optional.empty());
+        when(busTripRepository.findByTripNumberForShare(
+                TripNumber.of(TRIP_NUMBER_VALUE)
+        )).thenReturn(Optional.empty());
 
         assertThat(
-                gateway.findByTripReference(
-                        TripReference.of(2001L)
+                gateway.findByTripNumber(
+                        PublicTripNumber.of(TRIP_NUMBER_VALUE)
                 )
         ).isEmpty();
     }
@@ -79,9 +88,7 @@ class LocalBookableTripGatewayTest {
     private BusTrip draftTrip() {
         return BusTrip.draft(
                 TripId.of(2001L),
-                TripNumber.of(
-                        "22222222-2222-2222-2222-222222222222"
-                ),
+                TripNumber.of(TRIP_NUMBER_VALUE),
                 VehicleId.of(3001L),
                 RouteId.of(4001L),
                 DEPARTURE,

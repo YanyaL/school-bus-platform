@@ -98,6 +98,38 @@ public class MyBatisBusTripRepository
     }
 
     @Override
+    public Optional<BusTrip> findByTripNumber(TripNumber tripNumber) {
+        TripNumber validated = Objects.requireNonNull(
+                tripNumber,
+                "tripNumber must not be null"
+        );
+        TripDataObject dataObject = tripMapper.selectByTripNumber(
+                validated.toString()
+        );
+        if (dataObject == null) {
+            return Optional.empty();
+        }
+        return Optional.of(toDomain(dataObject));
+    }
+
+    @Override
+    public Optional<BusTrip> findByTripNumberForShare(
+            TripNumber tripNumber
+    ) {
+        TripNumber validated = Objects.requireNonNull(
+                tripNumber,
+                "tripNumber must not be null"
+        );
+        TripDataObject dataObject = tripMapper.selectByTripNumberForShare(
+                validated.toString()
+        );
+        if (dataObject == null) {
+            return Optional.empty();
+        }
+        return Optional.of(toDomain(dataObject));
+    }
+
+    @Override
     public List<BusTrip> findAll(
             TripStatus status,
             int offset,

@@ -129,6 +129,52 @@ class MyBatisBusTripRepositoryTest {
     }
 
     @Test
+    void shouldFindByTripNumber() {
+        TripDataObject dataObject = dataObject();
+        when(tripMapper.selectByTripNumber(
+                "11111111-1111-1111-1111-111111111111"
+        )).thenReturn(dataObject);
+
+        Optional<BusTrip> result = repository.findByTripNumber(
+                TripNumber.of("11111111-1111-1111-1111-111111111111")
+        );
+
+        assertThat(result).isPresent();
+        assertThat(result.orElseThrow().tripId().value()).isEqualTo(1001L);
+        assertThat(result.orElseThrow().tripNumber().toString())
+                .isEqualTo("11111111-1111-1111-1111-111111111111");
+    }
+
+    @Test
+    void shouldReturnEmptyWhenTripNumberMissing() {
+        when(tripMapper.selectByTripNumber(
+                "22222222-2222-2222-2222-222222222222"
+        )).thenReturn(null);
+
+        assertThat(repository.findByTripNumber(
+                TripNumber.of("22222222-2222-2222-2222-222222222222")
+        )).isEmpty();
+    }
+
+    @Test
+    void shouldFindByTripNumberForShare() {
+        TripDataObject dataObject = dataObject();
+        when(tripMapper.selectByTripNumberForShare(
+                "11111111-1111-1111-1111-111111111111"
+        )).thenReturn(dataObject);
+
+        Optional<BusTrip> result = repository.findByTripNumberForShare(
+                TripNumber.of("11111111-1111-1111-1111-111111111111")
+        );
+
+        assertThat(result).isPresent();
+        assertThat(result.orElseThrow().tripId().value()).isEqualTo(1001L);
+        verify(tripMapper).selectByTripNumberForShare(
+                "11111111-1111-1111-1111-111111111111"
+        );
+    }
+
+    @Test
     void shouldListTripsForAdminWithStatusAndPagination() {
         TripDataObject dataObject = dataObject();
         when(tripMapper.selectAll("DRAFT", 20, 20))

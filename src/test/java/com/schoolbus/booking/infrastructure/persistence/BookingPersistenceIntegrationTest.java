@@ -24,6 +24,7 @@ import com.schoolbus.booking.domain.order.BookingRequestNumber;
 import com.schoolbus.booking.domain.order.BookingStatus;
 import com.schoolbus.booking.domain.order.CancellationReason;
 import com.schoolbus.booking.domain.order.SeatNumber;
+import com.schoolbus.booking.domain.trip.PublicTripNumber;
 import com.schoolbus.booking.domain.trip.TripReference;
 import com.schoolbus.shared.domain.identity.UserId;
 import com.schoolbus.payment.application.ConfirmPaymentCommand;
@@ -80,6 +81,8 @@ class BookingPersistenceIntegrationTest {
             Instant.parse("2026-08-08T00:15:00Z");
     private static final TripReference TRIP =
             TripReference.of(2001L);
+    private static final String TRIP_NUMBER =
+            "22222222-2222-2222-2222-222222222222";
 
     @Container
     @ServiceConnection
@@ -443,7 +446,7 @@ class BookingPersistenceIntegrationTest {
         );
         CreateBookingCommand command = new CreateBookingCommand(
                 2001L,
-                TRIP.value(),
+                TRIP_NUMBER,
                 "C01",
                 "create-booking-2001"
         );
@@ -489,7 +492,7 @@ class BookingPersistenceIntegrationTest {
                 () -> bookingCreationTransaction.createOnce(
                         new CreateBookingCommand(
                                 2002L,
-                                TRIP.value(),
+                                TRIP_NUMBER,
                                 "C02",
                                 "rollback-booking-2002"
                         )
@@ -774,7 +777,7 @@ class BookingPersistenceIntegrationTest {
             bookingApplicationService.createBooking(
                     new CreateBookingCommand(
                             3000L + index,
-                            TRIP.value(),
+                            TRIP_NUMBER,
                             "D" + (index % 10),
                             "concurrent-booking-" + index
                     )
@@ -808,7 +811,7 @@ class BookingPersistenceIntegrationTest {
         return bookingApplicationService.createBooking(
                 new CreateBookingCommand(
                         userId,
-                        TRIP.value(),
+                        TRIP_NUMBER,
                         seatNumber,
                         requestNumber
                 )
@@ -824,6 +827,7 @@ class BookingPersistenceIntegrationTest {
                 BookingRequestNumber.of("request-5001"),
                 UserId.of(1001L),
                 TRIP,
+                PublicTripNumber.of(TRIP_NUMBER),
                 SeatNumber.of("A01"),
                 BookingAmount.of("5.50"),
                 EXPIRES_AT,
@@ -911,7 +915,7 @@ class BookingPersistenceIntegrationTest {
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 TRIP.value(),
-                UUID.randomUUID().toString(),
+                TRIP_NUMBER,
                 3001L,
                 2001L,
                 Timestamp.from(CREATED_AT.plusSeconds(7200)),

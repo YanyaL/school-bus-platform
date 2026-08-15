@@ -56,7 +56,7 @@ API 不暴露数据库自增主键。
 | 用户 | `userId` | 十进制字符串形式的内部资源 ID（Snowflake） |
 | 车辆 | `vehicleId` / `vehicleNo` | HTTP 边界使用字符串 `vehicleId`；业务稳定编号为 UUID `vehicleNo` |
 | 路线 | `routeId` / `routeNo` | HTTP 边界使用字符串 `routeId`；业务稳定编号为 UUID `routeNo` |
-| 班次 | `tripId` / `tripNo` / `tripNumber` | HTTP 边界使用字符串 `tripId`；业务稳定编号为 UUID |
+| 班次 | `tripNumber`（学生对外） / `tripId`（内部） | 学生 API 使用 UUID 字符串 `tripNumber`；Snowflake `tripId` 仅数据库与模块内部，不出现在学生端路径与 DTO |
 | 订单 | `bookingId` / `bookingNumber` | HTTP 边界使用字符串 `bookingId`；业务稳定编号为 UUID |
 | 支付 | `paymentNo` | UUID |
 
@@ -64,12 +64,12 @@ API 不暴露数据库自增主键。
 
 - 数据库内部：`BIGINT`
 - Java 领域与持久化：`long` / `Long`
-- HTTP 请求与响应中的资源 ID（`userId`、`bookingId`、`tripId`、`vehicleId`、`routeId`）：**JSON string**
+- HTTP 请求与响应中的资源 ID（`userId`、`bookingId`、`vehicleId`、`routeId`）：**JSON string**
 - `version`、`page`、`size`、`totalElements`、`totalPages`、`seatCount`、`amount` 等普通数字：**仍为 JSON number**
 
 原因：JavaScript `Number` 仅有 53 位安全整数精度（`Number.MAX_SAFE_INTEGER`）。Snowflake 等 64 位 ID 若以 JSON number 传输，浏览器解析后末几位可能丢失，造成静默错单。字符串化只是精度保护，**不是加密或安全措施**。
 
-当前学生端班次路径仍为 `GET /api/v1/trips/{tripId}/seats`；下一阶段才会正式切换到 `tripNumber`（UUID）路径。
+学生端班次路径与请求体使用 `tripNumber`（UUID）：`GET /api/v1/trips/{tripNumber}/seats`、`POST /api/v1/bookings` 的 `tripNumber` 字段。内部 Snowflake `tripId` 不作为学生 API 对外标识。
 
 `routeCode` 和 `licensePlate` 是业务属性，不代替稳定的资源编号。
 
@@ -420,7 +420,7 @@ GET /api/v1/trips
 
 ```json
 {
-  "tripNo": "cb82ebec-cce5-4a17-ab7f-121561ab96ca",
+  "tripNumber": "cb82ebec-cce5-4a17-ab7f-121561ab96ca",
   "departureCampus": "东校区",
   "arrivalCampus": "西校区",
   "departureTime": "2026-08-01T02:00:00.000Z",
@@ -432,27 +432,27 @@ GET /api/v1/trips
 }
 ```
 
-`availableSeatCount` 是展示值，最终能否下单仍以锁座条件更新为准。
+`availableSeatCount` 是展示值，最终能否下单仍以锁座条件更新为准。列表项**不返回**内部 `tripId`。
 
 ### 9.2 查询班次详情
 
 ```http
-GET /api/v1/trips/{tripNo}
+GET /api/v1/trips/{tripNumber}
 ```
 
-返回路线、发车时间、预约截止时间、票价、车辆展示信息和可用座位数。
+返回路线、发车时间、预约截止时间、票价、车辆展示信息和可用座位数。路径参数为公开 UUID `tripNumber`，不是内部 `tripId`。
 
 ### 9.3 查询座位图
 
 ```http
-GET /api/v1/trips/{tripNo}/seats
+GET /api/v1/trips/{tripNumber}/seats
 ```
 
 成功数据：
 
 ```json
 {
-  "tripNo": "cb82ebec-cce5-4a17-ab7f-121561ab96ca",
+  "tripNumber": "cb82ebec-cce5-4a17-ab7f-121561ab96ca",
   "bookingDeadline": "2026-08-01T01:30:00.000Z",
   "seats": [
     {
@@ -487,7 +487,7 @@ Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000
 
 ```json
 {
-  "tripNo": "cb82ebec-cce5-4a17-ab7f-121561ab96ca",
+  "tripNumber": "cb82ebec-cce5-4a17-ab7f-121561ab96ca",
   "seatNumber": "16"
 }
 ```
@@ -516,7 +516,7 @@ Idempotency-Replayed: false
 ```json
 {
   "orderNo": "bb5ee29c-c945-4d46-a626-cfe0f64df3bc",
-  "tripNo": "cb82ebec-cce5-4a17-ab7f-121561ab96ca",
+  "tripNumber": "cb82ebec-cce5-4a17-ab7f-121561ab96ca",
   "seatNumber": "16",
   "amount": 5.00,
   "status": "PENDING_PAYMENT",
@@ -561,7 +561,7 @@ GET /api/v1/orders/{orderNo}
 {
   "orderNo": "bb5ee29c-c945-4d46-a626-cfe0f64df3bc",
   "trip": {
-    "tripNo": "cb82ebec-cce5-4a17-ab7f-121561ab96ca",
+    "tripNumber": "cb82ebec-cce5-4a17-ab7f-121561ab96ca",
     "departureCampus": "东校区",
     "arrivalCampus": "西校区",
     "departureTime": "2026-08-01T02:00:00.000Z"
@@ -664,8 +664,8 @@ Idempotency-Key: c583311f-e94c-4cd0-a357-a4a340181038
 | `POST` | `/api/v1/auth/register` | 匿名 | 学生注册 |
 | `POST` | `/api/v1/auth/login` | 匿名 | 登录 |
 | `GET` | `/api/v1/trips` | 学生/管理员 | 查询可预约班次 |
-| `GET` | `/api/v1/trips/{tripNo}` | 学生/管理员 | 班次详情 |
-| `GET` | `/api/v1/trips/{tripNo}/seats` | 学生/管理员 | 班次座位图 |
+| `GET` | `/api/v1/trips/{tripNumber}` | 学生/管理员 | 班次详情 |
+| `GET` | `/api/v1/trips/{tripNumber}/seats` | 学生/管理员 | 班次座位图 |
 | `POST` | `/api/v1/orders` | 学生 | 创建订单 |
 | `GET` | `/api/v1/orders` | 学生 | 查询自己的订单 |
 | `GET` | `/api/v1/orders/{orderNo}` | 学生 | 自己的订单详情 |

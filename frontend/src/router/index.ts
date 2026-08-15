@@ -30,7 +30,7 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
-      path: '/trips/:tripId/seats',
+      path: '/trips/:tripNumber/seats',
       name: 'trip-seats',
       component: () => import('@/views/TripSeatView.vue'),
       meta: { requiresAuth: true },

@@ -10,6 +10,7 @@ import com.schoolbus.booking.domain.order.BookingStatus;
 import com.schoolbus.booking.domain.order.CancellationReason;
 import com.schoolbus.booking.domain.order.PaymentReference;
 import com.schoolbus.booking.domain.order.SeatNumber;
+import com.schoolbus.booking.domain.trip.PublicTripNumber;
 import com.schoolbus.booking.domain.trip.TripReference;
 import com.schoolbus.shared.domain.identity.UserId;
 import org.springframework.context.annotation.Profile;
@@ -261,6 +262,9 @@ public class MyBatisBookingOrderRepository
         dataObject.setTripId(
                 bookingOrder.tripReference().value()
         );
+        dataObject.setTripNo(
+                bookingOrder.tripNumber().toString()
+        );
         dataObject.setSeatNumber(
                 bookingOrder.seatNumber().value()
         );
@@ -306,6 +310,7 @@ public class MyBatisBookingOrderRepository
                 BookingRequestNumber.of(dataObject.getRequestNo()),
                 UserId.of(dataObject.getUserId()),
                 TripReference.of(dataObject.getTripId()),
+                PublicTripNumber.of(dataObject.getTripNo()),
                 SeatNumber.of(dataObject.getSeatNumber()),
                 new BookingAmount(dataObject.getPriceSnapshot()),
                 BookingStatus.valueOf(dataObject.getStatus()),

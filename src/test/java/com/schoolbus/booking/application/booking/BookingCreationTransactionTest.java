@@ -12,6 +12,7 @@ import com.schoolbus.booking.domain.order.BookingOrderRepository;
 import com.schoolbus.booking.domain.order.BookingRequestNumber;
 import com.schoolbus.booking.domain.order.BookingStatus;
 import com.schoolbus.booking.domain.order.SeatNumber;
+import com.schoolbus.booking.domain.trip.PublicTripNumber;
 import com.schoolbus.booking.domain.trip.TripReference;
 import com.schoolbus.shared.domain.identity.UserId;
 import org.junit.jupiter.api.BeforeEach;
@@ -42,6 +43,10 @@ class BookingCreationTransactionTest {
             Instant.parse("2026-08-08T02:00:00Z");
     private static final TripReference TRIP =
             TripReference.of(2001L);
+    private static final String TRIP_NUMBER_VALUE =
+            "22222222-2222-2222-2222-222222222222";
+    private static final PublicTripNumber TRIP_NUMBER =
+            PublicTripNumber.of(TRIP_NUMBER_VALUE);
     private static final BookingNumber BOOKING_NUMBER =
             BookingNumber.of(
                     "55555555-5555-5555-5555-555555555555"
@@ -115,6 +120,11 @@ class BookingCreationTransactionTest {
         verify(orderRepository).save(orderCaptor.capture());
         assertThat(orderCaptor.getValue().amount())
                 .isEqualTo(BookingAmount.of("5.50"));
+        assertThat(orderCaptor.getValue().tripNumber())
+                .isEqualTo(TRIP_NUMBER);
+        assertThat(orderCaptor.getValue().tripReference())
+                .isEqualTo(TRIP);
+        assertThat(result.tripNumber()).isEqualTo(TRIP_NUMBER_VALUE);
 
         ArgumentCaptor<BookingPaymentDeadlineEvent> eventCaptor =
                 ArgumentCaptor.forClass(
@@ -148,7 +158,7 @@ class BookingCreationTransactionTest {
 
         assertThat(result.bookingId())
                 .isEqualTo(existing.bookingId().value());
-        verify(tripGateway, never()).findByTripReference(any());
+        verify(tripGateway, never()).findByTripNumber(any());
         verify(seatReservationPort, never()).tryLockSeat(any());
         verify(inventoryRepository, never()).save(any());
         verify(expirationOutboxPort, never()).append(any());
@@ -163,7 +173,7 @@ class BookingCreationTransactionTest {
         CreateBookingCommand conflictingCommand =
                 new CreateBookingCommand(
                         1001L,
-                        2001L,
+                        TRIP_NUMBER_VALUE,
                         "A02",
                         "request-5001"
                 );
@@ -171,6 +181,19 @@ class BookingCreationTransactionTest {
         assertThatThrownBy(
                 () -> transaction.createOnce(conflictingCommand)
         ).isInstanceOf(BookingRequestConflictException.class);
+    }
+
+    @Test
+    void shouldRejectUnknownTripNumber() {
+        when(orderRepository.findByRequestNumber(any()))
+                .thenReturn(Optional.empty());
+        when(tripGateway.findByTripNumber(TRIP_NUMBER))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> transaction.createOnce(command()))
+                .isInstanceOf(TripNotBookableException.class);
+
+        verify(seatReservationPort, never()).tryLockSeat(any());
     }
 
     @Test
@@ -190,9 +213,10 @@ class BookingCreationTransactionTest {
     private void prepareSuccessfulCreation(Instant deadline) {
         when(orderRepository.findByRequestNumber(any()))
                 .thenReturn(Optional.empty());
-        when(tripGateway.findByTripReference(TRIP))
+        when(tripGateway.findByTripNumber(TRIP_NUMBER))
                 .thenReturn(Optional.of(new BookableTripSnapshot(
                         TRIP,
+                        TRIP_NUMBER,
                         BookingAmount.of("5.50"),
                         DEPARTURE,
                         deadline,
@@ -221,7 +245,7 @@ class BookingCreationTransactionTest {
     private CreateBookingCommand command() {
         return new CreateBookingCommand(
                 1001L,
-                2001L,
+                TRIP_NUMBER_VALUE,
                 "A01",
                 "request-5001"
         );
@@ -234,6 +258,7 @@ class BookingCreationTransactionTest {
                 BookingRequestNumber.of("request-5001"),
                 UserId.of(1001L),
                 TRIP,
+                TRIP_NUMBER,
                 SeatNumber.of("A01"),
                 BookingAmount.of("5.50"),
                 NOW.plus(Duration.ofMinutes(15)),

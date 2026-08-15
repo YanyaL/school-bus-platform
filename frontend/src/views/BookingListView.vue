@@ -95,7 +95,7 @@ onMounted(loadBookings);
       <template v-else>
         <el-table :data="bookings" stripe @row-click="handleRowClick">
           <el-table-column prop="bookingNumber" label="订单号" min-width="220" />
-          <el-table-column prop="tripId" label="班次 ID" width="100" />
+          <el-table-column prop="tripNumber" label="班次编号" min-width="280" />
           <el-table-column prop="seatNumber" label="座位" width="100" />
           <el-table-column label="金额" width="120">
             <template #default="{ row }">¥ {{ formatMoney(row.amount) }}</template>

@@ -1,5 +1,6 @@
 package com.schoolbus.booking.domain.order;
 
+import com.schoolbus.booking.domain.trip.PublicTripNumber;
 import com.schoolbus.booking.domain.trip.TripReference;
 import com.schoolbus.shared.domain.identity.UserId;
 
@@ -13,6 +14,7 @@ public final class BookingOrder {
     private final BookingRequestNumber requestNumber;
     private final UserId userId;
     private final TripReference tripReference;
+    private final PublicTripNumber tripNumber;
     private final SeatNumber seatNumber;
     private final BookingAmount amount;
     private BookingStatus status;
@@ -31,6 +33,7 @@ public final class BookingOrder {
             BookingRequestNumber requestNumber,
             UserId userId,
             TripReference tripReference,
+            PublicTripNumber tripNumber,
             SeatNumber seatNumber,
             BookingAmount amount,
             BookingStatus status,
@@ -62,6 +65,10 @@ public final class BookingOrder {
         this.tripReference = Objects.requireNonNull(
                 tripReference,
                 "tripReference must not be null"
+        );
+        this.tripNumber = Objects.requireNonNull(
+                tripNumber,
+                "tripNumber must not be null"
         );
         this.seatNumber = Objects.requireNonNull(
                 seatNumber,
@@ -163,6 +170,7 @@ public final class BookingOrder {
             BookingRequestNumber requestNumber,
             UserId userId,
             TripReference tripReference,
+            PublicTripNumber tripNumber,
             SeatNumber seatNumber,
             BookingAmount amount,
             Instant expiresAt,
@@ -174,6 +182,7 @@ public final class BookingOrder {
                 requestNumber,
                 userId,
                 tripReference,
+                tripNumber,
                 seatNumber,
                 amount,
                 BookingStatus.PENDING_PAYMENT,
@@ -194,6 +203,7 @@ public final class BookingOrder {
             BookingRequestNumber requestNumber,
             UserId userId,
             TripReference tripReference,
+            PublicTripNumber tripNumber,
             SeatNumber seatNumber,
             BookingAmount amount,
             BookingStatus status,
@@ -212,6 +222,7 @@ public final class BookingOrder {
                 requestNumber,
                 userId,
                 tripReference,
+                tripNumber,
                 seatNumber,
                 amount,
                 status,
@@ -386,6 +397,10 @@ public final class BookingOrder {
 
     public TripReference tripReference() {
         return tripReference;
+    }
+
+    public PublicTripNumber tripNumber() {
+        return tripNumber;
     }
 
     public BookingAmount amount() {

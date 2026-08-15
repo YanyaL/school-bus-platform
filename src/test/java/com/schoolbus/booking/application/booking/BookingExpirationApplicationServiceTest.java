@@ -7,6 +7,7 @@ import com.schoolbus.booking.domain.order.BookingOrder;
 import com.schoolbus.booking.domain.order.BookingOrderRepository;
 import com.schoolbus.booking.domain.order.BookingRequestNumber;
 import com.schoolbus.booking.domain.order.SeatNumber;
+import com.schoolbus.booking.domain.trip.PublicTripNumber;
 import com.schoolbus.booking.domain.trip.TripReference;
 import com.schoolbus.shared.domain.identity.UserId;
 import org.junit.jupiter.api.Test;
@@ -25,6 +26,10 @@ class BookingExpirationApplicationServiceTest {
 
     private static final Instant NOW =
             Instant.parse("2026-08-08T00:15:00Z");
+    private static final PublicTripNumber TRIP_NUMBER =
+            PublicTripNumber.of(
+                    "22222222-2222-2222-2222-222222222222"
+            );
 
     @Test
     void shouldProcessBatchAndCountOptimisticConflicts() {
@@ -65,6 +70,7 @@ class BookingExpirationApplicationServiceTest {
                 BookingRequestNumber.of(requestNumber),
                 UserId.of(id),
                 TripReference.of(2001L),
+                TRIP_NUMBER,
                 SeatNumber.of("A01"),
                 BookingAmount.of("5.50"),
                 NOW,

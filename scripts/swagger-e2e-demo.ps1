@@ -142,22 +142,20 @@ if ($tripCount -eq 0) {
     throw "No bookable trips. Run seed or publish a trip first."
 }
 
-$selectedTrip = $trips.data | Where-Object { $_.tripId -eq $DemoTripId } | Select-Object -First 1
-if ($null -eq $selectedTrip) {
-    $selectedTrip = $trips.data[0]
-    Write-Host "Demo trip $DemoTripId not in list; using tripId=$($selectedTrip.tripId)"
-} else {
-    Write-Host "Using demo tripId=$DemoTripId"
+$selectedTrip = $trips.data[0]
+$tripNumber = [string] $selectedTrip.tripNumber
+if ([string]::IsNullOrWhiteSpace($tripNumber)) {
+    throw "Bookable trip is missing tripNumber"
 }
-$tripId = [long] $selectedTrip.tripId
+Write-Host "Using tripNumber=$tripNumber (seed DemoTripId=$DemoTripId is internal only)"
 
-Write-Step "Seat map (/api/v1/trips/$tripId/seats)"
-$seatMap = Invoke-Api -Method GET -Path "/api/v1/trips/$tripId/seats" -Headers $authHeaders
+Write-Step "Seat map (/api/v1/trips/$tripNumber/seats)"
+$seatMap = Invoke-Api -Method GET -Path "/api/v1/trips/$tripNumber/seats" -Headers $authHeaders
 $availableSeat = $seatMap.data.seats |
     Where-Object { $_.status -eq "AVAILABLE" } |
     Select-Object -First 1
 if ($null -eq $availableSeat) {
-    throw "No AVAILABLE seat on trip $tripId"
+    throw "No AVAILABLE seat on trip $tripNumber"
 }
 $chosenSeat = $availableSeat.seatNumber
 Write-Host "Selected seat $chosenSeat (status=$($availableSeat.status))"
@@ -167,7 +165,7 @@ $idempotencyKey = [guid]::NewGuid().ToString("N")
 $bookingHeaders = $authHeaders.Clone()
 $bookingHeaders["Idempotency-Key"] = $idempotencyKey
 $booking = Invoke-Api -Method POST -Path "/api/v1/bookings" -Headers $bookingHeaders -Body @{
-    tripId     = $tripId
+    tripNumber = $tripNumber
     seatNumber = $chosenSeat
 }
 Write-Host "bookingNumber=$($booking.data.bookingNumber)"

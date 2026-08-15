@@ -1,9 +1,11 @@
 package com.schoolbus.transport.api.trip;
 
 import com.schoolbus.shared.api.ApiResponse;
-import com.schoolbus.shared.api.HttpResourceId;
+import com.schoolbus.shared.api.BusinessException;
+import com.schoolbus.shared.api.ErrorCode;
 import com.schoolbus.transport.application.trip.TripQueryApplicationService;
 import com.schoolbus.transport.application.trip.TripSeatQueryApplicationService;
+import com.schoolbus.transport.domain.trip.TripNumber;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import org.springframework.context.annotation.Profile;
@@ -55,15 +57,27 @@ public class TripQueryController {
         return ApiResponse.success(response);
     }
 
-    @GetMapping("/{tripId}/seats")
+    @GetMapping("/{tripNumber}/seats")
     public ApiResponse<TripSeatMapResponse> findTripSeats(
-            @PathVariable String tripId
+            @PathVariable String tripNumber
     ) {
-        long parsedTripId = HttpResourceId.parse(tripId, "tripId");
         return ApiResponse.success(
                 TripSeatMapResponse.from(
-                        seatQueryApplicationService.findTripSeatMap(parsedTripId)
+                        seatQueryApplicationService.findTripSeatMap(
+                                validateTripNumber(tripNumber)
+                        )
                 )
         );
+    }
+
+    private String validateTripNumber(String tripNumber) {
+        try {
+            return TripNumber.of(tripNumber).toString();
+        } catch (IllegalArgumentException exception) {
+            throw new BusinessException(
+                    ErrorCode.VALIDATION_ERROR,
+                    "tripNumber must be a valid UUID"
+            );
+        }
     }
 }

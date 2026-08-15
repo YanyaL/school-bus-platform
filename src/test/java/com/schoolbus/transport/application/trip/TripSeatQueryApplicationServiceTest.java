@@ -37,20 +37,26 @@ class TripSeatQueryApplicationServiceTest {
     @InjectMocks
     private TripSeatQueryApplicationService service;
 
+    private static final String TRIP_NUMBER =
+            "11111111-1111-1111-1111-111111111111";
+    private static final String UNKNOWN_TRIP_NUMBER =
+            "99999999-9999-9999-9999-999999999999";
+
     @Test
     void shouldReturnSeatMapWithoutSensitiveFields() {
         TripId tripId = TripId.of(1001L);
-        when(busTripRepository.findById(tripId))
-                .thenReturn(Optional.of(sampleTrip(tripId)));
+        when(busTripRepository.findByTripNumber(
+                TripNumber.of(TRIP_NUMBER)
+        )).thenReturn(Optional.of(sampleTrip(tripId)));
         when(tripSeatRepository.findSeatStatusesByTripId(tripId))
                 .thenReturn(List.of(
                         new TripSeatStatus("A01", "AVAILABLE"),
                         new TripSeatStatus("A02", "LOCKED")
                 ));
 
-        TripSeatMapView view = service.findTripSeatMap(1001L);
+        TripSeatMapView view = service.findTripSeatMap(TRIP_NUMBER);
 
-        assertThat(view.tripId()).isEqualTo(1001L);
+        assertThat(view.tripNumber()).isEqualTo(TRIP_NUMBER);
         assertThat(view.seats()).hasSize(2);
         assertThat(view.seats().getFirst().status())
                 .isEqualTo("AVAILABLE");
@@ -58,19 +64,19 @@ class TripSeatQueryApplicationServiceTest {
 
     @Test
     void shouldRejectUnknownTrip() {
-        when(busTripRepository.findById(TripId.of(9999L)))
-                .thenReturn(Optional.empty());
+        when(busTripRepository.findByTripNumber(
+                TripNumber.of(UNKNOWN_TRIP_NUMBER)
+        )).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.findTripSeatMap(9999L))
-                .isInstanceOf(BusinessException.class);
+        assertThatThrownBy(
+                () -> service.findTripSeatMap(UNKNOWN_TRIP_NUMBER)
+        ).isInstanceOf(BusinessException.class);
     }
 
     private BusTrip sampleTrip(TripId tripId) {
         return BusTrip.restore(
                 tripId,
-                TripNumber.of(
-                        "11111111-1111-1111-1111-111111111111"
-                ),
+                TripNumber.of(TRIP_NUMBER),
                 VehicleId.of(3001L),
                 RouteId.of(2001L),
                 Instant.parse("2026-08-05T09:00:00Z"),

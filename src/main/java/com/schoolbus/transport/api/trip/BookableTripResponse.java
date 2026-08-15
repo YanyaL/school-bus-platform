@@ -7,7 +7,6 @@ import java.math.BigDecimal;
 import java.time.Instant;
 
 public record BookableTripResponse(
-        String tripId,
         String tripNumber,
         String vehicleId,
         String routeId,
@@ -20,7 +19,6 @@ public record BookableTripResponse(
             BookableTripView trip
     ) {
         return new BookableTripResponse(
-                HttpResourceId.format(trip.tripId()),
                 trip.tripNumber(),
                 HttpResourceId.format(trip.vehicleId()),
                 HttpResourceId.format(trip.routeId()),

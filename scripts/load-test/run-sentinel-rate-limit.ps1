@@ -127,7 +127,7 @@ function Get-ScenarioRequiredVariables {
         'booking' {
             return @(
                 'TEST_ACCESS_TOKEN',
-                'TEST_TRIP_ID',
+                'TEST_TRIP_NUMBER',
                 'TEST_SEAT_NUMBER'
             )
         }

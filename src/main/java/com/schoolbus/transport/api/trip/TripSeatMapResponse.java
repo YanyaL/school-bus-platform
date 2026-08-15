@@ -1,6 +1,5 @@
 package com.schoolbus.transport.api.trip;
 
-import com.schoolbus.shared.api.HttpResourceId;
 import com.schoolbus.transport.application.trip.TripSeatMapView;
 
 import java.time.Instant;
@@ -8,12 +7,16 @@ import java.util.List;
 import java.util.Objects;
 
 public record TripSeatMapResponse(
-        String tripId,
+        String tripNumber,
         Instant bookingDeadline,
         List<TripSeatResponse> seats
 ) {
 
     public TripSeatMapResponse {
+        Objects.requireNonNull(
+                tripNumber,
+                "tripNumber must not be null"
+        );
         Objects.requireNonNull(
                 bookingDeadline,
                 "bookingDeadline must not be null"
@@ -27,7 +30,7 @@ public record TripSeatMapResponse(
                 "view must not be null"
         );
         return new TripSeatMapResponse(
-                HttpResourceId.format(validatedView.tripId()),
+                validatedView.tripNumber(),
                 validatedView.bookingDeadline(),
                 validatedView.seats()
                         .stream()

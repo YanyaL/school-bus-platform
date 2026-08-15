@@ -11,7 +11,7 @@ import java.util.Objects;
 public record BookingSummaryResponse(
         String bookingId,
         String bookingNumber,
-        String tripId,
+        String tripNumber,
         String seatNumber,
         BigDecimal amount,
         BookingStatus status,
@@ -40,7 +40,7 @@ public record BookingSummaryResponse(
         return new BookingSummaryResponse(
                 HttpResourceId.format(validatedView.bookingId()),
                 validatedView.bookingNumber(),
-                HttpResourceId.format(validatedView.tripId()),
+                validatedView.tripNumber(),
                 validatedView.seatNumber(),
                 validatedView.amount(),
                 validatedView.status(),

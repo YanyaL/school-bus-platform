@@ -12,6 +12,7 @@ import com.schoolbus.booking.domain.order.BookingRequestNumber;
 import com.schoolbus.booking.domain.order.BookingStatus;
 import com.schoolbus.booking.domain.order.PaymentReference;
 import com.schoolbus.booking.domain.order.SeatNumber;
+import com.schoolbus.booking.domain.trip.PublicTripNumber;
 import com.schoolbus.booking.domain.trip.TripReference;
 import com.schoolbus.shared.application.messaging.ConsumedEventStore;
 import com.schoolbus.shared.domain.identity.UserId;
@@ -37,6 +38,10 @@ class TripCancellationBookingTransactionTest {
     private static final Instant NOW =
             Instant.parse("2026-08-14T10:00:00Z");
     private static final TripReference TRIP = TripReference.of(7001L);
+    private static final PublicTripNumber TRIP_NUMBER =
+            PublicTripNumber.of(
+                    "77777777-7777-7777-7777-777777777701"
+            );
 
     private BookingOrderRepository orderRepository;
     private SeatInventoryRepository inventoryRepository;
@@ -169,6 +174,7 @@ class TripCancellationBookingTransactionTest {
                 BookingRequestNumber.of(request),
                 UserId.of(1000L + id),
                 TRIP,
+                TRIP_NUMBER,
                 SeatNumber.of(seat),
                 BookingAmount.of("5.50"),
                 NOW.plusSeconds(300),

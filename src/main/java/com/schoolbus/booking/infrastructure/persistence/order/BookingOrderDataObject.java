@@ -10,6 +10,7 @@ public class BookingOrderDataObject {
     private String requestNo;
     private Long userId;
     private Long tripId;
+    private String tripNo;
     private String seatNumber;
     private BigDecimal priceSnapshot;
     private String status;
@@ -60,6 +61,14 @@ public class BookingOrderDataObject {
 
     public void setTripId(Long tripId) {
         this.tripId = tripId;
+    }
+
+    public String getTripNo() {
+        return tripNo;
+    }
+
+    public void setTripNo(String tripNo) {
+        this.tripNo = tripNo;
     }
 
     public String getSeatNumber() {

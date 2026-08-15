@@ -7,6 +7,7 @@ import com.schoolbus.booking.domain.order.BookingOrder;
 import com.schoolbus.booking.domain.order.BookingRequestNumber;
 import com.schoolbus.booking.domain.order.BookingStatus;
 import com.schoolbus.booking.domain.order.SeatNumber;
+import com.schoolbus.booking.domain.trip.PublicTripNumber;
 import com.schoolbus.booking.domain.trip.TripReference;
 import com.schoolbus.shared.api.ErrorCode;
 import com.schoolbus.shared.domain.identity.UserId;
@@ -25,16 +26,19 @@ class BookingApplicationContractTest {
             Instant.parse("2026-08-08T01:00:00Z");
     private static final Instant DEPARTURE =
             Instant.parse("2026-08-08T02:00:00Z");
+    private static final String TRIP_NUMBER =
+            "22222222-2222-2222-2222-222222222222";
 
     @Test
     void shouldNormalizeCreateBookingCommand() {
         CreateBookingCommand command = new CreateBookingCommand(
                 1001L,
-                2001L,
+                " " + TRIP_NUMBER + " ",
                 " a01 ",
                 " request-5001 "
         );
 
+        assertThat(command.tripNumber()).isEqualTo(TRIP_NUMBER);
         assertThat(command.seatNumber()).isEqualTo("A01");
         assertThat(command.requestNumber())
                 .isEqualTo("request-5001");
@@ -45,7 +49,7 @@ class BookingApplicationContractTest {
         assertThatThrownBy(
                 () -> new CreateBookingCommand(
                         0L,
-                        2001L,
+                        TRIP_NUMBER,
                         "A01",
                         "request-5001"
                 )
@@ -56,7 +60,18 @@ class BookingApplicationContractTest {
         assertThatThrownBy(
                 () -> new CreateBookingCommand(
                         1001L,
-                        2001L,
+                        "2001",
+                        "A01",
+                        "request-5001"
+                )
+        )
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("tripNumber must be a valid UUID");
+
+        assertThatThrownBy(
+                () -> new CreateBookingCommand(
+                        1001L,
+                        TRIP_NUMBER,
                         " ",
                         "request-5001"
                 )
@@ -89,6 +104,7 @@ class BookingApplicationContractTest {
                 BookingRequestNumber.of("request-5001"),
                 UserId.of(1001L),
                 TripReference.of(2001L),
+                PublicTripNumber.of(TRIP_NUMBER),
                 SeatNumber.of("A01"),
                 BookingAmount.of("5.50"),
                 DEADLINE,
@@ -98,6 +114,7 @@ class BookingApplicationContractTest {
         CreateBookingResult result = CreateBookingResult.from(order);
 
         assertThat(result.bookingId()).isEqualTo(5001L);
+        assertThat(result.tripNumber()).isEqualTo(TRIP_NUMBER);
         assertThat(result.bookingNumber()).isEqualTo(
                 "55555555-5555-5555-5555-555555555555"
         );
@@ -132,8 +149,9 @@ class BookingApplicationContractTest {
         TripReference tripReference = TripReference.of(2001L);
 
         assertThat(
-                new TripNotBookableException(tripReference)
-                        .errorCode()
+                new TripNotBookableException(
+                        PublicTripNumber.of(TRIP_NUMBER)
+                ).errorCode()
         ).isEqualTo(ErrorCode.TRIP_NOT_BOOKABLE);
         assertThat(
                 new BookingAlreadyExistsException(
@@ -154,6 +172,7 @@ class BookingApplicationContractTest {
     ) {
         return new BookableTripSnapshot(
                 TripReference.of(2001L),
+                PublicTripNumber.of(TRIP_NUMBER),
                 BookingAmount.of("5.50"),
                 DEPARTURE,
                 DEADLINE,
