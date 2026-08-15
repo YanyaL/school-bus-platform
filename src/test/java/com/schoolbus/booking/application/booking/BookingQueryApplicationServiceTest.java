@@ -8,6 +8,7 @@ import com.schoolbus.booking.domain.order.BookingOrderRepository;
 import com.schoolbus.booking.domain.order.BookingRequestNumber;
 import com.schoolbus.booking.domain.order.BookingStatus;
 import com.schoolbus.booking.domain.order.SeatNumber;
+import com.schoolbus.booking.domain.trip.PublicTripNumber;
 import com.schoolbus.booking.domain.trip.TripReference;
 import com.schoolbus.shared.domain.identity.UserId;
 import org.junit.jupiter.api.Test;
@@ -32,6 +33,8 @@ class BookingQueryApplicationServiceTest {
             Instant.parse("2026-08-08T00:00:00Z");
     private static final Instant EXPIRES_AT =
             Instant.parse("2026-08-08T00:15:00Z");
+    private static final String TRIP_NUMBER =
+            "22222222-2222-2222-2222-222222222222";
 
     @Mock
     private BookingOrderRepository bookingOrderRepository;
@@ -103,7 +106,7 @@ class BookingQueryApplicationServiceTest {
         );
 
         assertThat(detail.bookingId()).isEqualTo(5001L);
-        assertThat(detail.tripId()).isEqualTo(2001L);
+        assertThat(detail.tripNumber()).isEqualTo(TRIP_NUMBER);
     }
 
     @Test
@@ -129,6 +132,7 @@ class BookingQueryApplicationServiceTest {
                 BookingRequestNumber.of("request-5001"),
                 UserId.of(1001L),
                 TripReference.of(2001L),
+                PublicTripNumber.of(TRIP_NUMBER),
                 SeatNumber.of("A01"),
                 BookingAmount.of("5.50"),
                 EXPIRES_AT,

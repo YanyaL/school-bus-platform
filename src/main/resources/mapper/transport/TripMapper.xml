@@ -107,6 +107,43 @@
         FOR UPDATE
     </select>
 
+    <select id="selectByTripNumber" resultMap="TripResultMap">
+        SELECT
+            id,
+            trip_no,
+            vehicle_id,
+            route_id,
+            departure_time,
+            booking_deadline,
+            price,
+            status,
+            version,
+            created_at,
+            updated_at
+        FROM transport_trip
+        WHERE trip_no = #{tripNumber}
+        LIMIT 1
+    </select>
+
+    <select id="selectByTripNumberForShare" resultMap="TripResultMap">
+        SELECT
+            id,
+            trip_no,
+            vehicle_id,
+            route_id,
+            departure_time,
+            booking_deadline,
+            price,
+            status,
+            version,
+            created_at,
+            updated_at
+        FROM transport_trip
+        WHERE trip_no = #{tripNumber}
+        LIMIT 1
+        FOR SHARE
+    </select>
+
     <select id="selectAll" resultMap="TripResultMap">
         SELECT
             id,

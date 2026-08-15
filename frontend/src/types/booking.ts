@@ -5,14 +5,14 @@ export type CancellationReason =
   'USER_CANCELLED' | 'PAYMENT_TIMEOUT' | 'TRIP_CANCELLED';
 
 export interface CreateBookingRequest {
-  tripId: string;
+  tripNumber: string;
   seatNumber: string;
 }
 
 export interface CreateBookingResponse {
   bookingId: string;
   bookingNumber: string;
-  tripId: string;
+  tripNumber: string;
   seatNumber: string;
   amount: number;
   status: BookingStatus;
@@ -22,7 +22,7 @@ export interface CreateBookingResponse {
 export interface BookingSummary {
   bookingId: string;
   bookingNumber: string;
-  tripId: string;
+  tripNumber: string;
   seatNumber: string;
   amount: number;
   status: BookingStatus;
@@ -33,7 +33,7 @@ export interface BookingSummary {
 export interface BookingDetail {
   bookingId: string;
   bookingNumber: string;
-  tripId: string;
+  tripNumber: string;
   seatNumber: string;
   amount: number;
   status: BookingStatus;

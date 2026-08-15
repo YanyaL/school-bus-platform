@@ -62,6 +62,8 @@ class BookingControllerTest {
 
     private static final String IDEMPOTENCY_KEY =
             "550e8400-e29b-41d4-a716-446655440000";
+    private static final String TRIP_NUMBER =
+            "22222222-2222-2222-2222-222222222222";
 
     @Autowired
     private MockMvc mockMvc;
@@ -95,7 +97,7 @@ class BookingControllerTest {
                                 )
                                 .content("""
                                         {
-                                          "tripId": "2001",
+                                          "tripNumber": "22222222-2222-2222-2222-222222222222",
                                           "seatNumber": "A01"
                                         }
                                         """)
@@ -120,7 +122,8 @@ class BookingControllerTest {
                 .andExpect(jsonPath("$.data.bookingId").value("5001"))
                 .andExpect(jsonPath("$.data.bookingNumber")
                         .value("55555555-5555-5555-5555-555555555555"))
-                .andExpect(jsonPath("$.data.tripId").value("2001"))
+                .andExpect(jsonPath("$.data.tripNumber")
+                        .value(TRIP_NUMBER))
                 .andExpect(jsonPath("$.data.seatNumber").value("A01"))
                 .andExpect(jsonPath("$.data.amount").value(5.50))
                 .andExpect(jsonPath("$.data.status")
@@ -131,7 +134,7 @@ class BookingControllerTest {
         verify(applicationService).createBookingOutcome(
                 new CreateBookingCommand(
                         1000001L,
-                        2001L,
+                        TRIP_NUMBER,
                         "A01",
                         IDEMPOTENCY_KEY
                 )
@@ -155,7 +158,7 @@ class BookingControllerTest {
                                 )
                                 .content("""
                                         {
-                                          "tripId": "2001",
+                                          "tripNumber": "22222222-2222-2222-2222-222222222222",
                                           "seatNumber": "A01"
                                         }
                                         """)
@@ -179,7 +182,7 @@ class BookingControllerTest {
                                 )
                                 .content("""
                                         {
-                                          "tripId": "2001",
+                                          "tripNumber": "22222222-2222-2222-2222-222222222222",
                                           "seatNumber": "A01"
                                         }
                                         """)
@@ -196,7 +199,7 @@ class BookingControllerTest {
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("""
                                         {
-                                          "tripId": "2001",
+                                          "tripNumber": "22222222-2222-2222-2222-222222222222",
                                           "seatNumber": "A01"
                                         }
                                         """)
@@ -218,7 +221,7 @@ class BookingControllerTest {
                                 )
                                 .content("""
                                         {
-                                          "tripId": "2001",
+                                          "tripNumber": "22222222-2222-2222-2222-222222222222",
                                           "seatNumber": "A01"
                                         }
                                         """)
@@ -243,7 +246,7 @@ class BookingControllerTest {
                                 )
                                 .content("""
                                         {
-                                          "tripId": "2001",
+                                          "tripNumber": "22222222-2222-2222-2222-222222222222",
                                           "seatNumber": "A01"
                                         }
                                         """)
@@ -267,7 +270,7 @@ class BookingControllerTest {
                                 )
                                 .content("""
                                         {
-                                          "tripId": "2001",
+                                          "tripNumber": "22222222-2222-2222-2222-222222222222",
                                           "seatNumber": "seat 1"
                                         }
                                         """)
@@ -283,10 +286,11 @@ class BookingControllerTest {
     @ParameterizedTest
     @ValueSource(strings = {
             "abc",
-            "0",
-            "9223372036854775808"
+            "2001",
+            "22222222-2222-2222-2222-2222222222zz"
     })
-    void shouldRejectInvalidTripId(String tripId) throws Exception {
+    void shouldRejectInvalidTripNumber(String tripNumber)
+            throws Exception {
         mockMvc.perform(
                         post("/api/v1/bookings")
                                 .contentType(MediaType.APPLICATION_JSON)
@@ -296,10 +300,10 @@ class BookingControllerTest {
                                 )
                                 .content("""
                                         {
-                                          "tripId": "%s",
+                                          "tripNumber": "%s",
                                           "seatNumber": "A01"
                                         }
-                                        """.formatted(tripId))
+                                        """.formatted(tripNumber))
                                 .with(jwt().jwt(builder -> builder
                                         .subject("1000001")))
                 )
@@ -327,7 +331,7 @@ class BookingControllerTest {
                                 )
                                 .content("""
                                         {
-                                          "tripId": "2001",
+                                          "tripNumber": "22222222-2222-2222-2222-222222222222",
                                           "seatNumber": "A01"
                                         }
                                         """)
@@ -355,7 +359,7 @@ class BookingControllerTest {
                                 )
                                 .content("""
                                         {
-                                          "tripId": "2001",
+                                          "tripNumber": "22222222-2222-2222-2222-222222222222",
                                           "seatNumber": "A01"
                                         }
                                         """)
@@ -382,7 +386,7 @@ class BookingControllerTest {
                                 )
                                 .content("""
                                         {
-                                          "tripId": "2001",
+                                          "tripNumber": "22222222-2222-2222-2222-222222222222",
                                           "seatNumber": "A01"
                                         }
                                         """)
@@ -422,8 +426,8 @@ class BookingControllerTest {
                         .value("5001"))
                 .andExpect(jsonPath("$.data.items[0].bookingNumber")
                         .value("55555555-5555-5555-5555-555555555555"))
-                .andExpect(jsonPath("$.data.items[0].tripId")
-                        .value("2001"))
+                .andExpect(jsonPath("$.data.items[0].tripNumber")
+                        .value(TRIP_NUMBER))
                 .andExpect(jsonPath("$.data.items[0].status")
                         .value("PENDING_PAYMENT"));
 
@@ -525,7 +529,8 @@ class BookingControllerTest {
                 .andExpect(jsonPath("$.data.bookingId").value("5001"))
                 .andExpect(jsonPath("$.data.bookingNumber")
                         .value("55555555-5555-5555-5555-555555555555"))
-                .andExpect(jsonPath("$.data.tripId").value("2001"))
+                .andExpect(jsonPath("$.data.tripNumber")
+                        .value(TRIP_NUMBER))
                 .andExpect(jsonPath("$.data.status")
                         .value("PENDING_PAYMENT"))
                 .andExpect(jsonPath("$.data.createdAt")
@@ -611,7 +616,7 @@ class BookingControllerTest {
         return new BookingDetailView(
                 5001L,
                 "55555555-5555-5555-5555-555555555555",
-                2001L,
+                TRIP_NUMBER,
                 "A01",
                 new BigDecimal("5.50"),
                 BookingStatus.PENDING_PAYMENT,
@@ -627,7 +632,7 @@ class BookingControllerTest {
         return new BookingSummaryView(
                 5001L,
                 "55555555-5555-5555-5555-555555555555",
-                2001L,
+                TRIP_NUMBER,
                 "A01",
                 new BigDecimal("5.50"),
                 BookingStatus.PENDING_PAYMENT,
@@ -641,7 +646,7 @@ class BookingControllerTest {
                 5001L,
                 "55555555-5555-5555-5555-555555555555",
                 1000001L,
-                2001L,
+                TRIP_NUMBER,
                 "A01",
                 new BigDecimal("5.50"),
                 BookingStatus.PENDING_PAYMENT,

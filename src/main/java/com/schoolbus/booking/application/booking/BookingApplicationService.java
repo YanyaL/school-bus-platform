@@ -1,6 +1,6 @@
 package com.schoolbus.booking.application.booking;
 
-import com.schoolbus.booking.domain.trip.TripReference;
+import com.schoolbus.booking.domain.trip.PublicTripNumber;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.dao.DuplicateKeyException;
@@ -69,7 +69,9 @@ public class BookingApplicationService {
             } catch (OptimisticLockingFailureException exception) {
                 if (attempt == maximumAttempts) {
                     throw new BookingConcurrencyException(
-                            TripReference.of(validatedCommand.tripId())
+                            PublicTripNumber.of(
+                                    validatedCommand.tripNumber()
+                            )
                     );
                 }
                 Thread.onSpinWait();

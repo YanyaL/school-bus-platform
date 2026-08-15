@@ -3,10 +3,11 @@ package com.schoolbus.booking.infrastructure.transport;
 import com.schoolbus.booking.application.booking.BookableTripGateway;
 import com.schoolbus.booking.application.booking.BookableTripSnapshot;
 import com.schoolbus.booking.domain.order.BookingAmount;
+import com.schoolbus.booking.domain.trip.PublicTripNumber;
 import com.schoolbus.booking.domain.trip.TripReference;
 import com.schoolbus.transport.domain.trip.BusTrip;
 import com.schoolbus.transport.domain.trip.BusTripRepository;
-import com.schoolbus.transport.domain.trip.TripId;
+import com.schoolbus.transport.domain.trip.TripNumber;
 import com.schoolbus.transport.domain.trip.TripStatus;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
@@ -31,16 +32,16 @@ public class LocalBookableTripGateway
     }
 
     @Override
-    public Optional<BookableTripSnapshot> findByTripReference(
-            TripReference tripReference
+    public Optional<BookableTripSnapshot> findByTripNumber(
+            PublicTripNumber tripNumber
     ) {
-        TripReference validatedReference = Objects.requireNonNull(
-                tripReference,
-                "tripReference must not be null"
+        PublicTripNumber validatedNumber = Objects.requireNonNull(
+                tripNumber,
+                "tripNumber must not be null"
         );
         return busTripRepository
-                .findByIdForShare(
-                        TripId.of(validatedReference.value())
+                .findByTripNumberForShare(
+                        TripNumber.of(validatedNumber.toString())
                 )
                 .map(this::toSnapshot);
     }
@@ -48,6 +49,7 @@ public class LocalBookableTripGateway
     private BookableTripSnapshot toSnapshot(BusTrip trip) {
         return new BookableTripSnapshot(
                 TripReference.of(trip.tripId().value()),
+                PublicTripNumber.of(trip.tripNumber().toString()),
                 new BookingAmount(trip.price().amount()),
                 trip.departureTime(),
                 trip.bookingDeadline(),

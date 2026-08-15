@@ -9,6 +9,7 @@ import com.schoolbus.booking.domain.order.BookingOrderRepository;
 import com.schoolbus.booking.domain.order.BookingRequestNumber;
 import com.schoolbus.booking.domain.order.BookingStatus;
 import com.schoolbus.booking.domain.order.SeatNumber;
+import com.schoolbus.booking.domain.trip.PublicTripNumber;
 import com.schoolbus.booking.domain.trip.TripReference;
 import com.schoolbus.payment.domain.PaymentId;
 import com.schoolbus.payment.domain.PaymentIdGenerator;
@@ -41,6 +42,8 @@ class PaymentConfirmationTransactionTest {
     private static final Instant NOW = Instant.parse("2026-08-08T00:10:05Z");
     private static final String BOOKING_NO = "55555555-5555-5555-5555-555555555555";
     private static final String PAYMENT_NO = "77777777-7777-7777-7777-777777777777";
+    private static final PublicTripNumber TRIP_NUMBER =
+            PublicTripNumber.of("22222222-2222-2222-2222-222222222222");
 
     private PaymentRecordRepository paymentRepository;
     private BookingOrderRepository bookingRepository;
@@ -142,6 +145,7 @@ class PaymentConfirmationTransactionTest {
                 BookingRequestNumber.of("booking-request-1"),
                 UserId.of(1001L),
                 TripReference.of(2001L),
+                TRIP_NUMBER,
                 SeatNumber.of("A01"),
                 BookingAmount.of("5.50"),
                 EXPIRES_AT,

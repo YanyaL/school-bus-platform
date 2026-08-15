@@ -17,6 +17,12 @@ public interface TripMapper {
 
     TripDataObject selectByIdForUpdate(@Param("id") Long id);
 
+    TripDataObject selectByTripNumber(@Param("tripNumber") String tripNumber);
+
+    TripDataObject selectByTripNumberForShare(
+            @Param("tripNumber") String tripNumber
+    );
+
     List<TripDataObject> selectAll(
             @Param("status") String status,
             @Param("offset") int offset,

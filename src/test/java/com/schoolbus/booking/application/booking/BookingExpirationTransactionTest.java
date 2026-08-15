@@ -11,6 +11,7 @@ import com.schoolbus.booking.domain.order.BookingRequestNumber;
 import com.schoolbus.booking.domain.order.BookingStatus;
 import com.schoolbus.booking.domain.order.CancellationReason;
 import com.schoolbus.booking.domain.order.SeatNumber;
+import com.schoolbus.booking.domain.trip.PublicTripNumber;
 import com.schoolbus.booking.domain.trip.TripReference;
 import com.schoolbus.shared.domain.identity.UserId;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,6 +38,10 @@ class BookingExpirationTransactionTest {
             Instant.parse("2026-08-08T00:15:00Z");
     private static final TripReference TRIP =
             TripReference.of(2001L);
+    private static final PublicTripNumber TRIP_NUMBER =
+            PublicTripNumber.of(
+                    "22222222-2222-2222-2222-222222222222"
+            );
 
     private BookingOrderRepository orderRepository;
     private SeatInventoryRepository inventoryRepository;
@@ -155,6 +160,7 @@ class BookingExpirationTransactionTest {
                 BookingRequestNumber.of("request-5001"),
                 UserId.of(1001L),
                 TRIP,
+                TRIP_NUMBER,
                 SeatNumber.of("A01"),
                 BookingAmount.of("5.50"),
                 EXPIRES_AT,

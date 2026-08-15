@@ -19,10 +19,12 @@ import static org.mockito.Mockito.when;
 
 class BookingApplicationServiceTest {
 
+    private static final String TRIP_NUMBER =
+            "22222222-2222-2222-2222-222222222222";
     private static final CreateBookingCommand COMMAND =
             new CreateBookingCommand(
                     1001L,
-                    2001L,
+                    TRIP_NUMBER,
                     "A01",
                     "request-5001"
             );
@@ -31,7 +33,7 @@ class BookingApplicationServiceTest {
                     5001L,
                     "55555555-5555-5555-5555-555555555555",
                     1001L,
-                    2001L,
+                    TRIP_NUMBER,
                     "A01",
                     new BigDecimal("5.50"),
                     BookingStatus.PENDING_PAYMENT,

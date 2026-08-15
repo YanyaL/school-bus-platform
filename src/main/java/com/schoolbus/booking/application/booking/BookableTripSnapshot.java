@@ -1,6 +1,7 @@
 package com.schoolbus.booking.application.booking;
 
 import com.schoolbus.booking.domain.order.BookingAmount;
+import com.schoolbus.booking.domain.trip.PublicTripNumber;
 import com.schoolbus.booking.domain.trip.TripReference;
 
 import java.time.Instant;
@@ -8,6 +9,7 @@ import java.util.Objects;
 
 public record BookableTripSnapshot(
         TripReference tripReference,
+        PublicTripNumber tripNumber,
         BookingAmount price,
         Instant departureTime,
         Instant bookingDeadline,
@@ -18,6 +20,10 @@ public record BookableTripSnapshot(
         Objects.requireNonNull(
                 tripReference,
                 "tripReference must not be null"
+        );
+        Objects.requireNonNull(
+                tripNumber,
+                "tripNumber must not be null"
         );
         Objects.requireNonNull(price, "price must not be null");
         Objects.requireNonNull(

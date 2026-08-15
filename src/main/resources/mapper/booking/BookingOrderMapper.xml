@@ -13,6 +13,7 @@
         <result property="requestNo" column="request_no"/>
         <result property="userId" column="user_id"/>
         <result property="tripId" column="trip_id"/>
+        <result property="tripNo" column="trip_no"/>
         <result property="seatNumber" column="seat_number"/>
         <result property="priceSnapshot" column="price_snapshot"/>
         <result property="status" column="status"/>
@@ -30,12 +31,12 @@
             id="insertOrder"
             parameterType="com.schoolbus.booking.infrastructure.persistence.order.BookingOrderDataObject">
         INSERT INTO booking_order (
-            id, order_no, request_no, user_id, trip_id,
+            id, order_no, request_no, user_id, trip_id, trip_no,
             seat_number, price_snapshot, status, expires_at,
             payment_no, paid_at, cancelled_at, cancel_reason,
             version, created_at, updated_at
         ) VALUES (
-            #{id}, #{orderNo}, #{requestNo}, #{userId}, #{tripId},
+            #{id}, #{orderNo}, #{requestNo}, #{userId}, #{tripId}, #{tripNo},
             #{seatNumber}, #{priceSnapshot}, #{status}, #{expiresAt},
             #{paymentNo}, #{paidAt}, #{cancelledAt}, #{cancelReason},
             #{version}, #{createdAt}, #{updatedAt}
@@ -44,7 +45,7 @@
 
     <select id="selectById" resultMap="BookingOrderResultMap">
         SELECT
-            id, order_no, request_no, user_id, trip_id,
+            id, order_no, request_no, user_id, trip_id, trip_no,
             seat_number, price_snapshot, status, expires_at,
             payment_no, paid_at, cancelled_at, cancel_reason,
             version, created_at, updated_at
@@ -55,7 +56,7 @@
 
     <select id="selectByOrderNo" resultMap="BookingOrderResultMap">
         SELECT
-            id, order_no, request_no, user_id, trip_id,
+            id, order_no, request_no, user_id, trip_id, trip_no,
             seat_number, price_snapshot, status, expires_at,
             payment_no, paid_at, cancelled_at, cancel_reason,
             version, created_at, updated_at
@@ -68,7 +69,7 @@
             id="selectByRequestNo"
             resultMap="BookingOrderResultMap">
         SELECT
-            id, order_no, request_no, user_id, trip_id,
+            id, order_no, request_no, user_id, trip_id, trip_no,
             seat_number, price_snapshot, status, expires_at,
             payment_no, paid_at, cancelled_at, cancel_reason,
             version, created_at, updated_at
@@ -102,7 +103,7 @@
             id="selectActiveByTripIdForUpdate"
             resultMap="BookingOrderResultMap">
         SELECT
-            id, order_no, request_no, user_id, trip_id,
+            id, order_no, request_no, user_id, trip_id, trip_no,
             seat_number, price_snapshot, status, expires_at,
             payment_no, paid_at, cancelled_at, cancel_reason,
             version, created_at, updated_at
@@ -117,7 +118,7 @@
             id="selectExpiredPendingOrders"
             resultMap="BookingOrderResultMap">
         SELECT
-            id, order_no, request_no, user_id, trip_id,
+            id, order_no, request_no, user_id, trip_id, trip_no,
             seat_number, price_snapshot, status, expires_at,
             payment_no, paid_at, cancelled_at, cancel_reason,
             version, created_at, updated_at
@@ -130,7 +131,7 @@
 
     <select id="selectByUserId" resultMap="BookingOrderResultMap">
         SELECT
-            id, order_no, request_no, user_id, trip_id,
+            id, order_no, request_no, user_id, trip_id, trip_no,
             seat_number, price_snapshot, status, expires_at,
             payment_no, paid_at, cancelled_at, cancel_reason,
             version, created_at, updated_at

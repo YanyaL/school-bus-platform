@@ -5,6 +5,7 @@ import com.schoolbus.shared.api.ErrorCode;
 import com.schoolbus.transport.domain.trip.BusTrip;
 import com.schoolbus.transport.domain.trip.BusTripRepository;
 import com.schoolbus.transport.domain.trip.TripId;
+import com.schoolbus.transport.domain.trip.TripNumber;
 import com.schoolbus.transport.domain.trip.TripSeatRepository;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
@@ -35,15 +36,17 @@ public class TripSeatQueryApplicationService {
     }
 
     @Transactional(readOnly = true)
-    public TripSeatMapView findTripSeatMap(long tripId) {
-        TripId validatedTripId = TripId.of(tripId);
-        BusTrip trip = busTripRepository.findById(validatedTripId)
+    public TripSeatMapView findTripSeatMap(String tripNumber) {
+        TripNumber validatedTripNumber = TripNumber.of(tripNumber);
+        BusTrip trip = busTripRepository
+                .findByTripNumber(validatedTripNumber)
                 .orElseThrow(() -> new BusinessException(
                         ErrorCode.RESOURCE_NOT_FOUND,
-                        "trip not found: " + tripId
+                        "trip not found: " + validatedTripNumber
                 ));
+        TripId tripId = trip.tripId();
         List<TripSeatStatusView> seats = tripSeatRepository
-                .findSeatStatusesByTripId(validatedTripId)
+                .findSeatStatusesByTripId(tripId)
                 .stream()
                 .map(seat -> new TripSeatStatusView(
                         seat.seatNumber(),
@@ -51,7 +54,7 @@ public class TripSeatQueryApplicationService {
                 ))
                 .toList();
         return new TripSeatMapView(
-                trip.tripId().value(),
+                trip.tripNumber().toString(),
                 trip.bookingDeadline(),
                 seats
         );

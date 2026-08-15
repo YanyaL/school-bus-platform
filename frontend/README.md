@@ -50,9 +50,15 @@ npm run dev
 
 ## HTTP 资源 ID 与前端类型
 
-后端 HTTP 边界将 64 位资源 ID 序列化为 **JSON string**，前端对应字段一律使用 `string`：
+学生端班次对外标识为 **`tripNumber`（UUID 字符串）**，不是内部 Snowflake `tripId`：
 
-- `userId`、`bookingId`、`tripId`、`vehicleId`、`routeId`
+- 列表项、座位图、下单请求/响应与订单详情均使用 `tripNumber`
+- 路由为 `/trips/:tripNumber/seats`
+- Snowflake `tripId` 仅用于数据库与模块内部，**不出现在学生 API / 前端学生 DTO**
+
+仍以 JSON string 传输的 64 位资源 ID：
+
+- `userId`、`bookingId`、`vehicleId`、`routeId`
 
 数据库与 Java 领域层仍使用 `BIGINT` / `long`。`version`、分页计数、`amount` 等保持 JSON number / TypeScript `number`。
 
@@ -60,9 +66,9 @@ npm run dev
 
 约束：
 
-- 不要使用 `Number(tripId)` / `parseInt(tripId)` / `BigInt(tripId)`
-- ID 只作为不透明标识做字符串相等比较
-- 当前路由仍为 `/trips/:tripId/seats`；下一阶段再切到 `tripNumber`
+- 不要对 `tripNumber` / `bookingId` 等使用 `Number(...)` / `parseInt(...)` / `BigInt(...)`
+- ID 与 `tripNumber` 只作为不透明标识做字符串相等比较
+- 座位图路由：`/trips/:tripNumber/seats`
 
 ## 后端启动
 

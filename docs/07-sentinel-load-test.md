@@ -91,7 +91,7 @@ school-bus:
 | 变量 | 说明 |
 |------|------|
 | `TEST_ACCESS_TOKEN` | 学生 JWT（`Authorization: Bearer`） |
-| `TEST_TRIP_ID` | 可预约班次 ID（数字，如 demo 种子 `9001`） |
+| `TEST_TRIP_NUMBER` | 可预约班次编号（UUID 字符串，如 demo 种子 `00000000-0000-4000-8000-000000009003`） |
 | `TEST_SEAT_NUMBER` | 座位号（如 `A01`） |
 
 每次请求生成新的 `Idempotency-Key`，避免幂等 replay 干扰统计。

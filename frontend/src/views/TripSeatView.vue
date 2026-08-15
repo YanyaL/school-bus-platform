@@ -14,7 +14,7 @@ import { formatDateTime } from '@/utils/date';
 import { formatMoney } from '@/utils/money';
 
 const props = defineProps<{
-  tripId: string;
+  tripNumber: string;
 }>();
 
 const authStore = useAuthStore();
@@ -38,10 +38,10 @@ async function loadPageData() {
     const { trips } = authStore.createApis();
     const [tripsList, seats] = await Promise.all([
       trips.listBookableTrips(100),
-      trips.getTripSeats(props.tripId),
+      trips.getTripSeats(props.tripNumber),
     ]);
     seatMap.value = seats;
-    trip.value = tripsList.find((item) => item.tripId === props.tripId) ?? null;
+    trip.value = tripsList.find((item) => item.tripNumber === props.tripNumber) ?? null;
   } catch (error) {
     const apiError = parseApiError(error);
     errorMessage.value = resolveUserMessage(apiError);
@@ -77,7 +77,7 @@ async function submitBooking() {
     const { bookings } = authStore.createApis();
     const result = await bookings.createBooking(
       {
-        tripId: props.tripId,
+        tripNumber: props.tripNumber,
         seatNumber: selectedSeat.value,
       },
       idempotencyKey,

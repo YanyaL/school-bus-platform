@@ -1,5 +1,6 @@
 package com.schoolbus.booking.domain.order;
 
+import com.schoolbus.booking.domain.trip.PublicTripNumber;
 import com.schoolbus.booking.domain.trip.TripReference;
 import com.schoolbus.shared.domain.identity.UserId;
 import org.junit.jupiter.api.Test;
@@ -15,6 +16,10 @@ class BookingOrderTest {
             Instant.parse("2026-08-08T00:00:00Z");
     private static final Instant EXPIRES_AT =
             Instant.parse("2026-08-08T00:15:00Z");
+    private static final PublicTripNumber TRIP_NUMBER =
+            PublicTripNumber.of(
+                    "22222222-2222-2222-2222-222222222222"
+            );
 
     @Test
     void shouldPlacePendingPaymentOrderWithPriceSnapshot() {
@@ -32,6 +37,8 @@ class BookingOrderTest {
                 .isEqualTo(UserId.of(1001L));
         assertThat(bookingOrder.tripReference())
                 .isEqualTo(TripReference.of(2001L));
+        assertThat(bookingOrder.tripNumber())
+                .isEqualTo(TRIP_NUMBER);
         assertThat(bookingOrder.seatNumber())
                 .isEqualTo(SeatNumber.of("A01"));
         assertThat(bookingOrder.amount())
@@ -189,6 +196,7 @@ class BookingOrderTest {
                         BookingRequestNumber.of("request-5001"),
                         UserId.of(1001L),
                         TripReference.of(2001L),
+                        TRIP_NUMBER,
                         SeatNumber.of("A01"),
                         BookingAmount.of("5.50"),
                         PLACED_AT,
@@ -227,6 +235,7 @@ class BookingOrderTest {
                 BookingRequestNumber.of("request-5001"),
                 UserId.of(1001L),
                 TripReference.of(2001L),
+                TRIP_NUMBER,
                 SeatNumber.of("A01"),
                 BookingAmount.of("5.50"),
                 BookingStatus.PAID,
@@ -309,6 +318,7 @@ class BookingOrderTest {
                 BookingRequestNumber.of("request-5001"),
                 UserId.of(1001L),
                 TripReference.of(2001L),
+                TRIP_NUMBER,
                 SeatNumber.of("A01"),
                 BookingAmount.of("5.50"),
                 EXPIRES_AT,

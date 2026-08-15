@@ -7,6 +7,7 @@ import com.schoolbus.booking.domain.order.BookingOrder;
 import com.schoolbus.booking.domain.order.BookingRequestNumber;
 import com.schoolbus.booking.domain.order.BookingStatus;
 import com.schoolbus.booking.domain.order.SeatNumber;
+import com.schoolbus.booking.domain.trip.PublicTripNumber;
 import com.schoolbus.booking.domain.trip.TripReference;
 import com.schoolbus.shared.domain.identity.UserId;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,6 +38,8 @@ class MyBatisBookingOrderRepositoryTest {
             Instant.parse("2026-08-08T00:00:00Z");
     private static final Instant EXPIRES_AT =
             Instant.parse("2026-08-08T00:15:00Z");
+    private static final String TRIP_NUMBER =
+            "22222222-2222-2222-2222-222222222222";
 
     @Mock
     private BookingOrderMapper mapper;
@@ -67,6 +70,7 @@ class MyBatisBookingOrderRepositoryTest {
         );
         assertThat(inserted.getRequestNo())
                 .isEqualTo("request-5001");
+        assertThat(inserted.getTripNo()).isEqualTo(TRIP_NUMBER);
         assertThat(inserted.getSeatNumber()).isEqualTo("A01");
         assertThat(inserted.getStatus())
                 .isEqualTo("PENDING_PAYMENT");
@@ -130,6 +134,8 @@ class MyBatisBookingOrderRepositoryTest {
         BookingOrder restored = result.orElseThrow();
         assertThat(restored.bookingNumber().toString())
                 .isEqualTo(dataObject.getOrderNo());
+        assertThat(restored.tripNumber().toString())
+                .isEqualTo(TRIP_NUMBER);
         assertThat(restored.amount())
                 .isEqualTo(BookingAmount.of("5.50"));
         assertThat(restored.status())
@@ -238,6 +244,7 @@ class MyBatisBookingOrderRepositoryTest {
                 BookingRequestNumber.of("request-5001"),
                 UserId.of(1001L),
                 TripReference.of(2001L),
+                PublicTripNumber.of(TRIP_NUMBER),
                 SeatNumber.of("A01"),
                 BookingAmount.of("5.50"),
                 EXPIRES_AT,
@@ -255,6 +262,7 @@ class MyBatisBookingOrderRepositoryTest {
         dataObject.setRequestNo("request-5001");
         dataObject.setUserId(1001L);
         dataObject.setTripId(2001L);
+        dataObject.setTripNo(TRIP_NUMBER);
         dataObject.setSeatNumber("A01");
         dataObject.setPriceSnapshot(new BigDecimal("5.50"));
         dataObject.setStatus("PENDING_PAYMENT");

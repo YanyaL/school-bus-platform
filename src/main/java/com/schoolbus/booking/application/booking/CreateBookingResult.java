@@ -11,7 +11,7 @@ public record CreateBookingResult(
         long bookingId,
         String bookingNumber,
         long userId,
-        long tripId,
+        String tripNumber,
         String seatNumber,
         BigDecimal amount,
         BookingStatus status,
@@ -22,6 +22,10 @@ public record CreateBookingResult(
         Objects.requireNonNull(
                 bookingNumber,
                 "bookingNumber must not be null"
+        );
+        Objects.requireNonNull(
+                tripNumber,
+                "tripNumber must not be null"
         );
         Objects.requireNonNull(amount, "amount must not be null");
         Objects.requireNonNull(status, "status must not be null");
@@ -40,7 +44,7 @@ public record CreateBookingResult(
                 validatedOrder.bookingId().value(),
                 validatedOrder.bookingNumber().toString(),
                 validatedOrder.userId().value(),
-                validatedOrder.tripReference().value(),
+                validatedOrder.tripNumber().toString(),
                 validatedOrder.seatNumber().value(),
                 validatedOrder.amount().amount(),
                 validatedOrder.status(),

@@ -125,8 +125,8 @@ onUnmounted(() => {
           <el-descriptions-item label="订单号">
             {{ booking.bookingNumber }}
           </el-descriptions-item>
-          <el-descriptions-item label="班次 ID">
-            {{ booking.tripId }}
+          <el-descriptions-item label="班次编号">
+            {{ booking.tripNumber }}
           </el-descriptions-item>
           <el-descriptions-item label="座位">
             {{ booking.seatNumber }}

@@ -31,8 +31,8 @@ async function loadTrips() {
   }
 }
 
-function openSeatMap(tripId: string) {
-  router.push(`/trips/${tripId}/seats`);
+function openSeatMap(tripNumber: string) {
+  router.push(`/trips/${tripNumber}/seats`);
 }
 
 onMounted(loadTrips);
@@ -54,7 +54,7 @@ onMounted(loadTrips);
       <div v-else class="trip-list">
         <el-card
           v-for="trip in trips"
-          :key="trip.tripId"
+          :key="trip.tripNumber"
           shadow="hover"
           class="trip-card"
         >
@@ -79,7 +79,7 @@ onMounted(loadTrips);
           <el-button
             type="primary"
             class="action-btn"
-            @click="openSeatMap(trip.tripId)"
+            @click="openSeatMap(trip.tripNumber)"
           >
             选座下单
           </el-button>

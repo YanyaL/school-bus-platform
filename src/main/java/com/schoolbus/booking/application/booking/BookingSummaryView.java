@@ -10,7 +10,7 @@ import java.util.Objects;
 public record BookingSummaryView(
         long bookingId,
         String bookingNumber,
-        long tripId,
+        String tripNumber,
         String seatNumber,
         BigDecimal amount,
         BookingStatus status,
@@ -22,6 +22,10 @@ public record BookingSummaryView(
         Objects.requireNonNull(
                 bookingNumber,
                 "bookingNumber must not be null"
+        );
+        Objects.requireNonNull(
+                tripNumber,
+                "tripNumber must not be null"
         );
         Objects.requireNonNull(amount, "amount must not be null");
         Objects.requireNonNull(status, "status must not be null");
@@ -37,7 +41,7 @@ public record BookingSummaryView(
         return new BookingSummaryView(
                 validatedOrder.bookingId().value(),
                 validatedOrder.bookingNumber().toString(),
-                validatedOrder.tripReference().value(),
+                validatedOrder.tripNumber().toString(),
                 validatedOrder.seatNumber().value(),
                 validatedOrder.amount().amount(),
                 validatedOrder.status(),

@@ -11,7 +11,7 @@ import java.util.Objects;
 public record CreateBookingResponse(
         String bookingId,
         String bookingNumber,
-        String tripId,
+        String tripNumber,
         String seatNumber,
         BigDecimal amount,
         BookingStatus status,
@@ -38,7 +38,7 @@ public record CreateBookingResponse(
         return new CreateBookingResponse(
                 HttpResourceId.format(validatedResult.bookingId()),
                 validatedResult.bookingNumber(),
-                HttpResourceId.format(validatedResult.tripId()),
+                validatedResult.tripNumber(),
                 validatedResult.seatNumber(),
                 validatedResult.amount(),
                 validatedResult.status(),

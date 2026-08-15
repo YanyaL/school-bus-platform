@@ -53,6 +53,8 @@ import static org.awaitility.Awaitility.await;
 class BookingExpirationMessagingIntegrationTest {
 
     private static final TripReference TRIP = TripReference.of(9101L);
+    private static final String TRIP_NUMBER =
+            "91019101-9101-9101-9101-910191019101";
     private static final Instant BASE_TIME = Instant.now();
     private static final int REDIS_PORT = 6379;
 
@@ -127,7 +129,7 @@ class BookingExpirationMessagingIntegrationTest {
         CreateBookingResult booking = bookingApplicationService.createBooking(
                 new CreateBookingCommand(
                         8101L,
-                        TRIP.value(),
+                        TRIP_NUMBER,
                         "B01",
                         "messaging-expire-8101"
                 )
@@ -241,7 +243,7 @@ class BookingExpirationMessagingIntegrationTest {
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 TRIP.value(),
-                UUID.randomUUID().toString(),
+                TRIP_NUMBER,
                 9102L,
                 9102L,
                 LocalDateTime.ofInstant(
