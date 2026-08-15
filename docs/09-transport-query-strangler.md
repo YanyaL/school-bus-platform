@@ -189,8 +189,10 @@ mvn spring-boot:run
 | Query 故障 | 停止 Query 后 Gateway 查询返回 503 |
 | 服务恢复 | Query 重启并重新注册 Nacos 后，Gateway 无需重启即恢复 200 |
 
-本次验收只证明单个 Query 实例的注册发现、路由、降级与恢复。多实例负载均衡、
-实例摘除过程中的连续请求成功率和 Sentinel 熔断仍属于下一阶段。
+本次验收已证明单个 Query 实例的注册发现、路由、降级与恢复。
+
+**多实例负载均衡与单实例摘除恢复**已在 `docs/10-transport-query-ha.md` 完成自动化验收
+（脚本 `scripts/cloud/verify-transport-query-ha.ps1`）。Sentinel 熔断仍属于后续阶段。
 
 ## 13. 已知限制
 
@@ -202,7 +204,8 @@ mvn spring-boot:run
 
 ## 14. 下一阶段建议
 
-1. 观察 query 服务稳定性后删除 core 学生端查询 HTTP
+1. 观察 query 多实例与 LB cache TTL 的生产权衡后，删除 core 学生端查询 HTTP 回滚入口
 2. 引入只读库账号 / 只读副本
 3. 评估座位图缓存或 CQRS 投影表
 4. 再考虑拆分其它只读边界；写路径保持本地事务直到明确分布式事务方案
+5. 按需评估仅对幂等 GET 的有限重试（不要给下单/支付 POST 加自动重试）

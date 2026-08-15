@@ -19,15 +19,16 @@
 
 - IAM：注册、登录、JWT、Redis 会话（仍在 core）
 - Transport 写路径与管理端：仍在 core
-- Transport Query（绞杀者第一刀）：独立服务 `school-bus-transport-query`（:8082）承接学生端只读
+- Transport Query（绞杀者第一刀）：独立服务 `school-bus-transport-query`（可多实例，如 :8082/:8083）承接学生端只读
   - `GET /api/v1/trips`
   - `GET /api/v1/trips/{tripNumber}/seats`
-- Gateway（:8080）经 Nacos 将上述两条 GET 精确路由到 query 服务，其余 `/api/**` 仍到 core（:8081）
+- Gateway（:8080）经 Nacos + Spring Cloud LoadBalancer（`lb://school-bus-transport-query`）将上述 GET 路由到 Query；其余 `/api/**` 仍到 core（:8081）
+- Query 双实例 HA 验收脚本：`scripts/cloud/verify-transport-query-ha.ps1`（见 `docs/10-transport-query-ha.md`）
 - Booking / Payment：仍在 core，锁座与库存事务未改为远程调用
 - Stability：Sentinel 保护登录、下单和支付回调入口，统一返回 HTTP 429
 - Flyway 仍由 core 执行；query 服务只读共享库（过渡方案）
 
-详见：`docs/08-nacos-gateway-foundation.md`、`docs/09-transport-query-strangler.md`
+详见：`docs/08-nacos-gateway-foundation.md`、`docs/09-transport-query-strangler.md`、`docs/10-transport-query-ha.md`
 
 ## Swagger 端到端演示
 

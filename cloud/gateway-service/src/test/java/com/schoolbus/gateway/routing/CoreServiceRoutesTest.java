@@ -95,4 +95,29 @@ class CoreServiceRoutesTest {
                 nextExchange -> invokeFilters(filters, index + 1, nextExchange, terminalChain)
         );
     }
+
+    @Test
+    void transportQueryRoutesUseSharedServiceIdNotPerInstance() {
+        MockServerWebExchange trips = MockServerWebExchange.from(
+                MockServerHttpRequest.get("/api/v1/trips").build()
+        );
+        MockServerWebExchange seats = MockServerWebExchange.from(
+                MockServerHttpRequest.get(
+                        "/api/v1/trips/11111111-1111-1111-1111-111111111111/seats"
+                ).build()
+        );
+
+        Route tripsRoute = routeLocator.getRoutes()
+                .filterWhen(candidate -> Mono.from(candidate.getPredicate().apply(trips)))
+                .blockFirst();
+        Route seatsRoute = routeLocator.getRoutes()
+                .filterWhen(candidate -> Mono.from(candidate.getPredicate().apply(seats)))
+                .blockFirst();
+
+        assertThat(tripsRoute).isNotNull();
+        assertThat(seatsRoute).isNotNull();
+        assertThat(tripsRoute.getUri()).isEqualTo(URI.create("lb://school-bus-transport-query"));
+        assertThat(seatsRoute.getUri()).isEqualTo(URI.create("lb://school-bus-transport-query"));
+        assertThat(tripsRoute.getUri().getHost()).isEqualTo("school-bus-transport-query");
+    }
 }

@@ -53,7 +53,10 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        # Override at runtime for HA verification only, e.g.
+        # MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE=health,info,metrics
+        # Metrics remain authenticated (not in PUBLIC_ENDPOINTS).
+        include: ${MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE:health,info}
   endpoint:
     health:
       show-details: always
