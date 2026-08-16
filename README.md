@@ -17,13 +17,19 @@
 
 ## 当前状态
 
-- IAM：注册、登录、JWT、Redis 会话
-- Transport：可预约班次查询、座位图、Redis 班次列表缓存
-- Booking：下单、我的订单、详情、取消、支付超时（Outbox + RabbitMQ TTL/DLX）
-- Trip cancellation Saga：管理员取消班次后，异步取消订单、释放座位库存并驱动已支付订单退款；支持有限重试、TTL 退避、DLQ 与数据库补偿
-- Payment：支付回调（HMAC 验签）、退款 Outbox
+- IAM：注册、登录、JWT、Redis 会话（仍在 core）
+- Transport 写路径与管理端：仍在 core
+- Transport Query（绞杀者第一刀）：独立服务 `school-bus-transport-query`（可多实例，如 :8082/:8083）承接学生端只读
+  - `GET /api/v1/trips`
+  - `GET /api/v1/trips/{tripNumber}/seats`
+- Gateway（:8080）经 Nacos + Spring Cloud LoadBalancer（`lb://school-bus-transport-query`）将上述 GET 路由到 Query；其余 `/api/**` 仍到 core（:8081）
+- Query 双实例 HA 验收脚本：`scripts/cloud/verify-transport-query-ha.ps1`（见 `docs/10-transport-query-ha.md`）
+- Query GET 路由级超时 + 有限重试（仅 502/503/504，最多 2 次调用）：见 `docs/12-transport-query-resilience.md`；对照脚本 `scripts/cloud/verify-transport-query-resilience.ps1`
+- Booking / Payment：仍在 core，锁座与库存事务未改为远程调用
 - Stability：Sentinel 保护登录、下单和支付回调入口，统一返回 HTTP 429
-- Flyway V1–V6 已落地；集成测试需 Docker（Testcontainers）
+- Flyway 仍由 core 执行；query 服务只读共享库（过渡方案）
+
+详见：`docs/08-nacos-gateway-foundation.md`、`docs/09-transport-query-strangler.md`、`docs/10-transport-query-ha.md`、`docs/12-transport-query-resilience.md`
 
 ## Swagger 端到端演示
 

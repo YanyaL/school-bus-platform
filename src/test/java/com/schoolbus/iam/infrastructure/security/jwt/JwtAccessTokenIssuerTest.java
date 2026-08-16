@@ -7,6 +7,7 @@ import com.schoolbus.iam.domain.account.StudentNumber;
 import com.schoolbus.shared.domain.identity.UserId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
@@ -35,7 +36,11 @@ class JwtAccessTokenIssuerTest {
                 "school-bus-api",
                 Duration.ofMinutes(15)
         );
-        KeyPair keyPair = configuration.jwtKeyPair();
+        KeyPair keyPair = configuration.jwtKeyPair(
+                "",
+                "",
+                new DefaultResourceLoader()
+        );
         JwtEncoder jwtEncoder = configuration.jwtEncoder(keyPair);
         jwtDecoder = configuration.jwtDecoder(
                 keyPair,

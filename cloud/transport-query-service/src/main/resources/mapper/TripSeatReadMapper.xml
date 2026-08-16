@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.schoolbus.transportquery.infrastructure.persistence.TripSeatReadMapper">
+
+    <resultMap
+            id="TripSeatStatusResultMap"
+            type="com.schoolbus.transportquery.infrastructure.persistence.TripSeatStatusDataObject">
+        <result property="seatNumber" column="seat_number"/>
+        <result property="status" column="status"/>
+    </resultMap>
+
+    <select
+            id="selectSeatStatusesByTripId"
+            resultMap="TripSeatStatusResultMap">
+        SELECT seat_number, status
+        FROM transport_trip_seat
+        WHERE trip_id = #{tripId}
+        ORDER BY seat_number
+    </select>
+
+</mapper>

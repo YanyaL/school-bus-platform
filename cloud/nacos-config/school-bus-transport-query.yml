@@ -1,0 +1,36 @@
+info:
+  cloud:
+    config-source: nacos
+
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/school_bus_platform?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:root}
+    hikari:
+      read-only: true
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DATABASE:0}
+
+school-bus:
+  trip-list-cache:
+    ttl: ${TRIP_LIST_CACHE_TTL:PT1M}
+  security:
+    jwt:
+      issuer: ${JWT_ISSUER:https://school-bus.local}
+      audience: ${JWT_AUDIENCE:school-bus-api}
+      access-token-ttl: ${JWT_ACCESS_TOKEN_TTL:PT15M}
+      public-key-location: ${JWT_PUBLIC_KEY_LOCATION:}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+# Shared MySQL is a transition. Prefer a read-only DB account in non-local environments.
+# Do not run Flyway in this service; schema ownership remains with school-bus-core.

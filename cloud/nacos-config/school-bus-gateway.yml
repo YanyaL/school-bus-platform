@@ -1,0 +1,22 @@
+info:
+  cloud:
+    config-source: nacos
+
+spring:
+  cloud:
+    loadbalancer:
+      cache:
+        enabled: true
+        ttl: 2s
+
+school-bus:
+  gateway:
+    core-service-id: school-bus-core
+    transport-query-service-id: school-bus-transport-query
+    transport-query-resilience:
+      enabled: true
+      retries: 1
+      connect-timeout: 500ms
+      response-timeout: 2s
+      first-backoff: 50ms
+      max-backoff: 200ms

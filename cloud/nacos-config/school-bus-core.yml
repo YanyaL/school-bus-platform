@@ -1,0 +1,7 @@
+info:
+  cloud:
+    config-source: nacos
+
+school-bus:
+  trip-list-cache:
+    ttl: PT1M

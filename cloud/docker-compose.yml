@@ -1,0 +1,16 @@
+services:
+  nacos:
+    image: nacos/nacos-server:v3.0.3
+    container_name: school-bus-nacos-3
+    environment:
+      MODE: standalone
+      NACOS_AUTH_ENABLE: "true"
+      NACOS_AUTH_TOKEN: c2Nob29sLWJ1cy1uYWNvcy1kZXYtc2VjcmV0LWtleS0yMDI2LWNoYW5nZS1tZQ==
+      NACOS_AUTH_IDENTITY_KEY: school-bus
+      NACOS_AUTH_IDENTITY_VALUE: school-bus
+      NACOS_AUTH_USER_AGENT_AUTH_WHITE_ENABLE: "false"
+    ports:
+      - "18080:8080"
+      - "8848:8848"
+      - "9848:9848"
+    restart: unless-stopped

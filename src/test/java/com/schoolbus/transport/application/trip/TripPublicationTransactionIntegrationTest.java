@@ -268,16 +268,17 @@ class TripPublicationTransactionIntegrationTest {
         jdbcTemplate.update(
                 """
                 INSERT INTO booking_order (
-                    id, order_no, request_no, user_id, trip_id,
+                    id, order_no, request_no, user_id, trip_id, trip_no,
                     seat_number, price_snapshot, status, expires_at,
                     version, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 7001L,
                 "44444444-4444-4444-4444-444444444444",
                 "cancel-guard-request",
                 9001L,
                 5001L,
+                "33333333-3333-3333-3333-333333333333",
                 "1",
                 new java.math.BigDecimal("5.00"),
                 "PENDING_PAYMENT",
@@ -391,12 +392,13 @@ class TripPublicationTransactionIntegrationTest {
         jdbcTemplate.update(
                 """
                 INSERT INTO booking_order (
-                    id, order_no, request_no, user_id, trip_id,
+                    id, order_no, request_no, user_id, trip_id, trip_no,
                     seat_number, price_snapshot, status, expires_at,
                     payment_no, paid_at, version, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, 'PAID', ?, ?, ?, 1, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PAID', ?, ?, ?, 1, ?, ?)
                 """,
                 7002L, orderNo, "paid-cancel-request", 9002L, 5001L,
+                "33333333-3333-3333-3333-333333333333",
                 "2", new java.math.BigDecimal("5.00"),
                 LocalDateTime.ofInstant(NOW.plusSeconds(900), ZoneOffset.UTC),
                 paymentNo, timestamp, timestamp, timestamp

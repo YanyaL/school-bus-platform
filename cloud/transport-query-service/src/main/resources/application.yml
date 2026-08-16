@@ -1,0 +1,85 @@
+spring:
+  application:
+    name: school-bus-transport-query
+  config:
+    import:
+      - optional:nacos:${NACOS_CONFIG_DATA_ID:school-bus-transport-query.yml}?group=${NACOS_CONFIG_GROUP:DEFAULT_GROUP}&refreshEnabled=true
+  cloud:
+    nacos:
+      username: ${NACOS_USERNAME:nacos}
+      password: ${NACOS_PASSWORD:nacos}
+      config:
+        enabled: ${NACOS_CONFIG_ENABLED:false}
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+        namespace: ${NACOS_NAMESPACE:}
+        health-indicator:
+          enabled: ${NACOS_HEALTH_INDICATOR_ENABLED:true}
+      discovery:
+        enabled: ${NACOS_DISCOVERY_ENABLED:false}
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+        namespace: ${NACOS_NAMESPACE:}
+        group: ${NACOS_DISCOVERY_GROUP:DEFAULT_GROUP}
+        health-indicator:
+          enabled: ${NACOS_HEALTH_INDICATOR_ENABLED:true}
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/school_bus_platform?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:root}
+    hikari:
+      read-only: true
+      maximum-pool-size: ${DB_POOL_MAX_SIZE:10}
+      minimum-idle: ${DB_POOL_MIN_IDLE:2}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DATABASE:0}
+      connect-timeout: ${REDIS_CONNECT_TIMEOUT:2s}
+      timeout: ${REDIS_TIMEOUT:2s}
+  flyway:
+    enabled: false
+
+server:
+  port: ${TRANSPORT_QUERY_SERVER_PORT:8082}
+  shutdown: graceful
+
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # Override at runtime for HA verification only, e.g.
+        # MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE=health,info,metrics
+        # Metrics remain authenticated (not in PUBLIC_ENDPOINTS).
+        include: ${MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE:health,info}
+  endpoint:
+    health:
+      show-details: always
+  info:
+    env:
+      enabled: true
+
+school-bus:
+  trip-list-cache:
+    ttl: ${TRIP_LIST_CACHE_TTL:PT1M}
+  security:
+    jwt:
+      issuer: ${JWT_ISSUER:https://school-bus.local}
+      audience: ${JWT_AUDIENCE:school-bus-api}
+      access-token-ttl: ${JWT_ACCESS_TOKEN_TTL:PT15M}
+      public-key-location: ${JWT_PUBLIC_KEY_LOCATION:}
+
+info:
+  app:
+    name: ${spring.application.name}
+    role: transport-query-service
+  cloud:
+    registry: nacos
+  database:
+    ownership: shared-read-replica-transition
+    note: Write ownership remains with school-bus-core; local may reuse the same MySQL account.

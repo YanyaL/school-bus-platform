@@ -1,6 +1,26 @@
 spring:
   application:
     name: school-bus-platform
+  config:
+    import:
+      - optional:nacos:${NACOS_CONFIG_DATA_ID:school-bus-core.yml}?group=${NACOS_CONFIG_GROUP:DEFAULT_GROUP}&refreshEnabled=true
+  cloud:
+    nacos:
+      username: ${NACOS_USERNAME:nacos}
+      password: ${NACOS_PASSWORD:nacos}
+      config:
+        enabled: ${NACOS_CONFIG_ENABLED:false}
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+        namespace: ${NACOS_NAMESPACE:}
+        health-indicator:
+          enabled: ${NACOS_HEALTH_INDICATOR_ENABLED:false}
+      discovery:
+        enabled: ${NACOS_DISCOVERY_ENABLED:false}
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+        namespace: ${NACOS_NAMESPACE:}
+        group: ${NACOS_DISCOVERY_GROUP:DEFAULT_GROUP}
+        health-indicator:
+          enabled: ${NACOS_HEALTH_INDICATOR_ENABLED:false}
   autoconfigure:
     exclude:
       - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration

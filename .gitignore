@@ -15,6 +15,9 @@ logs/
 .env.*
 !.env.example
 
+# Local JWT RSA keypairs (never commit private or public PEMs)
+cloud/dev-keys/
+
 application-local-private.yml
 
 hs_err_pid*
