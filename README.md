@@ -24,11 +24,12 @@
   - `GET /api/v1/trips/{tripNumber}/seats`
 - Gateway（:8080）经 Nacos + Spring Cloud LoadBalancer（`lb://school-bus-transport-query`）将上述 GET 路由到 Query；其余 `/api/**` 仍到 core（:8081）
 - Query 双实例 HA 验收脚本：`scripts/cloud/verify-transport-query-ha.ps1`（见 `docs/10-transport-query-ha.md`）
+- Query GET 路由级超时 + 有限重试（仅 502/503/504，最多 2 次调用）：见 `docs/12-transport-query-resilience.md`；对照脚本 `scripts/cloud/verify-transport-query-resilience.ps1`
 - Booking / Payment：仍在 core，锁座与库存事务未改为远程调用
 - Stability：Sentinel 保护登录、下单和支付回调入口，统一返回 HTTP 429
 - Flyway 仍由 core 执行；query 服务只读共享库（过渡方案）
 
-详见：`docs/08-nacos-gateway-foundation.md`、`docs/09-transport-query-strangler.md`、`docs/10-transport-query-ha.md`
+详见：`docs/08-nacos-gateway-foundation.md`、`docs/09-transport-query-strangler.md`、`docs/10-transport-query-ha.md`、`docs/12-transport-query-resilience.md`
 
 ## Swagger 端到端演示
 

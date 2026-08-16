@@ -105,6 +105,16 @@ $env:Path="$env:JAVA_HOME\bin;$env:Path"
 - Metrics 仅通过环境变量临时暴露，且仍需 JWT，不在公开白名单
 - `target/ha-logs`、`target/ha-reports` 不入库
 
+## 后续增强：路由级超时与有限重试
+
+为覆盖 Nacos/LB 传播窗口中的瞬时失败，Gateway 对
+`school-bus-transport-query-trips` / `school-bus-transport-query-seats`
+增加 connect/response timeout 与最多 1 次 GET 重试（502/503/504）。
+详见 `docs/12-transport-query-resilience.md` 与
+`scripts/cloud/verify-transport-query-resilience.ps1`。
+
+本文件上方的 HA 分布与收敛数据保持原样，不被改写。
+
 ## 下一阶段建议
 
 - 只读副本 / 读写分离

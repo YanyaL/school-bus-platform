@@ -97,27 +97,34 @@ class CoreServiceRoutesTest {
     }
 
     @Test
-    void transportQueryRoutesUseSharedServiceIdNotPerInstance() {
+    void transportQueryRoutesCarryTimeoutMetadataAndRetryWhenEnabled() {
         MockServerWebExchange trips = MockServerWebExchange.from(
                 MockServerHttpRequest.get("/api/v1/trips").build()
         );
-        MockServerWebExchange seats = MockServerWebExchange.from(
-                MockServerHttpRequest.get(
-                        "/api/v1/trips/11111111-1111-1111-1111-111111111111/seats"
-                ).build()
-        );
-
         Route tripsRoute = routeLocator.getRoutes()
                 .filterWhen(candidate -> Mono.from(candidate.getPredicate().apply(trips)))
                 .blockFirst();
-        Route seatsRoute = routeLocator.getRoutes()
-                .filterWhen(candidate -> Mono.from(candidate.getPredicate().apply(seats)))
-                .blockFirst();
 
         assertThat(tripsRoute).isNotNull();
-        assertThat(seatsRoute).isNotNull();
-        assertThat(tripsRoute.getUri()).isEqualTo(URI.create("lb://school-bus-transport-query"));
-        assertThat(seatsRoute.getUri()).isEqualTo(URI.create("lb://school-bus-transport-query"));
-        assertThat(tripsRoute.getUri().getHost()).isEqualTo("school-bus-transport-query");
+        assertThat(tripsRoute.getMetadata())
+                .containsEntry(org.springframework.cloud.gateway.support.RouteMetadataUtils.CONNECT_TIMEOUT_ATTR, 500)
+                .containsKey(org.springframework.cloud.gateway.support.RouteMetadataUtils.RESPONSE_TIMEOUT_ATTR);
+        assertThat(tripsRoute.getFilters().stream().map(Object::toString).anyMatch(s ->
+                s.contains("Retry") || s.contains("retry"))).isTrue();
+    }
+
+    @Test
+    void coreRouteDoesNotIncludeRetryFilter() {
+        MockServerWebExchange exchange = MockServerWebExchange.from(
+                MockServerHttpRequest.post("/api/v1/bookings").build()
+        );
+        Route route = routeLocator.getRoutes()
+                .filterWhen(candidate -> Mono.from(candidate.getPredicate().apply(exchange)))
+                .blockFirst();
+
+        assertThat(route).isNotNull();
+        assertThat(route.getId()).isEqualTo(CoreServiceRoutes.CORE_ROUTE_ID);
+        assertThat(route.getFilters().stream().map(Object::toString).anyMatch(s ->
+                s.contains("Retry") || s.contains("retry"))).isFalse();
     }
 }

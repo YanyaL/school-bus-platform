@@ -19,3 +19,13 @@ management:
       enabled: false
     nacos-discovery:
       enabled: false
+
+school-bus:
+  gateway:
+    transport-query-resilience:
+      enabled: true
+      retries: 1
+      connect-timeout: 500ms
+      response-timeout: 2s
+      first-backoff: 50ms
+      max-backoff: 200ms

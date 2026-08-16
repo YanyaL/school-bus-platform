@@ -453,6 +453,9 @@ try {
         # Keep LB cache short so Nacos instance removal is reflected quickly during HA verification.
         SPRING_CLOUD_LOADBALANCER_CACHE_TTL = '2s'
         SPRING_CLOUD_LOADBALANCER_CACHE_ENABLED = 'true'
+        TRANSPORT_QUERY_RESILIENCE_ENABLED = 'true'
+        # Localhost acceptance only — gateway has no JWT on actuator.
+        MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE = 'health,info,gateway,metrics'
     }
     Start-TrackedJava -JarPath $gatewayJar -Environment $gwEnv -LogPath (Join-Path $logDir 'gateway-8080.log') -Label 'gateway'
 
