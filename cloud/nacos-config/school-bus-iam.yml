@@ -1,0 +1,15 @@
+info:
+  cloud:
+    config-source: nacos
+    role: iam-service
+
+school-bus:
+  security:
+    jwt:
+      issuer: ${JWT_ISSUER:https://school-bus.local}
+      audience: ${JWT_AUDIENCE:school-bus-api}
+      access-token-ttl: ${JWT_ACCESS_TOKEN_TTL:PT15M}
+      public-key-location: ${JWT_PUBLIC_KEY_LOCATION:}
+      private-key-location: ${JWT_PRIVATE_KEY_LOCATION:}
+    refresh-token:
+      ttl: ${REFRESH_TOKEN_TTL:PT168H}

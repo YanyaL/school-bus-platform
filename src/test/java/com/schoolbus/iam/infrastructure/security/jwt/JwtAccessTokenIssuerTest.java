@@ -30,19 +30,22 @@ class JwtAccessTokenIssuerTest {
 
     @BeforeEach
     void setUp() {
-        JwtConfiguration configuration = new JwtConfiguration();
+        EmbeddedJwtSigningConfiguration signing =
+                new EmbeddedJwtSigningConfiguration();
+        JwtDecoderConfiguration decoderConfiguration =
+                new JwtDecoderConfiguration();
         JwtProperties properties = new JwtProperties(
                 "https://school-bus.local",
                 "school-bus-api",
                 Duration.ofMinutes(15)
         );
-        KeyPair keyPair = configuration.jwtKeyPair(
+        KeyPair keyPair = signing.jwtKeyPair(
                 "",
                 "",
                 new DefaultResourceLoader()
         );
-        JwtEncoder jwtEncoder = configuration.jwtEncoder(keyPair);
-        jwtDecoder = configuration.jwtDecoder(
+        JwtEncoder jwtEncoder = signing.jwtEncoder(keyPair);
+        jwtDecoder = decoderConfiguration.jwtDecoderFromKeyPair(
                 keyPair,
                 properties
         );

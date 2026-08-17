@@ -17,19 +17,23 @@
 
 ## 当前状态
 
-- IAM：注册、登录、JWT、Redis 会话（仍在 core）
+- IAM：独立服务 `school-bus-iam`（:8084）承接注册 / 登录 / refresh / logout / me（绞杀者第二刀）；本地单体默认仍可嵌入
 - Transport 写路径与管理端：仍在 core
 - Transport Query（绞杀者第一刀）：独立服务 `school-bus-transport-query`（可多实例，如 :8082/:8083）承接学生端只读
   - `GET /api/v1/trips`
   - `GET /api/v1/trips/{tripNumber}/seats`
-- Gateway（:8080）经 Nacos + Spring Cloud LoadBalancer（`lb://school-bus-transport-query`）将上述 GET 路由到 Query；其余 `/api/**` 仍到 core（:8081）
+- Gateway（:8080）经 Nacos + Spring Cloud LoadBalancer：
+  - 上述 GET → `lb://school-bus-transport-query`
+  - `POST /api/v1/accounts`、`/api/v1/auth/**` → `lb://school-bus-iam`
+  - 其余 `/api/**` → core（:8081）
+- Cloud Core：`school-bus.iam.embedded.enabled=false`，只校验 JWT 公钥，不再签发
 - Query 双实例 HA 验收脚本：`scripts/cloud/verify-transport-query-ha.ps1`（见 `docs/10-transport-query-ha.md`）
 - Query GET 路由级超时 + 有限重试（仅 502/503/504，最多 2 次调用）：见 `docs/12-transport-query-resilience.md`；对照脚本 `scripts/cloud/verify-transport-query-resilience.ps1`
 - Booking / Payment：仍在 core，锁座与库存事务未改为远程调用
-- Stability：Sentinel 保护登录、下单和支付回调入口，统一返回 HTTP 429
-- Flyway 仍由 core 执行；query 服务只读共享库（过渡方案）
+- Stability：Sentinel 保护登录、下单和支付回调入口，统一返回 HTTP 429（登录限流仍挂在 Core 入口路径；迁至 IAM 为后续项）
+- Flyway 仍由 core 执行；query / iam 过渡期只读或读写共享库（iam Flyway 关闭）
 
-详见：`docs/08-nacos-gateway-foundation.md`、`docs/09-transport-query-strangler.md`、`docs/10-transport-query-ha.md`、`docs/12-transport-query-resilience.md`
+详见：`docs/08-nacos-gateway-foundation.md`、`docs/09-transport-query-strangler.md`、`docs/10-transport-query-ha.md`、`docs/12-transport-query-resilience.md`、`docs/13-iam-strangler.md`
 
 ## Swagger 端到端演示
 

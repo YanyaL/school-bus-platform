@@ -13,6 +13,7 @@ school-bus:
   gateway:
     core-service-id: school-bus-core
     transport-query-service-id: school-bus-transport-query
+    iam-service-id: school-bus-iam
     transport-query-resilience:
       enabled: true
       retries: 1

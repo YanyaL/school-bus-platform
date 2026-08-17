@@ -1,6 +1,7 @@
 package com.schoolbus.iam.infrastructure.security.token;
 
 import com.schoolbus.iam.application.authentication.RefreshTokenHasher;
+import com.schoolbus.iam.config.ConditionalOnEmbeddedIam;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
@@ -9,6 +10,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
 
 @Component
+@ConditionalOnEmbeddedIam
 public class Sha256RefreshTokenHasher
         implements RefreshTokenHasher {
 

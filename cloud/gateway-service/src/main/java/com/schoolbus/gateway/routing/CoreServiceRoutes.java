@@ -19,6 +19,8 @@ public class CoreServiceRoutes {
 
     public static final String TRIPS_ROUTE_ID = "school-bus-transport-query-trips";
     public static final String SEATS_ROUTE_ID = "school-bus-transport-query-seats";
+    public static final String IAM_ACCOUNTS_ROUTE_ID = "school-bus-iam-accounts";
+    public static final String IAM_AUTH_ROUTE_ID = "school-bus-iam-auth";
     public static final String CORE_ROUTE_ID = "school-bus-core-api";
 
     @Bean
@@ -29,7 +31,9 @@ public class CoreServiceRoutes {
             @Value("${school-bus.gateway.core-service-id:school-bus-core}")
             String coreServiceId,
             @Value("${school-bus.gateway.transport-query-service-id:school-bus-transport-query}")
-            String transportQueryServiceId
+            String transportQueryServiceId,
+            @Value("${school-bus.gateway.iam-service-id:school-bus-iam}")
+            String iamServiceId
     ) {
         int connectTimeoutMs = Math.toIntExact(resilience.connectTimeout().toMillis());
         long responseTimeoutMs = resilience.responseTimeout().toMillis();
@@ -63,6 +67,18 @@ public class CoreServiceRoutes {
                         .metadata(RouteMetadataUtils.CONNECT_TIMEOUT_ATTR, connectTimeoutMs)
                         .metadata(RouteMetadataUtils.RESPONSE_TIMEOUT_ATTR, responseTimeoutMs)
                         .uri("lb://" + transportQueryServiceId))
+                .route(IAM_ACCOUNTS_ROUTE_ID, route -> route
+                        .order(-15)
+                        .method(HttpMethod.POST)
+                        .and()
+                        .path("/api/v1/accounts")
+                        .filters(filters -> stripUntrustedIdentityHeaders(filters))
+                        .uri("lb://" + iamServiceId))
+                .route(IAM_AUTH_ROUTE_ID, route -> route
+                        .order(-14)
+                        .path("/api/v1/auth/**")
+                        .filters(filters -> stripUntrustedIdentityHeaders(filters))
+                        .uri("lb://" + iamServiceId))
                 .route(CORE_ROUTE_ID, route -> route
                         .order(0)
                         .path("/api/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")

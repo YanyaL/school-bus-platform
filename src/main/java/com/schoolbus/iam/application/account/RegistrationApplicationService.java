@@ -1,5 +1,6 @@
 package com.schoolbus.iam.application.account;
 
+import com.schoolbus.iam.config.ConditionalOnEmbeddedIam;
 import com.schoolbus.iam.domain.account.Account;
 import com.schoolbus.iam.domain.account.AccountRepository;
 import com.schoolbus.iam.domain.account.PasswordHash;
@@ -16,6 +17,7 @@ import java.util.Objects;
 
 @Service
 @Profile("!test")
+@ConditionalOnEmbeddedIam
 public class RegistrationApplicationService {
 
     private final AccountRepository accountRepository;

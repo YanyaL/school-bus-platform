@@ -2,6 +2,7 @@ package com.schoolbus.iam.api.account;
 
 import com.schoolbus.iam.application.account.RegisterAccountCommand;
 import com.schoolbus.iam.application.account.RegistrationApplicationService;
+import com.schoolbus.iam.config.ConditionalOnEmbeddedIam;
 import com.schoolbus.iam.domain.account.Account;
 import com.schoolbus.shared.api.ApiResponse;
 import jakarta.validation.Valid;
@@ -18,6 +19,7 @@ import java.util.Objects;
 @RestController
 @RequestMapping("/api/v1/accounts")
 @Profile("!test")
+@ConditionalOnEmbeddedIam
 public class RegistrationController {
 
     private final RegistrationApplicationService service;

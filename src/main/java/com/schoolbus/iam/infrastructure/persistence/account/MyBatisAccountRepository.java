@@ -1,5 +1,6 @@
 package com.schoolbus.iam.infrastructure.persistence.account;
 
+import com.schoolbus.iam.config.ConditionalOnEmbeddedIam;
 import com.schoolbus.iam.domain.account.Account;
 import com.schoolbus.iam.domain.account.AccountRepository;
 import com.schoolbus.iam.domain.account.AccountStatus;
@@ -19,6 +20,7 @@ import java.util.stream.Collectors;
 
 @Repository
 @Profile("!test")
+@ConditionalOnEmbeddedIam
 public class MyBatisAccountRepository
         implements AccountRepository {
 

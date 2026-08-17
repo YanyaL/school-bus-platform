@@ -17,10 +17,11 @@ Vue -> Gateway :8080
          ├─ GET /api/v1/trips
          │  GET /api/v1/trips/{tripNumber}/seats
          │       -> lb://school-bus-transport-query :8082
-         └─ 其它 /api/**（含 admin trips、bookings、auth）
+         └─ 其它 /api/**（含 admin trips、bookings；auth 已迁出见 docs/13）
                 -> lb://school-bus-core :8081
 ```
 
+> IAM（accounts / auth）的后续拆分见 `docs/13-iam-strangler.md`。
 ## 2. 为什么先拆只读查询
 
 班次列表与座位图是高频只读路径，不参与本地事务锁座。先拆读路径可以验证：

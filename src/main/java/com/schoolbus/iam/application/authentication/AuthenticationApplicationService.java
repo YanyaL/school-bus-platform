@@ -1,5 +1,6 @@
 package com.schoolbus.iam.application.authentication;
 
+import com.schoolbus.iam.config.ConditionalOnEmbeddedIam;
 import com.schoolbus.iam.domain.account.Account;
 import com.schoolbus.iam.domain.account.AccountRepository;
 import com.schoolbus.iam.domain.account.AccountStatus;
@@ -15,6 +16,7 @@ import java.util.UUID;
 
 @Service
 @Profile("!test")
+@ConditionalOnEmbeddedIam
 public class AuthenticationApplicationService {
 
     private final AccountRepository accountRepository;

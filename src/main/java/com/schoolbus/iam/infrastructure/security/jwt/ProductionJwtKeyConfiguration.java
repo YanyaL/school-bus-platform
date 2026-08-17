@@ -1,5 +1,6 @@
 package com.schoolbus.iam.infrastructure.security.jwt;
 
+import com.schoolbus.iam.config.ConditionalOnEmbeddedIam;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -15,6 +16,7 @@ import java.security.interfaces.RSAPublicKey;
 
 @Configuration(proxyBeanMethods = false)
 @Profile("prod")
+@ConditionalOnEmbeddedIam
 public class ProductionJwtKeyConfiguration {
 
     @Bean

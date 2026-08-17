@@ -2,6 +2,7 @@ package com.schoolbus.iam.infrastructure.security.jwt;
 
 import com.schoolbus.iam.application.authentication.AccessToken;
 import com.schoolbus.iam.application.authentication.AccessTokenIssuer;
+import com.schoolbus.iam.config.ConditionalOnEmbeddedIam;
 import com.schoolbus.iam.domain.account.Account;
 import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
@@ -17,6 +18,7 @@ import java.util.Objects;
 import java.util.UUID;
 
 @Component
+@ConditionalOnEmbeddedIam
 public class JwtAccessTokenIssuer implements AccessTokenIssuer {
 
     private final JwtEncoder jwtEncoder;
