@@ -1,10 +1,9 @@
-package com.schoolbus.payment.infrastructure.security;
+package com.schoolbus.paymentservice.infrastructure.security;
 
-import com.schoolbus.payment.api.InvalidPaymentSignatureException;
-import com.schoolbus.payment.api.PaymentCallbackVerifier;
-import com.schoolbus.payment.config.ConditionalOnEmbeddedPayment;
+import com.schoolbus.paymentservice.api.PaymentCallbackVerifier;
+import com.schoolbus.paymentservice.api.PaymentServiceException;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Profile;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.Mac;
@@ -16,38 +15,33 @@ import java.util.HexFormat;
 import java.util.Objects;
 
 @Component
-@Profile("!test")
-@ConditionalOnEmbeddedPayment
 public class HmacSha256PaymentCallbackVerifier
         implements PaymentCallbackVerifier {
 
     private static final String ALGORITHM = "HmacSHA256";
-
     private final byte[] secret;
 
     public HmacSha256PaymentCallbackVerifier(
-            @Value("${school-bus.payment.callback-secret}")
-            String secret
+            @Value("${school-bus.payment.callback-secret}") String secret
     ) {
-        String validated = Objects.requireNonNull(
+        String checked = Objects.requireNonNull(
                 secret,
                 "payment callback secret must not be null"
         ).strip();
-        if (validated.isEmpty()) {
+        if (checked.length() < 16) {
             throw new IllegalArgumentException(
-                    "payment callback secret must not be blank"
+                    "payment callback secret must contain at least 16 characters"
             );
         }
-        this.secret = validated.getBytes(StandardCharsets.UTF_8);
+        this.secret = checked.getBytes(StandardCharsets.UTF_8);
     }
 
     @Override
     public void verify(String rawBody, String signature) {
-        String body = Objects.requireNonNull(rawBody, "rawBody must not be null");
-        byte[] suppliedSignature = decodeSignature(signature);
-        byte[] expectedSignature = sign(body);
-        if (!MessageDigest.isEqual(expectedSignature, suppliedSignature)) {
-            throw new InvalidPaymentSignatureException();
+        byte[] supplied = decodeSignature(signature);
+        byte[] expected = sign(Objects.requireNonNull(rawBody));
+        if (!MessageDigest.isEqual(expected, supplied)) {
+            throw invalidSignature();
         }
     }
 
@@ -63,7 +57,7 @@ public class HmacSha256PaymentCallbackVerifier
 
     private byte[] decodeSignature(String signature) {
         if (signature == null) {
-            throw new InvalidPaymentSignatureException();
+            throw invalidSignature();
         }
         String normalized = signature.strip();
         if (normalized.startsWith("sha256=")) {
@@ -72,7 +66,15 @@ public class HmacSha256PaymentCallbackVerifier
         try {
             return HexFormat.of().parseHex(normalized);
         } catch (IllegalArgumentException exception) {
-            throw new InvalidPaymentSignatureException();
+            throw invalidSignature();
         }
+    }
+
+    private PaymentServiceException invalidSignature() {
+        return new PaymentServiceException(
+                "INVALID_PAYMENT_SIGNATURE",
+                "payment callback signature is invalid",
+                HttpStatus.UNAUTHORIZED
+        );
     }
 }

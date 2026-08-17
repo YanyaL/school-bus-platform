@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.schoolbus.payment.application.ConfirmPaymentResult;
 import com.schoolbus.payment.application.PaymentConfirmationApplicationService;
+import com.schoolbus.payment.config.ConditionalOnEmbeddedPayment;
 import com.schoolbus.shared.api.ApiResponse;
 import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -17,6 +18,7 @@ import java.util.Objects;
 @RestController
 @RequestMapping("/api/v1/payments")
 @Profile("!test")
+@ConditionalOnEmbeddedPayment
 public class PaymentCallbackController {
 
     public static final String SIGNATURE_HEADER = "X-Payment-Signature";

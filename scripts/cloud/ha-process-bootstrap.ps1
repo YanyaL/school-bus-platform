@@ -169,7 +169,8 @@ function Publish-NacosConfigs {
             'school-bus-core.yml',
             'school-bus-gateway.yml',
             'school-bus-transport-query.yml',
-            'school-bus-iam.yml'
+            'school-bus-iam.yml',
+            'school-bus-payment.yml'
         )) {
         $content = Get-Content -Raw -LiteralPath (Join-Path $configDir $dataId)
         $publishUri = "$NacosBaseUrl/nacos/v3/admin/cs/config" +

@@ -38,6 +38,7 @@ class CoreServiceRoutesTest {
             "GET, /api/v1/auth/me, school-bus-iam-auth, lb://school-bus-iam",
             "POST, /api/v1/auth/refresh, school-bus-iam-auth, lb://school-bus-iam",
             "POST, /api/v1/auth/logout, school-bus-iam-auth, lb://school-bus-iam",
+            "POST, /api/v1/payments/callback, school-bus-payment-callback, lb://school-bus-payment",
             "POST, /api/v1/trips, school-bus-core-api, lb://school-bus-core"
     })
     void routesRequestsToExpectedService(
@@ -128,6 +129,21 @@ class CoreServiceRoutesTest {
 
         assertThat(route).isNotNull();
         assertThat(route.getId()).isEqualTo(CoreServiceRoutes.CORE_ROUTE_ID);
+        assertThat(route.getFilters().stream().map(Object::toString).anyMatch(s ->
+                s.contains("Retry") || s.contains("retry"))).isFalse();
+    }
+
+    @Test
+    void paymentCallbackRouteDoesNotIncludeRetryFilter() {
+        MockServerWebExchange exchange = MockServerWebExchange.from(
+                MockServerHttpRequest.post("/api/v1/payments/callback").build()
+        );
+        Route route = routeLocator.getRoutes()
+                .filterWhen(candidate -> Mono.from(candidate.getPredicate().apply(exchange)))
+                .blockFirst();
+
+        assertThat(route).isNotNull();
+        assertThat(route.getId()).isEqualTo(CoreServiceRoutes.PAYMENT_ROUTE_ID);
         assertThat(route.getFilters().stream().map(Object::toString).anyMatch(s ->
                 s.contains("Retry") || s.contains("retry"))).isFalse();
     }

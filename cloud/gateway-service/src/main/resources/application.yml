@@ -52,6 +52,7 @@ school-bus:
     core-service-id: ${CORE_SERVICE_ID:school-bus-core}
     transport-query-service-id: ${TRANSPORT_QUERY_SERVICE_ID:school-bus-transport-query}
     iam-service-id: ${IAM_SERVICE_ID:school-bus-iam}
+    payment-service-id: ${PAYMENT_SERVICE_ID:school-bus-payment}
     transport-query-resilience:
       # Override via SCHOOL_BUS_GATEWAY_TRANSPORT_QUERY_RESILIENCE_* env vars
       # or TRANSPORT_QUERY_RESILIENCE_ENABLED / TRANSPORT_QUERY_RESILIENCE_RETRIES.
