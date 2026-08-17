@@ -2,6 +2,7 @@ package com.schoolbus.iam.infrastructure.session;
 
 import com.schoolbus.iam.application.authentication.LoginSession;
 import com.schoolbus.iam.application.authentication.LoginSessionRepository;
+import com.schoolbus.iam.config.ConditionalOnEmbeddedIam;
 import com.schoolbus.shared.domain.identity.UserId;
 import org.springframework.context.annotation.Profile;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -18,6 +19,7 @@ import java.util.Optional;
 
 @Repository
 @Profile("!test")
+@ConditionalOnEmbeddedIam
 public class RedisLoginSessionRepository
         implements LoginSessionRepository {
 

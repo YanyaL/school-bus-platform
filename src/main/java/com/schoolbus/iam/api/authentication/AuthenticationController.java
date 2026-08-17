@@ -5,6 +5,7 @@ import com.schoolbus.iam.application.authentication.AuthenticationResult;
 import com.schoolbus.iam.application.authentication.LoginCommand;
 import com.schoolbus.iam.application.authentication.LogoutCommand;
 import com.schoolbus.iam.application.authentication.RefreshAuthenticationCommand;
+import com.schoolbus.iam.config.ConditionalOnEmbeddedIam;
 import com.schoolbus.shared.api.ApiResponse;
 import jakarta.validation.Valid;
 import org.springframework.context.annotation.Profile;
@@ -22,6 +23,7 @@ import java.util.Objects;
 @RestController
 @RequestMapping("/api/v1/auth")
 @Profile("!test")
+@ConditionalOnEmbeddedIam
 public class AuthenticationController {
 
     private final AuthenticationApplicationService service;

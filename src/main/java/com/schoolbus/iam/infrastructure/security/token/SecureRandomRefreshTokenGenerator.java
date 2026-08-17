@@ -2,6 +2,7 @@ package com.schoolbus.iam.infrastructure.security.token;
 
 import com.schoolbus.iam.application.authentication.RefreshToken;
 import com.schoolbus.iam.application.authentication.RefreshTokenGenerator;
+import com.schoolbus.iam.config.ConditionalOnEmbeddedIam;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -14,6 +15,7 @@ import java.util.Base64;
 import java.util.Objects;
 
 @Component
+@ConditionalOnEmbeddedIam
 public class SecureRandomRefreshTokenGenerator
         implements RefreshTokenGenerator {
 

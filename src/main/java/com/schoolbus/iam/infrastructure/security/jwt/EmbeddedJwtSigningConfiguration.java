@@ -5,6 +5,7 @@ import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
+import com.schoolbus.iam.config.ConditionalOnEmbeddedIam;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -12,16 +13,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.io.Resource;
 import org.springframework.security.converter.RsaKeyConverters;
-import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
-import org.springframework.security.oauth2.core.OAuth2Error;
-import org.springframework.security.oauth2.core.OAuth2TokenValidator;
-import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
-import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
-import org.springframework.security.oauth2.jwt.JwtValidators;
-import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.util.StringUtils;
 
@@ -34,9 +26,15 @@ import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.UUID;
 
+/**
+ * JWT signing beans for the embedded IAM stack (local modular monolith).
+ * Disabled in cloud profile when school-bus.iam.embedded.enabled=false —
+ * signing moves to school-bus-iam.
+ */
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(JwtProperties.class)
-public class JwtConfiguration {
+@ConditionalOnEmbeddedIam
+public class EmbeddedJwtSigningConfiguration {
 
     @Bean
     @Profile("!prod")
@@ -84,7 +82,7 @@ public class JwtConfiguration {
             return new KeyPair(publicKey, privateKey);
         } catch (IOException exception) {
             throw new IllegalStateException(
-                    "Unable to load shared JWT key pair for non-prod cloud",
+                    "Unable to load shared JWT key pair for embedded IAM",
                     exception
             );
         }
@@ -105,42 +103,5 @@ public class JwtConfiguration {
                 new ImmutableJWKSet<>(new JWKSet(rsaKey));
 
         return new NimbusJwtEncoder(jwkSource);
-    }
-
-    @Bean
-    JwtDecoder jwtDecoder(
-            KeyPair jwtKeyPair,
-            JwtProperties properties
-    ) {
-        RSAPublicKey publicKey =
-                (RSAPublicKey) jwtKeyPair.getPublic();
-        NimbusJwtDecoder decoder = NimbusJwtDecoder
-                .withPublicKey(publicKey)
-                .signatureAlgorithm(SignatureAlgorithm.RS256)
-                .build();
-
-        OAuth2TokenValidator<Jwt> standardValidator =
-                JwtValidators.createDefaultWithIssuer(
-                        properties.issuer()
-                );
-        OAuth2TokenValidator<Jwt> audienceValidator = jwt -> {
-            if (jwt.getAudience().contains(properties.audience())) {
-                return OAuth2TokenValidatorResult.success();
-            }
-            OAuth2Error error = new OAuth2Error(
-                    "invalid_token",
-                    "The required audience is missing",
-                    null
-            );
-            return OAuth2TokenValidatorResult.failure(error);
-        };
-
-        decoder.setJwtValidator(
-                new DelegatingOAuth2TokenValidator<>(
-                        standardValidator,
-                        audienceValidator
-                )
-        );
-        return decoder;
     }
 }

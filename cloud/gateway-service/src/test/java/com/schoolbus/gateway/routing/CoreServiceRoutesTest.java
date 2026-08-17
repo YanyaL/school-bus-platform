@@ -33,7 +33,11 @@ class CoreServiceRoutesTest {
             "GET, /api/v1/admin/trips, school-bus-core-api, lb://school-bus-core",
             "POST, /api/v1/admin/trips, school-bus-core-api, lb://school-bus-core",
             "GET, /api/v1/bookings, school-bus-core-api, lb://school-bus-core",
-            "POST, /api/v1/auth/login, school-bus-core-api, lb://school-bus-core",
+            "POST, /api/v1/accounts, school-bus-iam-accounts, lb://school-bus-iam",
+            "POST, /api/v1/auth/login, school-bus-iam-auth, lb://school-bus-iam",
+            "GET, /api/v1/auth/me, school-bus-iam-auth, lb://school-bus-iam",
+            "POST, /api/v1/auth/refresh, school-bus-iam-auth, lb://school-bus-iam",
+            "POST, /api/v1/auth/logout, school-bus-iam-auth, lb://school-bus-iam",
             "POST, /api/v1/trips, school-bus-core-api, lb://school-bus-core"
     })
     void routesRequestsToExpectedService(

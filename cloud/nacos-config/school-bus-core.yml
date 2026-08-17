@@ -3,5 +3,12 @@ info:
     config-source: nacos
 
 school-bus:
+  iam:
+    embedded:
+      enabled: false
   trip-list-cache:
     ttl: PT1M
+  security:
+    jwt:
+      # Cloud Core verifies tokens only; signing lives in school-bus-iam.
+      public-key-location: ${JWT_PUBLIC_KEY_LOCATION:}

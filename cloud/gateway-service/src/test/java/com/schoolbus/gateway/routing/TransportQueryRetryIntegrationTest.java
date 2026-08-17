@@ -26,6 +26,7 @@ class TransportQueryRetryIntegrationTest {
 
     private static CountingHttpStub queryStub;
     private static CountingHttpStub coreStub;
+    private static CountingHttpStub iamStub;
 
     @Autowired
     private WebTestClient webTestClient;
@@ -34,6 +35,7 @@ class TransportQueryRetryIntegrationTest {
     static void registerStubs(DynamicPropertyRegistry registry) throws IOException {
         queryStub = CountingHttpStub.start();
         coreStub = CountingHttpStub.start();
+        iamStub = CountingHttpStub.start();
         registry.add(
                 "spring.cloud.discovery.client.simple.instances.school-bus-transport-query[0].uri",
                 queryStub::baseUri
@@ -41,6 +43,10 @@ class TransportQueryRetryIntegrationTest {
         registry.add(
                 "spring.cloud.discovery.client.simple.instances.school-bus-core[0].uri",
                 coreStub::baseUri
+        );
+        registry.add(
+                "spring.cloud.discovery.client.simple.instances.school-bus-iam[0].uri",
+                iamStub::baseUri
         );
         registry.add("school-bus.gateway.transport-query-resilience.enabled", () -> "true");
         registry.add("school-bus.gateway.transport-query-resilience.retries", () -> "1");
@@ -58,12 +64,16 @@ class TransportQueryRetryIntegrationTest {
         if (coreStub != null) {
             coreStub.close();
         }
+        if (iamStub != null) {
+            iamStub.close();
+        }
     }
 
     @BeforeEach
     void resetStubs() {
         queryStub.reset();
         coreStub.reset();
+        iamStub.reset();
         webTestClient = webTestClient.mutate().responseTimeout(Duration.ofSeconds(5)).build();
     }
 
@@ -178,7 +188,7 @@ class TransportQueryRetryIntegrationTest {
 
     @Test
     void authLoginPostIsNotRetriedOn503() {
-        coreStub.respondWith(attempt ->
+        iamStub.respondWith(attempt ->
                 CountingHttpStub.StubResponse.of(503, "{\"code\":\"UNAVAILABLE\"}"));
 
         webTestClient.post()
@@ -188,7 +198,8 @@ class TransportQueryRetryIntegrationTest {
                 .exchange()
                 .expectStatus().isEqualTo(503);
 
-        assertThat(coreStub.invocations()).isEqualTo(1);
+        assertThat(iamStub.invocations()).isEqualTo(1);
+        assertThat(coreStub.invocations()).isZero();
     }
 
     @Test

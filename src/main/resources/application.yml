@@ -78,6 +78,11 @@ springdoc:
 
 
 school-bus:
+  iam:
+    embedded:
+      # Local modular monolith keeps register/login/signing in-process.
+      # Cloud profile sets this to false; school-bus-iam owns those routes.
+      enabled: true
   rate-limit:
     enabled: ${SENTINEL_RATE_LIMIT_ENABLED:false}
     login-qps: ${SENTINEL_LOGIN_QPS:10}

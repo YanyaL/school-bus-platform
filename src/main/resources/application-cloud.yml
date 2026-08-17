@@ -11,13 +11,15 @@ spring:
 server:
   port: ${CORE_SERVER_PORT:8081}
 
-# When splitting JWT verification across services, point both core and
-# transport-query at the same local-dev key pair (gitignored under cloud/dev-keys).
+# Cloud Core verifies JWTs with the public key only. Signing and auth HTTP
+# endpoints live in school-bus-iam (see school-bus.iam.embedded.enabled).
 school-bus:
+  iam:
+    embedded:
+      enabled: false
   security:
     jwt:
       public-key-location: ${JWT_PUBLIC_KEY_LOCATION:}
-      private-key-location: ${JWT_PRIVATE_KEY_LOCATION:}
 
 info:
   cloud:

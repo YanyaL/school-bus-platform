@@ -11,6 +11,7 @@ param(
     [string] $ProjectRoot = '',
     [int] $GatewayPort = 8080,
     [int] $CorePort = 8081,
+    [int] $IamPort = 8084,
     [int[]] $QueryPorts = @(8082, 8083),
     [int] $RequestCount = 60,
     [int] $FailoverRequestCount = 20,
@@ -152,7 +153,7 @@ function Get-ListeningPids([int] $Port) {
 
 function Assert-PortsFree {
     Write-Step 'Check application ports are free'
-    $ports = @($GatewayPort, $CorePort) + @($QueryPorts)
+    $ports = @($GatewayPort, $CorePort, $IamPort) + @($QueryPorts)
     foreach ($port in $ports) {
         $pids = @(Get-ListeningPids $port)
         if ($pids.Count -gt 0) {
@@ -198,7 +199,8 @@ function Publish-NacosConfigs {
     foreach ($dataId in @(
             'school-bus-core.yml',
             'school-bus-gateway.yml',
-            'school-bus-transport-query.yml'
+            'school-bus-transport-query.yml',
+            'school-bus-iam.yml'
         )) {
         $content = Get-Content -Raw -LiteralPath (Join-Path $configDir $dataId)
         $publishUri = "$NacosBaseUrl/nacos/v3/admin/cs/config" +
@@ -311,9 +313,12 @@ function Wait-HttpUp([string] $Url, [int] $TimeoutSeconds, [string] $Label) {
     throw "$Label did not become ready within ${TimeoutSeconds}s: $Url"
 }
 
-function Get-NacosQueryHealthyCount([string] $AccessToken) {
+function Get-NacosServiceHealthyCount(
+    [string] $AccessToken,
+    [string] $ServiceName
+) {
     $uri = "$NacosBaseUrl/nacos/v1/ns/instance/list" +
-        '?serviceName=school-bus-transport-query' +
+        "?serviceName=$([uri]::EscapeDataString($ServiceName))" +
         '&groupName=DEFAULT_GROUP' +
         "&accessToken=$([uri]::EscapeDataString($AccessToken))"
     $payload = Invoke-RestMethod -Uri $uri
@@ -324,6 +329,12 @@ function Get-NacosQueryHealthyCount([string] $AccessToken) {
         healthy = @($healthy).Count
         hosts = $healthy
     }
+}
+
+function Get-NacosQueryHealthyCount([string] $AccessToken) {
+    return Get-NacosServiceHealthyCount `
+        -AccessToken $AccessToken `
+        -ServiceName 'school-bus-transport-query'
 }
 
 function Wait-NacosHealthyCount {
@@ -346,6 +357,26 @@ function Wait-NacosHealthyCount {
         Start-Sleep -Seconds 2
     }
     throw "Timed out waiting for Nacos healthyInstanceCount=$Expected"
+}
+
+function Wait-NacosIamHealthyCount {
+    param(
+        [string] $AccessToken,
+        [int] $Expected,
+        [int] $TimeoutSeconds
+    )
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    while ((Get-Date) -lt $deadline) {
+        $snapshot = Get-NacosServiceHealthyCount `
+            -AccessToken $AccessToken `
+            -ServiceName 'school-bus-iam'
+        Write-Host ("Nacos IAM healthy={0} total={1}" -f $snapshot.healthy, $snapshot.total)
+        if ($snapshot.healthy -eq $Expected) {
+            return $snapshot
+        }
+        Start-Sleep -Seconds 2
+    }
+    throw "Timed out waiting for IAM healthyInstanceCount=$Expected"
 }
 
 function Invoke-GatewayJson {
@@ -412,34 +443,42 @@ try {
     $keys = Ensure-JwtKeys
 
     if (-not $SkipBuild) {
-        Write-Step 'Build Core / Gateway / Query'
+        Write-Step 'Build Core / Gateway / Query / IAM'
         Invoke-MavenPackage $ProjectRoot 'core'
         Invoke-MavenPackage (Join-Path $ProjectRoot 'cloud\gateway-service') 'gateway'
         Invoke-MavenPackage (Join-Path $ProjectRoot 'cloud\transport-query-service') 'transport-query'
+        Invoke-MavenPackage (Join-Path $ProjectRoot 'cloud\iam-service') 'iam'
     }
 
     $coreJar = Find-BootJar (Join-Path $ProjectRoot 'target') 'school-bus-platform'
     $gatewayJar = Find-BootJar (Join-Path $ProjectRoot 'cloud\gateway-service\target') 'school-bus-gateway'
     $queryJar = Find-BootJar (Join-Path $ProjectRoot 'cloud\transport-query-service\target') 'school-bus-transport-query'
+    $iamJar = Find-BootJar (Join-Path $ProjectRoot 'cloud\iam-service\target') 'school-bus-iam'
 
-    $commonEnv = @{
+    $publicServiceEnv = @{
         NACOS_CONFIG_ENABLED = 'true'
         NACOS_DISCOVERY_ENABLED = 'true'
         NACOS_SERVER_ADDR = '127.0.0.1:8848'
         NACOS_USERNAME = 'nacos'
         NACOS_PASSWORD = $AdminPassword
         JWT_PUBLIC_KEY_LOCATION = $keys.Public
-        JWT_PRIVATE_KEY_LOCATION = $keys.Private
         JWT_ISSUER = 'https://school-bus.local'
         JWT_AUDIENCE = 'school-bus-api'
     }
 
     Write-Step 'Start Core :8081'
-    $coreEnv = $commonEnv.Clone()
+    $coreEnv = $publicServiceEnv.Clone()
     $coreEnv['SPRING_PROFILES_ACTIVE'] = 'local,cloud'
     $coreEnv['CORE_SERVER_PORT'] = "$CorePort"
     $coreEnv['SERVER_PORT'] = "$CorePort"
     Start-TrackedJava -JarPath $coreJar -Environment $coreEnv -LogPath (Join-Path $logDir 'core-8081.log') -Label 'core'
+
+    Write-Step 'Start IAM :8084'
+    $iamEnv = $publicServiceEnv.Clone()
+    $iamEnv['JWT_PRIVATE_KEY_LOCATION'] = $keys.Private
+    $iamEnv['IAM_SERVER_PORT'] = "$IamPort"
+    $iamEnv['SERVER_PORT'] = "$IamPort"
+    Start-TrackedJava -JarPath $iamJar -Environment $iamEnv -LogPath (Join-Path $logDir 'iam-8084.log') -Label 'iam'
 
     Write-Step 'Start Gateway :8080'
     $gwEnv = @{
@@ -469,8 +508,7 @@ try {
             Remove-Item -LiteralPath $accessLogPath -Force
         }
         $script:HaAccessLogPaths[$port] = $accessLogPath
-        $queryEnv = $commonEnv.Clone()
-        $queryEnv.Remove('JWT_PRIVATE_KEY_LOCATION')
+        $queryEnv = $publicServiceEnv.Clone()
         $queryEnv['TRANSPORT_QUERY_SERVER_PORT'] = "$port"
         $queryEnv['SERVER_PORT'] = "$port"
         $queryEnv['MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE'] = 'health,info,metrics'
@@ -491,6 +529,7 @@ try {
     $accessLogPaths = $script:HaAccessLogPaths
 
     Wait-HttpUp "http://127.0.0.1:$CorePort/actuator/health" $StartupTimeoutSeconds 'Core'
+    Wait-HttpUp "http://127.0.0.1:$IamPort/actuator/health" $StartupTimeoutSeconds 'IAM'
     foreach ($port in $QueryPorts) {
         Wait-HttpUp "http://127.0.0.1:$port/actuator/health" $StartupTimeoutSeconds "Query:$port"
     }
@@ -506,6 +545,11 @@ try {
             throw "Expected Query port $port registered in Nacos. Found: $($portsRegistered -join ', ')"
         }
     }
+    $iamReady = Wait-NacosIamHealthyCount `
+        -AccessToken $nacosToken `
+        -Expected 1 `
+        -TimeoutSeconds $StartupTimeoutSeconds
+    Write-Host ("Nacos IAM healthy={0}" -f $iamReady.healthy)
 
     Write-Step 'Seed demo trips if needed'
     $seedFile = Join-Path $ProjectRoot 'scripts\seed-local-demo.sql'
@@ -677,8 +721,7 @@ try {
 
     Write-Step "Restart Query :$stopPort"
     $accessDir = Join-Path $logDir "access-$stopPort"
-    $queryEnv = $commonEnv.Clone()
-    $queryEnv.Remove('JWT_PRIVATE_KEY_LOCATION')
+    $queryEnv = $publicServiceEnv.Clone()
     $queryEnv['TRANSPORT_QUERY_SERVER_PORT'] = "$stopPort"
     $queryEnv['SERVER_PORT'] = "$stopPort"
     $queryEnv['MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE'] = 'health,info,metrics'
