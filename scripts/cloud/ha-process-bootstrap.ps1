@@ -109,10 +109,11 @@ function Assert-PortsFree {
     param(
         [int] $GatewayPort,
         [int] $CorePort,
-        [int[]] $QueryPorts
+        [int[]] $QueryPorts,
+        [int[]] $AdditionalPorts = @()
     )
     Write-Step 'Check application ports are free'
-    $ports = @($GatewayPort, $CorePort) + @($QueryPorts)
+    $ports = @($GatewayPort, $CorePort) + @($QueryPorts) + @($AdditionalPorts)
     foreach ($port in $ports) {
         $pids = @(Get-ListeningPids $port)
         if ($pids.Count -gt 0) {
@@ -287,13 +288,14 @@ function Wait-HttpUp([string] $Url, [int] $TimeoutSeconds, [string] $Name) {
     throw "$Name did not become ready within ${TimeoutSeconds}s: $Url"
 }
 
-function Get-NacosQueryHealthyCount {
+function Get-NacosServiceHealthyCount {
     param(
         [string] $AccessToken,
-        [string] $NacosBaseUrl
+        [string] $NacosBaseUrl,
+        [string] $ServiceName
     )
     $uri = "$NacosBaseUrl/nacos/v1/ns/instance/list" +
-        '?serviceName=school-bus-transport-query' +
+        "?serviceName=$([uri]::EscapeDataString($ServiceName))" +
         '&groupName=DEFAULT_GROUP' +
         "&accessToken=$([uri]::EscapeDataString($AccessToken))"
     $payload = Invoke-RestMethod -Uri $uri
@@ -306,18 +308,33 @@ function Get-NacosQueryHealthyCount {
     }
 }
 
-function Wait-NacosHealthyCount {
+function Get-NacosQueryHealthyCount {
+    param(
+        [string] $AccessToken,
+        [string] $NacosBaseUrl
+    )
+    return Get-NacosServiceHealthyCount `
+        -AccessToken $AccessToken `
+        -NacosBaseUrl $NacosBaseUrl `
+        -ServiceName 'school-bus-transport-query'
+}
+
+function Wait-NacosServiceHealthyCount {
     param(
         [string] $AccessToken,
         [int] $Expected,
         [int] $TimeoutSeconds,
-        [string] $NacosBaseUrl
+        [string] $NacosBaseUrl,
+        [string] $ServiceName
     )
     $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
     $started = Get-Date
     while ((Get-Date) -lt $deadline) {
-        $snapshot = Get-NacosQueryHealthyCount -AccessToken $AccessToken -NacosBaseUrl $NacosBaseUrl
-        Write-Host ("Nacos query healthy={0} total={1}" -f $snapshot.healthy, $snapshot.total)
+        $snapshot = Get-NacosServiceHealthyCount `
+            -AccessToken $AccessToken `
+            -NacosBaseUrl $NacosBaseUrl `
+            -ServiceName $ServiceName
+        Write-Host ("Nacos {0} healthy={1} total={2}" -f $ServiceName, $snapshot.healthy, $snapshot.total)
         if ($snapshot.healthy -eq $Expected) {
             return [pscustomobject]@{
                 seconds = [math]::Round(((Get-Date) - $started).TotalSeconds, 1)
@@ -326,23 +343,42 @@ function Wait-NacosHealthyCount {
         }
         Start-Sleep -Seconds 2
     }
-    throw "Timed out waiting for Nacos healthyInstanceCount=$Expected"
+    throw "Timed out waiting for $ServiceName healthyInstanceCount=$Expected"
 }
 
-function Stop-QueryByPort([int] $Port) {
+function Wait-NacosHealthyCount {
+    param(
+        [string] $AccessToken,
+        [int] $Expected,
+        [int] $TimeoutSeconds,
+        [string] $NacosBaseUrl
+    )
+    return Wait-NacosServiceHealthyCount `
+        -AccessToken $AccessToken `
+        -Expected $Expected `
+        -TimeoutSeconds $TimeoutSeconds `
+        -NacosBaseUrl $NacosBaseUrl `
+        -ServiceName 'school-bus-transport-query'
+}
+
+function Stop-ServiceByPort([int] $Port, [string] $Label = 'service') {
     $listenerPids = @(Get-ListeningPids $Port)
     if (@($listenerPids).Count -eq 0) {
-        throw "No listener found on query port $Port"
+        throw "No listener found for $Label on port $Port"
     }
     foreach ($processId in $listenerPids) {
         taskkill /PID $processId /T /F 2>$null | Out-Null
-        Write-Host "Stopped listener PID $processId on port $Port"
+        Write-Host "Stopped $Label listener PID $processId on port $Port"
         for ($i = $script:StartedPids.Count - 1; $i -ge 0; $i--) {
             if ($script:StartedPids[$i] -eq $processId) {
                 $script:StartedPids.RemoveAt($i)
             }
         }
     }
+}
+
+function Stop-QueryByPort([int] $Port) {
+    Stop-ServiceByPort -Port $Port -Label 'query'
 }
 
 function Stop-TrackedProcesses {

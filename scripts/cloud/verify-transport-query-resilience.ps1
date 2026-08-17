@@ -12,6 +12,7 @@ param(
     [switch] $ResilienceDisabled,
     [int] $GatewayPort = 8080,
     [int] $CorePort = 8081,
+    [int] $IamPort = 8084,
     [int[]] $QueryPorts = @(8082, 8083),
     [int] $WindowProbeCount = 40,
     [int] $PostFailoverCount = 20,
@@ -77,40 +78,51 @@ try {
     Assert-Java21
     Assert-Docker
     Assert-InfraHealthy -NacosBaseUrl $NacosBaseUrl -MysqlContainerName $MysqlContainerName
-    Assert-PortsFree -GatewayPort $GatewayPort -CorePort $CorePort -QueryPorts $QueryPorts
+    Assert-PortsFree `
+        -GatewayPort $GatewayPort `
+        -CorePort $CorePort `
+        -QueryPorts $QueryPorts `
+        -AdditionalPorts @($IamPort)
 
     $nacosToken = Publish-NacosConfigs -ProjectRoot $ProjectRoot -NacosBaseUrl $NacosBaseUrl -AdminPassword $AdminPassword
     $keys = Ensure-JwtKeys -ProjectRoot $ProjectRoot
 
     if (-not $SkipBuild) {
-        Write-Step 'Build Core / Gateway / Query'
+        Write-Step 'Build Core / Gateway / Query / IAM'
         Invoke-MavenPackage -WorkingDirectory $ProjectRoot -Label 'core'
         Invoke-MavenPackage -WorkingDirectory (Join-Path $ProjectRoot 'cloud\gateway-service') -Label 'gateway'
         Invoke-MavenPackage -WorkingDirectory (Join-Path $ProjectRoot 'cloud\transport-query-service') -Label 'transport-query'
+        Invoke-MavenPackage -WorkingDirectory (Join-Path $ProjectRoot 'cloud\iam-service') -Label 'iam'
     }
 
     $coreJar = Find-BootJar (Join-Path $ProjectRoot 'target') 'school-bus-platform'
     $gatewayJar = Find-BootJar (Join-Path $ProjectRoot 'cloud\gateway-service\target') 'school-bus-gateway'
     $queryJar = Find-BootJar (Join-Path $ProjectRoot 'cloud\transport-query-service\target') 'school-bus-transport-query'
+    $iamJar = Find-BootJar (Join-Path $ProjectRoot 'cloud\iam-service\target') 'school-bus-iam'
 
-    $commonEnv = @{
+    $publicServiceEnv = @{
         NACOS_CONFIG_ENABLED = 'true'
         NACOS_DISCOVERY_ENABLED = 'true'
         NACOS_SERVER_ADDR = '127.0.0.1:8848'
         NACOS_USERNAME = 'nacos'
         NACOS_PASSWORD = $AdminPassword
         JWT_PUBLIC_KEY_LOCATION = $keys.Public
-        JWT_PRIVATE_KEY_LOCATION = $keys.Private
         JWT_ISSUER = 'https://school-bus.local'
         JWT_AUDIENCE = 'school-bus-api'
     }
 
-    Write-Step 'Start Core / Gateway / Query dual instances'
-    $coreEnv = $commonEnv.Clone()
+    Write-Step 'Start Core / Gateway / Query dual instances / IAM'
+    $coreEnv = $publicServiceEnv.Clone()
     $coreEnv['SPRING_PROFILES_ACTIVE'] = 'local,cloud'
     $coreEnv['CORE_SERVER_PORT'] = "$CorePort"
     $coreEnv['SERVER_PORT'] = "$CorePort"
     Start-TrackedJava -JarPath $coreJar -Environment $coreEnv -LogPath (Join-Path $logDir 'core-8081.log') -Label 'core' -LogDir $logDir
+
+    $iamEnv = $publicServiceEnv.Clone()
+    $iamEnv['JWT_PRIVATE_KEY_LOCATION'] = $keys.Private
+    $iamEnv['IAM_SERVER_PORT'] = "$IamPort"
+    $iamEnv['SERVER_PORT'] = "$IamPort"
+    Start-TrackedJava -JarPath $iamJar -Environment $iamEnv -LogPath (Join-Path $logDir 'iam-8084.log') -Label 'iam' -LogDir $logDir
 
     $enabledLiteral = if ($ResilienceEnabled) { 'true' } else { 'false' }
     $gwEnv = @{
@@ -129,8 +141,7 @@ try {
     Start-TrackedJava -JarPath $gatewayJar -Environment $gwEnv -LogPath (Join-Path $logDir 'gateway-8080.log') -Label 'gateway' -LogDir $logDir
 
     foreach ($port in $QueryPorts) {
-        $queryEnv = $commonEnv.Clone()
-        $queryEnv.Remove('JWT_PRIVATE_KEY_LOCATION')
+        $queryEnv = $publicServiceEnv.Clone()
         $queryEnv['TRANSPORT_QUERY_SERVER_PORT'] = "$port"
         $queryEnv['SERVER_PORT'] = "$port"
         $queryEnv['MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE'] = 'health,info,metrics'
@@ -138,6 +149,7 @@ try {
     }
 
     Wait-HttpUp "http://127.0.0.1:$CorePort/actuator/health" $StartupTimeoutSeconds 'Core'
+    Wait-HttpUp "http://127.0.0.1:$IamPort/actuator/health" $StartupTimeoutSeconds 'IAM'
     foreach ($port in $QueryPorts) {
         Wait-HttpUp "http://127.0.0.1:$port/actuator/health" $StartupTimeoutSeconds "Query:$port"
     }
@@ -145,6 +157,13 @@ try {
 
     $ready = Wait-NacosHealthyCount -AccessToken $nacosToken -Expected 2 -TimeoutSeconds $StartupTimeoutSeconds -NacosBaseUrl $NacosBaseUrl
     Write-Host ("Nacos healthy={0}" -f $ready.snapshot.healthy)
+    $iamReady = Wait-NacosServiceHealthyCount `
+        -AccessToken $nacosToken `
+        -Expected 1 `
+        -TimeoutSeconds $StartupTimeoutSeconds `
+        -NacosBaseUrl $NacosBaseUrl `
+        -ServiceName 'school-bus-iam'
+    Write-Host ("Nacos IAM healthy={0}" -f $iamReady.snapshot.healthy)
 
     $seedFile = Join-Path $ProjectRoot 'scripts\seed-local-demo.sql'
     if (Test-Path $seedFile) {
@@ -257,8 +276,7 @@ try {
     }
 
     Write-Step "Restart Query :$stopPort"
-    $queryEnv = $commonEnv.Clone()
-    $queryEnv.Remove('JWT_PRIVATE_KEY_LOCATION')
+    $queryEnv = $publicServiceEnv.Clone()
     $queryEnv['TRANSPORT_QUERY_SERVER_PORT'] = "$stopPort"
     $queryEnv['SERVER_PORT'] = "$stopPort"
     $queryEnv['MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE'] = 'health,info,metrics'

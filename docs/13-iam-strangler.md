@@ -112,3 +112,72 @@ mvn spring-boot:run
 ```
 
 与 Core（`cloud` profile）、Gateway、Query 一并注册到 Nacos 后，经 Gateway `:8080` 走完整认证链路。
+
+## 9. 真实基础设施验收
+
+自动化验收脚本：
+
+```powershell
+.\scripts\cloud\verify-iam-strangler.ps1
+```
+
+前置条件：
+
+- Docker Desktop 已启动；
+- Nacos 3 容器名为 `school-bus-nacos-3`；
+- MySQL 容器名默认为 `school-bus-mysql`；
+- Redis 容器名为 `school-bus-redis`；
+- 端口 `8080`、`8081`、`8082`、`8084` 空闲。
+
+脚本会构建并启动四个真实进程，然后验证：
+
+1. Nacos 中 Core、Transport Query、IAM 各有一个健康实例；
+2. 注册、登录、`/auth/me` 均通过 Gateway 路由到 IAM；
+3. IAM 签发的 JWT 可分别被 Query 和 Core 本地公钥验证；
+4. cloud Core 直连注册、登录端点返回 `404`，证明嵌入式 IAM 已关闭；
+5. IAM 停止后登录、刷新返回 `503`，但已有 Access Token 仍可访问 Query 和 Core；
+6. IAM 重启后被 Nacos 重新发现，Refresh Token 可以继续轮换；
+7. 旧 Refresh Token 不能重放，登出后 Redis 中的 Refresh Session 失效；
+8. 只有 IAM 启动进程获得私钥路径，Core、Query、Gateway 均没有私钥环境变量。
+
+结果写入（不进入 Git）：
+
+```text
+target/iam-acceptance-reports/iam-acceptance-<timestamp>.json
+```
+
+报告只保存 HTTP 状态、布尔值和 Nacos 收敛时间，不保存密码、Access Token、Refresh Token、Nacos Token 或 PEM 内容。
+
+### 登出语义
+
+当前架构采用短期无状态 Access Token 和 Redis 有状态 Refresh Token：
+
+- 登出会删除 Redis 登录会话，使 Refresh Token 立即失效；
+- 已签发 Access Token 不查询 Redis，因此在剩余 TTL 内仍可用；
+- 若业务要求“登出后 Access Token 立即失效”，需要增加黑名单或每次请求查询会话，但会引入额外网络调用和可用性依赖。
+
+### 当前验收状态
+
+2026-08-17 已在本地 Nacos 3.0.3、MySQL 8.0.36、Redis 6.2.19 上真实执行并通过。证据报告：
+
+```text
+target/iam-acceptance-reports/iam-acceptance-20260817-213450.json
+```
+
+关键结果：
+
+| 验收项 | 结果 |
+|--------|------|
+| 注册 / 登录 | `201` / `200` |
+| IAM JWT 被 Query / Core 接受 | 通过 / 通过 |
+| Core 直连旧注册 / 登录接口 | `404` / `404` |
+| IAM 下线后的登录 / 刷新 | `503` / `503` |
+| IAM 下线后已有 JWT 访问 Query / Core | `200` / `200` |
+| Nacos IAM 健康摘除 | 约 `2.0s` |
+| IAM 重启并恢复注册 | 通过 |
+| 旧 Refresh Token 重放 | `401` |
+| 登出后 Refresh Token | `401` |
+| 登出后未过期 Access Token | `200`（无状态设计） |
+| 私钥运行时边界 | 仅 IAM 持有 |
+
+报告保留在 Git 忽略的 `target/` 目录，不提交任何 Token、密码、Nacos Token 或 PEM 内容。
