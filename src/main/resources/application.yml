@@ -111,6 +111,10 @@ school-bus:
     refresh-token:
       ttl: ${REFRESH_TOKEN_TTL:PT168H}
   payment:
+    embedded:
+      # Local modular monolith keeps payment callback handling in-process.
+      # Cloud profile disables it after Gateway routes callbacks to Payment.
+      enabled: true
     callback-secret: ${PAYMENT_CALLBACK_SECRET:local-payment-secret-change-me-1234}
   messaging:
     outbox-relay:

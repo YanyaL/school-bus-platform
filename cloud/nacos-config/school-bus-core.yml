@@ -3,6 +3,9 @@ info:
     config-source: nacos
 
 school-bus:
+  payment:
+    embedded:
+      enabled: false
   iam:
     embedded:
       enabled: false

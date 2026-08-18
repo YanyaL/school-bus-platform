@@ -14,6 +14,9 @@ server:
 # Cloud Core verifies JWTs with the public key only. Signing and auth HTTP
 # endpoints live in school-bus-iam (see school-bus.iam.embedded.enabled).
 school-bus:
+  payment:
+    embedded:
+      enabled: false
   iam:
     embedded:
       enabled: false

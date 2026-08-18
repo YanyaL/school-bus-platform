@@ -1,0 +1,22 @@
+spring:
+  cloud:
+    nacos:
+      discovery:
+        enabled: true
+  flyway:
+    # Core temporarily owns migrations while Payment shares the schema.
+    enabled: false
+
+server:
+  port: ${PAYMENT_SERVER_PORT:8085}
+
+school-bus:
+  identity:
+    worker-id: ${SCHOOL_BUS_PAYMENT_WORKER_ID:2}
+  payment:
+    callback-secret: ${PAYMENT_CALLBACK_SECRET:}
+
+info:
+  cloud:
+    role: payment-service
+    registry: nacos

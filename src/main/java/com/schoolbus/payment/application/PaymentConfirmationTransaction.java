@@ -13,6 +13,7 @@ import com.schoolbus.payment.domain.PaymentNumber;
 import com.schoolbus.payment.domain.PaymentRecord;
 import com.schoolbus.payment.domain.PaymentRecordRepository;
 import com.schoolbus.payment.domain.PaymentRequestNumber;
+import com.schoolbus.payment.config.ConditionalOnEmbeddedPayment;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -25,6 +26,7 @@ import java.util.Optional;
 
 @Service
 @Profile("!test")
+@ConditionalOnEmbeddedPayment
 public class PaymentConfirmationTransaction {
 
     private static final String PAYMENT_WINDOW_EXPIRED = "PAYMENT_WINDOW_EXPIRED";

@@ -1,0 +1,70 @@
+spring:
+  application:
+    name: school-bus-payment
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+  config:
+    import:
+      - optional:nacos:${NACOS_CONFIG_DATA_ID:school-bus-payment.yml}?group=${NACOS_CONFIG_GROUP:DEFAULT_GROUP}&refreshEnabled=true
+  cloud:
+    nacos:
+      username: ${NACOS_USERNAME:nacos}
+      password: ${NACOS_PASSWORD:nacos}
+      config:
+        enabled: ${NACOS_CONFIG_ENABLED:true}
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+        namespace: ${NACOS_NAMESPACE:}
+        health-indicator:
+          enabled: ${NACOS_HEALTH_INDICATOR_ENABLED:true}
+      discovery:
+        enabled: ${NACOS_DISCOVERY_ENABLED:true}
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+        namespace: ${NACOS_NAMESPACE:}
+        group: ${NACOS_DISCOVERY_GROUP:DEFAULT_GROUP}
+        health-indicator:
+          enabled: ${NACOS_HEALTH_INDICATOR_ENABLED:true}
+  datasource:
+    url: ${DB_URL:jdbc:mysql://127.0.0.1:3306/school_bus_platform?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:root}
+  flyway:
+    # Core owns the shared schema during this strangler transition.
+    enabled: false
+  jackson:
+    time-zone: UTC
+    default-property-inclusion: non_null
+
+server:
+  port: ${PAYMENT_SERVER_PORT:8085}
+  shutdown: graceful
+  error:
+    include-message: never
+    include-binding-errors: never
+    include-stacktrace: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when_authorized
+
+mybatis:
+  configuration:
+    map-underscore-to-camel-case: true
+
+school-bus:
+  identity:
+    worker-id: ${SCHOOL_BUS_PAYMENT_WORKER_ID:2}
+  payment:
+    callback-secret: ${PAYMENT_CALLBACK_SECRET:local-payment-secret-change-me-1234}
+
+info:
+  app:
+    name: ${spring.application.name}
+    role: payment-callback-service
+  cloud:
+    registry: nacos
