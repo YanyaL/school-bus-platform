@@ -1,12 +1,14 @@
 package com.schoolbus.payment.application.refund;
 
 import org.springframework.context.annotation.Profile;
+import com.schoolbus.payment.config.ConditionalOnEmbeddedRefundMessaging;
 import org.springframework.stereotype.Service;
 
 import java.util.Objects;
 
 @Service
 @Profile("local")
+@ConditionalOnEmbeddedRefundMessaging
 public class PaymentRefundApplicationService {
 
     private final PaymentRefundTransaction transaction;

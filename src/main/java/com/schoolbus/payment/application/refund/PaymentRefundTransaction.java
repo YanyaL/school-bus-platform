@@ -4,6 +4,7 @@ import com.schoolbus.payment.domain.PaymentNumber;
 import com.schoolbus.payment.domain.PaymentRecord;
 import com.schoolbus.payment.domain.PaymentRecordRepository;
 import com.schoolbus.payment.domain.PaymentStatus;
+import com.schoolbus.payment.config.ConditionalOnEmbeddedRefundMessaging;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -15,6 +16,7 @@ import java.util.Objects;
 
 @Service
 @Profile("!test")
+@ConditionalOnEmbeddedRefundMessaging
 public class PaymentRefundTransaction {
 
     public static final String CONSUMER_NAME = "payment-refund-consumer";

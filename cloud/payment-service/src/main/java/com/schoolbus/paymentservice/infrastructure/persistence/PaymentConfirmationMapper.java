@@ -103,7 +103,7 @@ public interface PaymentConfirmationMapper {
                 status, retry_count, next_retry_at, occurred_at,
                 created_at, published_at, version
             ) VALUES (
-                #{eventId}, 'Payment', 'PaymentRecord', #{aggregateId},
+                #{eventId}, 'payment', 'PaymentRecord', #{aggregateId},
                 0, 'PaymentRefundRequired', CAST(#{payload} AS JSON), #{traceId},
                 'NEW', 0, NULL, #{occurredAt},
                 #{occurredAt}, NULL, 0

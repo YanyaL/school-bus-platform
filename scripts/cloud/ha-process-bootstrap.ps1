@@ -128,28 +128,42 @@ function Invoke-NacosLogin {
         [string] $NacosBaseUrl,
         [string] $AdminPassword
     )
-    try {
-        return Invoke-RestMethod `
-            -Method Post `
-            -Uri "$NacosBaseUrl/nacos/v3/auth/user/login" `
-            -ContentType 'application/x-www-form-urlencoded' `
-            -Body @{ username = 'nacos'; password = $AdminPassword }
-    } catch {
-        Write-Host 'Initializing Nacos admin...'
-        $init = Invoke-RestMethod `
-            -Method Post `
-            -Uri "$NacosBaseUrl/nacos/v3/auth/user/admin" `
-            -ContentType 'application/x-www-form-urlencoded' `
-            -Body @{ password = $AdminPassword }
-        if ($init.code -ne 0) {
-            throw "Nacos admin init failed: $($init.message)"
+    $deadline = (Get-Date).AddSeconds(45)
+    $lastFailure = $null
+    do {
+        try {
+            return Invoke-RestMethod `
+                -Method Post `
+                -Uri "$NacosBaseUrl/nacos/v3/auth/user/login" `
+                -ContentType 'application/x-www-form-urlencoded' `
+                -Body @{ username = 'nacos'; password = $AdminPassword }
+        } catch {
+            $lastFailure = $_
         }
-        return Invoke-RestMethod `
-            -Method Post `
-            -Uri "$NacosBaseUrl/nacos/v3/auth/user/login" `
-            -ContentType 'application/x-www-form-urlencoded' `
-            -Body @{ username = 'nacos'; password = $AdminPassword }
+
+        try {
+            Write-Host 'Initializing Nacos admin...'
+            $init = Invoke-RestMethod `
+                -Method Post `
+                -Uri "$NacosBaseUrl/nacos/v3/auth/user/admin" `
+                -ContentType 'application/x-www-form-urlencoded' `
+                -Body @{ password = $AdminPassword }
+            if ($init.code -eq 0) {
+                continue
+            }
+            $lastFailure = "Nacos admin init failed: $($init.message)"
+        } catch {
+            $lastFailure = $_
+        }
+        Start-Sleep -Seconds 2
+    } while ((Get-Date) -lt $deadline)
+
+    $reason = if ($lastFailure -is [System.Management.Automation.ErrorRecord]) {
+        $lastFailure.Exception.Message
+    } else {
+        "$lastFailure"
     }
+    throw "Nacos login did not become ready within 45 seconds: $reason"
 }
 
 function Publish-NacosConfigs {

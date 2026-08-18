@@ -4,8 +4,12 @@ spring:
       discovery:
         enabled: true
   flyway:
-    # Core temporarily owns migrations while Payment shares the schema.
     enabled: false
+  rabbitmq:
+    host: ${RABBITMQ_HOST:127.0.0.1}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
 
 server:
   port: ${PAYMENT_SERVER_PORT:8085}
@@ -15,8 +19,25 @@ school-bus:
     worker-id: ${SCHOOL_BUS_PAYMENT_WORKER_ID:2}
   payment:
     callback-secret: ${PAYMENT_CALLBACK_SECRET:}
+  messaging:
+    outbox-relay:
+      enabled: true
+    payment:
+      exchange: ${PAYMENT_EVENTS_EXCHANGE:schoolbus.payment.events}
+      refund-routing-key: ${PAYMENT_REFUND_ROUTING_KEY:payment.refund.required}
+      refund-queue: ${PAYMENT_REFUND_QUEUE:schoolbus.payment.refund}
+      dead-letter-exchange: ${PAYMENT_DLX:schoolbus.payment.dlx}
+      dead-letter-routing-key: ${PAYMENT_REFUND_DEAD_ROUTING_KEY:payment.refund.dead}
+      dead-letter-queue: ${PAYMENT_REFUND_DLQ:schoolbus.payment.refund.dlq}
+    payment-refund-retry:
+      exchange: ${PAYMENT_REFUND_RETRY_EXCHANGE:schoolbus.payment.retry}
+      routing-key: ${PAYMENT_REFUND_RETRY_ROUTING_KEY:payment.refund.retry}
+      queue: ${PAYMENT_REFUND_RETRY_QUEUE:schoolbus.payment.refund.retry}
+      delay: ${PAYMENT_REFUND_RETRY_DELAY:PT30S}
+      maximum-retries: ${PAYMENT_REFUND_MAXIMUM_RETRIES:3}
 
 info:
   cloud:
     role: payment-service
     registry: nacos
+    refund-messaging: enabled

@@ -5,6 +5,7 @@ import com.schoolbus.payment.infrastructure.messaging.OutboxRelayProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Profile;
+import com.schoolbus.payment.config.ConditionalOnEmbeddedRefundMessaging;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
@@ -15,6 +16,7 @@ import java.util.Objects;
 
 @Service
 @Profile("!test")
+@ConditionalOnEmbeddedRefundMessaging
 public class PaymentRefundOutboxRelay {
 
     private static final Logger log = LoggerFactory.getLogger(

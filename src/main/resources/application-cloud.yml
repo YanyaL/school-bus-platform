@@ -17,6 +17,8 @@ school-bus:
   payment:
     embedded:
       enabled: false
+    refund-messaging:
+      embedded: false
   iam:
     embedded:
       enabled: false

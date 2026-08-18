@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.schoolbus.paymentservice.infrastructure.persistence.PaymentRecordMapper">
+
+    <resultMap id="PaymentRecordResultMap"
+               type="com.schoolbus.paymentservice.infrastructure.persistence.PaymentRecordDataObject">
+        <id property="id" column="id"/>
+        <result property="paymentNo" column="payment_no"/>
+        <result property="requestNo" column="request_no"/>
+        <result property="orderNo" column="order_no"/>
+        <result property="amount" column="amount"/>
+        <result property="status" column="status"/>
+        <result property="failureReason" column="failure_reason"/>
+        <result property="refundNo" column="refund_no"/>
+        <result property="refundedAt" column="refunded_at"/>
+        <result property="completedAt" column="completed_at"/>
+        <result property="version" column="version"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <insert id="insertPayment"
+            parameterType="com.schoolbus.paymentservice.infrastructure.persistence.PaymentRecordDataObject">
+        INSERT INTO payment_record (
+            id, payment_no, request_no, order_no, amount,
+            status, failure_reason, completed_at, version,
+            created_at, updated_at
+        ) VALUES (
+            #{id}, #{paymentNo}, #{requestNo}, #{orderNo}, #{amount},
+            #{status}, #{failureReason}, #{completedAt}, #{version},
+            #{createdAt}, #{updatedAt}
+        )
+    </insert>
+
+    <update id="updatePayment">
+        UPDATE payment_record
+        SET status = #{paymentRecord.status},
+            failure_reason = #{paymentRecord.failureReason},
+            refund_no = #{paymentRecord.refundNo},
+            refunded_at = #{paymentRecord.refundedAt},
+            version = #{paymentRecord.version},
+            updated_at = #{paymentRecord.updatedAt}
+        WHERE id = #{paymentRecord.id}
+          AND version = #{expectedVersion}
+    </update>
+
+    <select id="selectByRequestNo" resultMap="PaymentRecordResultMap">
+        SELECT id, payment_no, request_no, order_no, amount,
+               status, failure_reason, refund_no, refunded_at,
+               completed_at, version,
+               created_at, updated_at
+        FROM payment_record
+        WHERE request_no = #{requestNo}
+        LIMIT 1
+    </select>
+
+    <select id="selectByPaymentNo" resultMap="PaymentRecordResultMap">
+        SELECT id, payment_no, request_no, order_no, amount,
+               status, failure_reason, refund_no, refunded_at,
+               completed_at, version,
+               created_at, updated_at
+        FROM payment_record
+        WHERE payment_no = #{paymentNo}
+        LIMIT 1
+    </select>
+
+</mapper>
+
