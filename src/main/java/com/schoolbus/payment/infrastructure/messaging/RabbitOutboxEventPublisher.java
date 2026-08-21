@@ -7,6 +7,7 @@ import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.core.ReturnedMessage;
 import org.springframework.amqp.rabbit.connection.CorrelationData;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import com.schoolbus.payment.config.ConditionalOnEmbeddedRefundMessaging;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
@@ -17,6 +18,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 @Component
+@ConditionalOnEmbeddedRefundMessaging
 public class RabbitOutboxEventPublisher implements OutboxEventPublisher {
 
     private final RabbitTemplate rabbitTemplate;

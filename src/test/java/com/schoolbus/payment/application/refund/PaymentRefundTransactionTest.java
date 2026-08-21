@@ -70,7 +70,7 @@ class PaymentRefundTransactionTest {
     }
 
     @Test
-    void shouldAtomicallyRecordConsumptionAndCompleteRefund() {
+    void shouldCompleteCompensatingPaymentRefundWithoutChangingBooking() {
         PaymentRecord payment = refundPending();
         when(consumedRepository.insertIfAbsent(
                 PaymentRefundTransaction.CONSUMER_NAME,
@@ -97,6 +97,25 @@ class PaymentRefundTransactionTest {
                 NOW
         );
         verify(paymentRepository).save(payment);
+        verify(refundedBookingPort, never()).markRefunded(any(), any());
+    }
+
+    @Test
+    void shouldMarkBookingRefundedForTripCancellation() {
+        PaymentRecord payment = refundPending("TRIP_CANCELLED");
+        when(consumedRepository.insertIfAbsent(any(), any(), any()))
+                .thenReturn(true);
+        when(paymentRepository.findByPaymentNumber(any()))
+                .thenReturn(Optional.of(payment));
+        when(paymentRepository.save(any())).thenAnswer(
+                invocation -> invocation.getArgument(0)
+        );
+
+        transaction.completeRefund(
+                envelope("TRIP_CANCELLED"),
+                new RefundReceipt("refund-001", NOW)
+        );
+
         verify(refundedBookingPort).markRefunded(
                 BookingNumber.of(BOOKING_NO),
                 NOW
@@ -145,13 +164,17 @@ class PaymentRefundTransactionTest {
     }
 
     private RefundMessageEnvelope envelope() {
+        return envelope("PAYMENT_WINDOW_EXPIRED");
+    }
+
+    private RefundMessageEnvelope envelope(String reason) {
         return new RefundMessageEnvelope(
                 "event-1",
                 new PaymentRefundRequiredMessage(
                         PAYMENT_NO,
                         BOOKING_NO,
                         new BigDecimal("5.50"),
-                        "PAYMENT_WINDOW_EXPIRED",
+                        reason,
                         PAID_AT,
                         NOW.minusSeconds(30)
                 )
@@ -159,13 +182,17 @@ class PaymentRefundTransactionTest {
     }
 
     private PaymentRecord refundPending() {
+        return refundPending("PAYMENT_WINDOW_EXPIRED");
+    }
+
+    private PaymentRecord refundPending(String reason) {
         return PaymentRecord.refundPending(
                 PaymentId.of(9001L),
                 PaymentNumber.of(PAYMENT_NO),
                 PaymentRequestNumber.of("callback-1"),
                 BookingNumber.of(BOOKING_NO),
                 BookingAmount.of("5.50"),
-                "PAYMENT_WINDOW_EXPIRED",
+                reason,
                 PAID_AT,
                 NOW.minusSeconds(20)
         );

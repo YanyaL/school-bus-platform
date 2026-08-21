@@ -2,6 +2,7 @@ package com.schoolbus.payment.infrastructure.outbox;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.schoolbus.payment.config.ConditionalOnEmbeddedRefundMessaging;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -11,6 +12,7 @@ import java.util.Objects;
 
 @Component
 @Profile("!test")
+@ConditionalOnEmbeddedRefundMessaging
 @ConditionalOnProperty(
         prefix = "school-bus.messaging.outbox-relay",
         name = "enabled",

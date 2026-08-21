@@ -115,6 +115,9 @@ school-bus:
       # Local modular monolith keeps payment callback handling in-process.
       # Cloud profile disables it after Gateway routes callbacks to Payment.
       enabled: true
+    refund-messaging:
+      # Local monolith keeps refund Outbox relay and Rabbit consumer in Core.
+      embedded: true
     callback-secret: ${PAYMENT_CALLBACK_SECRET:local-payment-secret-change-me-1234}
   messaging:
     outbox-relay:
@@ -134,6 +137,10 @@ school-bus:
       dead-letter-exchange: ${PAYMENT_DLX:schoolbus.payment.dlx}
       dead-letter-routing-key: ${PAYMENT_REFUND_DEAD_ROUTING_KEY:payment.refund.dead}
       dead-letter-queue: ${PAYMENT_REFUND_DLQ:schoolbus.payment.refund.dlq}
+      succeeded-routing-key: ${PAYMENT_SUCCEEDED_ROUTING_KEY:payment.succeeded}
+      succeeded-queue: ${PAYMENT_SUCCEEDED_QUEUE:schoolbus.booking.payment-succeeded}
+      succeeded-dead-letter-routing-key: ${PAYMENT_SUCCEEDED_DEAD_ROUTING_KEY:payment.succeeded.dead}
+      succeeded-dead-letter-queue: ${PAYMENT_SUCCEEDED_DLQ:schoolbus.booking.payment-succeeded.dlq}
     payment-refund-retry:
       exchange: ${PAYMENT_REFUND_RETRY_EXCHANGE:schoolbus.payment.retry}
       routing-key: ${PAYMENT_REFUND_RETRY_ROUTING_KEY:payment.refund.retry}
@@ -141,6 +148,13 @@ school-bus:
       delay: ${PAYMENT_REFUND_RETRY_DELAY:PT30S}
       maximum-retries: ${PAYMENT_REFUND_MAXIMUM_RETRIES:3}
       confirm-timeout: ${PAYMENT_REFUND_RETRY_CONFIRM_TIMEOUT:PT5S}
+    payment-succeeded-retry:
+      exchange: ${PAYMENT_SUCCEEDED_RETRY_EXCHANGE:schoolbus.booking.retry}
+      routing-key: ${PAYMENT_SUCCEEDED_RETRY_ROUTING_KEY:payment.succeeded.retry}
+      queue: ${PAYMENT_SUCCEEDED_RETRY_QUEUE:schoolbus.booking.payment-succeeded.retry}
+      delay: ${PAYMENT_SUCCEEDED_RETRY_DELAY:PT30S}
+      maximum-retries: ${PAYMENT_SUCCEEDED_MAXIMUM_RETRIES:3}
+      confirm-timeout: ${PAYMENT_SUCCEEDED_RETRY_CONFIRM_TIMEOUT:PT5S}
     booking-expiration:
       delay-exchange: ${BOOKING_EXPIRATION_DELAY_EXCHANGE:schoolbus.booking.expiration.delay}
       delay-routing-key: ${BOOKING_EXPIRATION_DELAY_ROUTING_KEY:booking.payment.deadline.delay}

@@ -1,6 +1,7 @@
 package com.schoolbus.payment.infrastructure.messaging;
 
 import org.springframework.amqp.core.Message;
+import com.schoolbus.payment.config.ConditionalOnEmbeddedRefundMessaging;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -8,6 +9,7 @@ import java.util.Map;
 import java.util.Objects;
 
 @Component
+@ConditionalOnEmbeddedRefundMessaging
 public class RefundRetryAttemptResolver {
 
     private static final String DEATH_HEADER = "x-death";

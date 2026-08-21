@@ -6,6 +6,7 @@ import com.schoolbus.payment.application.refund.RefundRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Profile;
+import com.schoolbus.payment.config.ConditionalOnEmbeddedRefundMessaging;
 import org.springframework.stereotype.Component;
 
 import java.time.Clock;
@@ -13,6 +14,7 @@ import java.util.Objects;
 
 @Component
 @Profile("local")
+@ConditionalOnEmbeddedRefundMessaging
 public class SimulatedRefundGateway implements RefundGateway {
 
     private static final Logger log = LoggerFactory.getLogger(

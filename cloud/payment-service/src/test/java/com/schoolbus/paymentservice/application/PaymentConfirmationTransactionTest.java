@@ -43,7 +43,10 @@ class PaymentConfirmationTransactionTest {
                 mapper,
                 new SnowflakeIdGenerator(2, clock),
                 clock,
-                new ObjectMapper().findAndRegisterModules()
+                new ObjectMapper().findAndRegisterModules(),
+                new PaymentMigrationProperties(
+                        PaymentBookingWriteMode.DIRECT
+                )
         );
     }
 
@@ -60,6 +63,10 @@ class PaymentConfirmationTransactionTest {
         when(mapper.confirmBookingPaid(
                 anyLong(), any(), any(), any(), anyLong()
         )).thenReturn(1);
+        when(mapper.insertSucceededOutbox(
+                any(), any(), any(),
+                org.mockito.ArgumentMatchers.nullable(String.class), any()
+        )).thenReturn(1);
 
         ConfirmPaymentResult result = transaction.confirmOnce(command);
 
@@ -71,6 +78,13 @@ class PaymentConfirmationTransactionTest {
         );
         verify(mapper).confirmBookingPaid(
                 eq(7L), eq(PAYMENT_NO), any(), any(), eq(3L)
+        );
+        verify(mapper).insertSucceededOutbox(
+                any(),
+                eq(PAYMENT_NO),
+                org.mockito.ArgumentMatchers.contains("\"schemaVersion\":1"),
+                org.mockito.ArgumentMatchers.nullable(String.class),
+                any()
         );
         verify(mapper, never()).insertRefundOutbox(
                 any(), any(), any(), any(), any()
@@ -99,6 +113,44 @@ class PaymentConfirmationTransactionTest {
                 any(), eq(PAYMENT_NO),
                 org.mockito.ArgumentMatchers.contains("PAYMENT_WINDOW_EXPIRED"),
                 any(), any()
+        );
+    }
+
+    @Test
+    void eventModeDoesNotReadOrUpdateBookingTables() {
+        ConfirmPaymentCommand command = command(NOW.minusSeconds(10));
+        Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
+        transaction = new PaymentConfirmationTransaction(
+                mapper,
+                new SnowflakeIdGenerator(2, clock),
+                clock,
+                new ObjectMapper().findAndRegisterModules(),
+                new PaymentMigrationProperties(
+                        PaymentBookingWriteMode.EVENT
+                )
+        );
+        when(mapper.insertPayment(
+                anyLong(), any(), any(), any(), any(), any(), any(), any(), any()
+        )).thenReturn(1);
+        when(mapper.insertSucceededOutbox(
+                any(), any(), any(),
+                org.mockito.ArgumentMatchers.nullable(String.class), any()
+        )).thenReturn(1);
+
+        ConfirmPaymentResult result = transaction.confirmOnce(command);
+
+        assertThat(result.outcome())
+                .isEqualTo(PaymentConfirmationOutcome.CONFIRMED);
+        verify(mapper, never()).selectBookingForUpdate(any());
+        verify(mapper, never()).confirmSeatSold(
+                anyLong(), any(), any(), any()
+        );
+        verify(mapper, never()).confirmBookingPaid(
+                anyLong(), any(), any(), any(), anyLong()
+        );
+        verify(mapper).insertSucceededOutbox(
+                any(), eq(PAYMENT_NO), any(),
+                org.mockito.ArgumentMatchers.nullable(String.class), any()
         );
     }
 

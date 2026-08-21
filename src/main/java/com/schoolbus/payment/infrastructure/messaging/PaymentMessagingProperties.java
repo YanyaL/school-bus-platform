@@ -9,9 +9,36 @@ public record PaymentMessagingProperties(
         String refundQueue,
         String deadLetterExchange,
         String deadLetterRoutingKey,
-        String deadLetterQueue
+        String deadLetterQueue,
+        String succeededRoutingKey,
+        String succeededQueue,
+        String succeededDeadLetterRoutingKey,
+        String succeededDeadLetterQueue
 ) {
 
+    public PaymentMessagingProperties(
+            String exchange,
+            String refundRoutingKey,
+            String refundQueue,
+            String deadLetterExchange,
+            String deadLetterRoutingKey,
+            String deadLetterQueue
+    ) {
+        this(
+                exchange,
+                refundRoutingKey,
+                refundQueue,
+                deadLetterExchange,
+                deadLetterRoutingKey,
+                deadLetterQueue,
+                "payment.succeeded",
+                "schoolbus.booking.payment-succeeded",
+                "payment.succeeded.dead",
+                "schoolbus.booking.payment-succeeded.dlq"
+        );
+    }
+
+    @org.springframework.boot.context.properties.bind.ConstructorBinding
     public PaymentMessagingProperties {
         exchange = requireText(exchange, "exchange");
         refundRoutingKey = requireText(
@@ -30,6 +57,22 @@ public record PaymentMessagingProperties(
         deadLetterQueue = requireText(
                 deadLetterQueue,
                 "deadLetterQueue"
+        );
+        succeededRoutingKey = requireText(
+                succeededRoutingKey,
+                "succeededRoutingKey"
+        );
+        succeededQueue = requireText(
+                succeededQueue,
+                "succeededQueue"
+        );
+        succeededDeadLetterRoutingKey = requireText(
+                succeededDeadLetterRoutingKey,
+                "succeededDeadLetterRoutingKey"
+        );
+        succeededDeadLetterQueue = requireText(
+                succeededDeadLetterQueue,
+                "succeededDeadLetterQueue"
         );
     }
 

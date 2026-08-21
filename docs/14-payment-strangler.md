@@ -19,8 +19,9 @@ school-bus:
 
 因此 Core 不再暴露旧支付回调；本地模块化单体默认仍启用嵌入式实现。
 
-本阶段尚未迁移 RabbitMQ 退款消费者。退款 Outbox 仍由 Core relay 发布并由
-Core 消费，下一阶段再把消息所有权迁入 Payment。
+**第二阶段（当前）**：`school-bus-payment` 还接管退款 Outbox Relay 与 RabbitMQ 消费者。
+Cloud Core 设置 `school-bus.payment.refund-messaging.embedded=false`，避免与 Payment 双消费。
+详见 `docs/15-payment-refund-messaging-extraction.md`。
 
 ## 2. 为什么暂时共享数据库
 

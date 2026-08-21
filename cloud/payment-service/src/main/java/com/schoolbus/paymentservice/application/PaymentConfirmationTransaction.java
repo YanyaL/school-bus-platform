@@ -38,17 +38,22 @@ public class PaymentConfirmationTransaction {
     private final SnowflakeIdGenerator idGenerator;
     private final Clock clock;
     private final ObjectMapper objectMapper;
+    private final PaymentMigrationProperties migrationProperties;
 
     public PaymentConfirmationTransaction(
             PaymentConfirmationMapper mapper,
             SnowflakeIdGenerator idGenerator,
             Clock clock,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            PaymentMigrationProperties migrationProperties
     ) {
         this.mapper = Objects.requireNonNull(mapper);
         this.idGenerator = Objects.requireNonNull(idGenerator);
         this.clock = Objects.requireNonNull(clock);
         this.objectMapper = Objects.requireNonNull(objectMapper);
+        this.migrationProperties = Objects.requireNonNull(
+                migrationProperties
+        );
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -57,6 +62,10 @@ public class PaymentConfirmationTransaction {
         Optional<ConfirmPaymentResult> existing = findExisting(checked);
         if (existing.isPresent()) {
             return existing.orElseThrow();
+        }
+
+        if (migrationProperties.eventOnly()) {
+            return recordEventOnlyPayment(checked);
         }
 
         BookingPaymentRow booking = mapper.selectBookingForUpdate(
@@ -120,7 +129,22 @@ public class PaymentConfirmationTransaction {
                     HttpStatus.CONFLICT
             );
         }
+        appendPaymentSucceededEvent(checked, now);
         return result(paymentId, checked, PaymentConfirmationOutcome.CONFIRMED);
+    }
+
+    private ConfirmPaymentResult recordEventOnlyPayment(
+            ConfirmPaymentCommand command
+    ) {
+        Instant now = clock.instant();
+        long paymentId = idGenerator.nextId();
+        insertPayment(paymentId, command, SUCCEEDED, null, now);
+        appendPaymentSucceededEvent(command, now);
+        return result(
+                paymentId,
+                command,
+                PaymentConfirmationOutcome.CONFIRMED
+        );
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
@@ -264,6 +288,45 @@ public class PaymentConfirmationTransaction {
         } catch (JsonProcessingException exception) {
             throw new IllegalStateException(
                     "failed to serialize payment refund event",
+                    exception
+            );
+        }
+    }
+
+    private void appendPaymentSucceededEvent(
+            ConfirmPaymentCommand command,
+            Instant occurredAt
+    ) {
+        int inserted = mapper.insertSucceededOutbox(
+                UUID.randomUUID().toString(),
+                command.paymentNumber(),
+                serializePaymentSucceededEvent(command, occurredAt),
+                MDC.get("traceId"),
+                toDatabaseTime(occurredAt)
+        );
+        if (inserted != 1) {
+            throw new IllegalStateException(
+                    "failed to append PaymentSucceeded outbox event"
+            );
+        }
+    }
+
+    private String serializePaymentSucceededEvent(
+            ConfirmPaymentCommand command,
+            Instant occurredAt
+    ) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("schemaVersion", 1);
+        payload.put("paymentNumber", command.paymentNumber());
+        payload.put("bookingNumber", command.bookingNumber());
+        payload.put("amount", command.amount());
+        payload.put("paidAt", command.paidAt());
+        payload.put("occurredAt", occurredAt);
+        try {
+            return objectMapper.writeValueAsString(payload);
+        } catch (JsonProcessingException exception) {
+            throw new IllegalStateException(
+                    "failed to serialize PaymentSucceeded event",
                     exception
             );
         }

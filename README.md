@@ -18,7 +18,7 @@
 ## 当前状态
 
 - IAM：独立服务 `school-bus-iam`（:8084）承接注册 / 登录 / refresh / logout / me（绞杀者第二刀）；本地单体默认仍可嵌入
-- Payment：独立服务 `school-bus-payment`（:8085）承接支付回调（绞杀者第三刀第一阶段）；本地单体默认仍可嵌入
+- Payment：独立服务 `school-bus-payment`（:8085）承接支付回调与 **退款 Outbox Relay + RabbitMQ 消费者**（绞杀者第三刀第二阶段）；本地单体默认 Core 仍嵌入退款消息链路
 - Transport 写路径与管理端：仍在 core
 - Transport Query（绞杀者第一刀）：独立服务 `school-bus-transport-query`（可多实例，如 :8082/:8083）承接学生端只读
   - `GET /api/v1/trips`
@@ -28,14 +28,15 @@
   - `POST /api/v1/accounts`、`/api/v1/auth/**` → `lb://school-bus-iam`
   - `POST /api/v1/payments/**` → `lb://school-bus-payment`（不配置自动重试）
   - 其余 `/api/**` → core（:8081）
-- Cloud Core：关闭嵌入式 IAM 与支付回调；只校验 JWT 公钥，不再签发 Token
+- Cloud Core：关闭嵌入式 IAM、支付回调与 **退款 Relay/Consumer**（`school-bus.payment.refund-messaging.embedded=false`）；只校验 JWT 公钥
 - Query 双实例 HA 验收脚本：`scripts/cloud/verify-transport-query-ha.ps1`（见 `docs/10-transport-query-ha.md`）
 - Query GET 路由级超时 + 有限重试（仅 502/503/504，最多 2 次调用）：见 `docs/12-transport-query-resilience.md`；对照脚本 `scripts/cloud/verify-transport-query-resilience.ps1`
-- Booking 与退款消息消费仍在 Core；Payment 回调服务过渡期共享 MySQL，以同库事务更新支付、订单、座位与退款 Outbox
+- Booking / Payment 仍共享 MySQL；Payment 过渡期直接更新 `payment_record` 与 `booking_order`；Outbox 写入仍可在 Core 或 Payment 回调路径
 - Stability：Sentinel 保护登录、下单和支付回调入口，统一返回 HTTP 429（登录限流仍挂在 Core 入口路径；迁至 IAM 为后续项）
 - Flyway 仍由 core 执行；query / iam / payment 过渡期只读或读写共享库，独立服务均关闭 Flyway
+- **Payment 退款消息迁移**：代码迁移、单元测试与真实 RabbitMQ retry/DLQ 验收均已完成（脚本 `scripts/cloud/verify-payment-refund-messaging.ps1`；Core `/actuator/info` → `refundMessagingOwner=disabled`，Payment → `payment`）
 
-详见：`docs/08-nacos-gateway-foundation.md`、`docs/09-transport-query-strangler.md`、`docs/10-transport-query-ha.md`、`docs/12-transport-query-resilience.md`、`docs/13-iam-strangler.md`、`docs/14-payment-strangler.md`
+详见：`docs/08-nacos-gateway-foundation.md`、`docs/09-transport-query-strangler.md`、`docs/10-transport-query-ha.md`、`docs/12-transport-query-resilience.md`、`docs/13-iam-strangler.md`、`docs/14-payment-strangler.md`、`docs/15-payment-refund-messaging-extraction.md`
 
 ## Swagger 端到端演示
 
@@ -81,6 +82,22 @@ mvn test "-Dtest=BookingExpirationMessagingIntegrationTest,BookingExpirationRabb
 
 - **Outbox**：下单写入 `event_outbox` → 手动/定时 relay → RabbitMQ 发布 → `PUBLISHED`
 - **TTL/DLX**：delay 队列消息过期 → processing 队列 → Listener 取消订单；拒收消息 → DLQ
+
+## Payment 退款消息真实验收（Cloud）
+
+需 Docker Desktop、Nacos、MySQL、RabbitMQ（含 Management API :15672）。每次运行使用独立 Exchange/Queue/Retry/DLQ 拓扑，避免污染业务队列：
+
+```powershell
+.\scripts\cloud\verify-payment-refund-messaging.ps1
+```
+
+**当前状态**：代码迁移、单元测试与真实 RabbitMQ retry/DLQ 验收均已完成。2026-08-18 的验收报告为 `target/payment-refund-messaging-20260818-184248/report.json`，状态 `PASSED`。脚本仅在全部验证项（含重复消费幂等、retry/DLQ、ownership 与临时资源清理）通过后标记 `PASSED`。
+
+PowerShell 辅助逻辑单元测试：
+
+```powershell
+.\scripts\cloud\verify-payment-refund-messaging.tests.ps1
+```
 
 ## 本地启动
 

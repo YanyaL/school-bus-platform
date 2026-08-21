@@ -29,11 +29,23 @@ spring:
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:root}
   flyway:
-    # Core owns the shared schema during this strangler transition.
     enabled: false
   jackson:
     time-zone: UTC
     default-property-inclusion: non_null
+  rabbitmq:
+    host: ${RABBITMQ_HOST:127.0.0.1}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
+    listener:
+      simple:
+        acknowledge-mode: manual
+        prefetch: ${RABBITMQ_LISTENER_PREFETCH:20}
 
 server:
   port: ${PAYMENT_SERVER_PORT:8085}
@@ -55,16 +67,48 @@ management:
 mybatis:
   configuration:
     map-underscore-to-camel-case: true
+  mapper-locations: classpath:mapper/payment/*.xml
 
 school-bus:
   identity:
     worker-id: ${SCHOOL_BUS_PAYMENT_WORKER_ID:2}
   payment:
     callback-secret: ${PAYMENT_CALLBACK_SECRET:local-payment-secret-change-me-1234}
+    migration:
+      booking-write-mode: ${PAYMENT_BOOKING_WRITE_MODE:DIRECT}
+  messaging:
+    outbox-relay:
+      enabled: ${OUTBOX_RELAY_ENABLED:true}
+      batch-size: ${OUTBOX_RELAY_BATCH_SIZE:50}
+      claim-timeout: ${OUTBOX_RELAY_CLAIM_TIMEOUT:PT30S}
+      confirm-timeout: ${OUTBOX_RELAY_CONFIRM_TIMEOUT:PT5S}
+      initial-retry-delay: ${OUTBOX_RELAY_INITIAL_RETRY_DELAY:PT5S}
+      maximum-retry-delay: ${OUTBOX_RELAY_MAXIMUM_RETRY_DELAY:PT5M}
+      maximum-attempts: ${OUTBOX_RELAY_MAXIMUM_ATTEMPTS:10}
+      initial-delay-ms: ${OUTBOX_RELAY_INITIAL_DELAY_MS:5000}
+      fixed-delay-ms: ${OUTBOX_RELAY_FIXED_DELAY_MS:1000}
+    payment:
+      exchange: ${PAYMENT_EVENTS_EXCHANGE:schoolbus.payment.events}
+      refund-routing-key: ${PAYMENT_REFUND_ROUTING_KEY:payment.refund.required}
+      refund-queue: ${PAYMENT_REFUND_QUEUE:schoolbus.payment.refund}
+      dead-letter-exchange: ${PAYMENT_DLX:schoolbus.payment.dlx}
+      dead-letter-routing-key: ${PAYMENT_REFUND_DEAD_ROUTING_KEY:payment.refund.dead}
+      dead-letter-queue: ${PAYMENT_REFUND_DLQ:schoolbus.payment.refund.dlq}
+      succeeded-routing-key: ${PAYMENT_SUCCEEDED_ROUTING_KEY:payment.succeeded}
+      succeeded-queue: ${PAYMENT_SUCCEEDED_QUEUE:schoolbus.booking.payment-succeeded}
+      succeeded-dead-letter-routing-key: ${PAYMENT_SUCCEEDED_DEAD_ROUTING_KEY:payment.succeeded.dead}
+      succeeded-dead-letter-queue: ${PAYMENT_SUCCEEDED_DLQ:schoolbus.booking.payment-succeeded.dlq}
+    payment-refund-retry:
+      exchange: ${PAYMENT_REFUND_RETRY_EXCHANGE:schoolbus.payment.retry}
+      routing-key: ${PAYMENT_REFUND_RETRY_ROUTING_KEY:payment.refund.retry}
+      queue: ${PAYMENT_REFUND_RETRY_QUEUE:schoolbus.payment.refund.retry}
+      delay: ${PAYMENT_REFUND_RETRY_DELAY:PT30S}
+      maximum-retries: ${PAYMENT_REFUND_MAXIMUM_RETRIES:3}
+      confirm-timeout: ${PAYMENT_REFUND_RETRY_CONFIRM_TIMEOUT:PT5S}
 
 info:
   app:
     name: ${spring.application.name}
-    role: payment-callback-service
+    role: payment-service
   cloud:
     registry: nacos

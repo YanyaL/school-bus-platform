@@ -11,6 +11,7 @@ import com.schoolbus.payment.application.refund.RefundProcessingResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.core.Message;
+import com.schoolbus.payment.config.ConditionalOnEmbeddedRefundMessaging;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
@@ -20,6 +21,7 @@ import java.util.Objects;
 
 @Component
 @Profile("local")
+@ConditionalOnEmbeddedRefundMessaging
 public class PaymentRefundListener {
 
     private static final Logger log = LoggerFactory.getLogger(
