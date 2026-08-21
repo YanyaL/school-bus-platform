@@ -1,5 +1,7 @@
 package com.schoolbus.booking.infrastructure.messaging;
 
+import com.schoolbus.booking.config.ConditionalOnEmbeddedBooking;
+
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.DirectExchange;
@@ -10,6 +12,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+@ConditionalOnEmbeddedBooking
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(
         BookingExpirationMessagingProperties.class

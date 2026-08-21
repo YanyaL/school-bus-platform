@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.schoolbus.bookingservice.infrastructure.persistence.order.BookingOrderMapper">
+
+    <resultMap
+            id="BookingOrderResultMap"
+            type="com.schoolbus.bookingservice.infrastructure.persistence.order.BookingOrderDataObject">
+        <id property="id" column="id"/>
+        <result property="orderNo" column="order_no"/>
+        <result property="requestNo" column="request_no"/>
+        <result property="userId" column="user_id"/>
+        <result property="tripId" column="trip_id"/>
+        <result property="tripNo" column="trip_no"/>
+        <result property="seatNumber" column="seat_number"/>
+        <result property="priceSnapshot" column="price_snapshot"/>
+        <result property="status" column="status"/>
+        <result property="expiresAt" column="expires_at"/>
+        <result property="paymentNo" column="payment_no"/>
+        <result property="paidAt" column="paid_at"/>
+        <result property="cancelledAt" column="cancelled_at"/>
+        <result property="cancelReason" column="cancel_reason"/>
+        <result property="version" column="version"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <insert
+            id="insertOrder"
+            parameterType="com.schoolbus.bookingservice.infrastructure.persistence.order.BookingOrderDataObject">
+        INSERT INTO booking_order (
+            id, order_no, request_no, user_id, trip_id, trip_no,
+            seat_number, price_snapshot, status, expires_at,
+            payment_no, paid_at, cancelled_at, cancel_reason,
+            version, created_at, updated_at
+        ) VALUES (
+            #{id}, #{orderNo}, #{requestNo}, #{userId}, #{tripId}, #{tripNo},
+            #{seatNumber}, #{priceSnapshot}, #{status}, #{expiresAt},
+            #{paymentNo}, #{paidAt}, #{cancelledAt}, #{cancelReason},
+            #{version}, #{createdAt}, #{updatedAt}
+        )
+    </insert>
+
+    <select id="selectById" resultMap="BookingOrderResultMap">
+        SELECT
+            id, order_no, request_no, user_id, trip_id, trip_no,
+            seat_number, price_snapshot, status, expires_at,
+            payment_no, paid_at, cancelled_at, cancel_reason,
+            version, created_at, updated_at
+        FROM booking_order
+        WHERE id = #{id}
+        LIMIT 1
+    </select>
+
+    <select id="selectByOrderNo" resultMap="BookingOrderResultMap">
+        SELECT
+            id, order_no, request_no, user_id, trip_id, trip_no,
+            seat_number, price_snapshot, status, expires_at,
+            payment_no, paid_at, cancelled_at, cancel_reason,
+            version, created_at, updated_at
+        FROM booking_order
+        WHERE order_no = #{orderNo}
+        LIMIT 1
+    </select>
+
+    <select
+            id="selectByRequestNo"
+            resultMap="BookingOrderResultMap">
+        SELECT
+            id, order_no, request_no, user_id, trip_id, trip_no,
+            seat_number, price_snapshot, status, expires_at,
+            payment_no, paid_at, cancelled_at, cancel_reason,
+            version, created_at, updated_at
+        FROM booking_order
+        WHERE request_no = #{requestNo}
+        LIMIT 1
+    </select>
+
+    <select
+            id="existsActiveByUserIdAndTripId"
+            resultType="boolean">
+        SELECT EXISTS (
+            SELECT 1
+            FROM booking_order
+            WHERE user_id = #{userId}
+              AND trip_id = #{tripId}
+              AND status IN ('PENDING_PAYMENT', 'PAID')
+        )
+    </select>
+
+    <select id="existsActiveByTripId" resultType="boolean">
+        SELECT EXISTS (
+            SELECT 1
+            FROM booking_order
+            WHERE trip_id = #{tripId}
+              AND status IN ('PENDING_PAYMENT', 'PAID')
+        )
+    </select>
+
+    <select
+            id="selectActiveByTripIdForUpdate"
+            resultMap="BookingOrderResultMap">
+        SELECT
+            id, order_no, request_no, user_id, trip_id, trip_no,
+            seat_number, price_snapshot, status, expires_at,
+            payment_no, paid_at, cancelled_at, cancel_reason,
+            version, created_at, updated_at
+        FROM booking_order
+        WHERE trip_id = #{tripId}
+          AND status IN ('PENDING_PAYMENT', 'PAID')
+        ORDER BY id
+        FOR UPDATE
+    </select>
+
+    <select
+            id="selectExpiredPendingOrders"
+            resultMap="BookingOrderResultMap">
+        SELECT
+            id, order_no, request_no, user_id, trip_id, trip_no,
+            seat_number, price_snapshot, status, expires_at,
+            payment_no, paid_at, cancelled_at, cancel_reason,
+            version, created_at, updated_at
+        FROM booking_order
+        WHERE status = 'PENDING_PAYMENT'
+          AND expires_at &lt;= #{expiredAt}
+        ORDER BY expires_at, id
+        LIMIT #{limit}
+    </select>
+
+    <select id="selectByUserId" resultMap="BookingOrderResultMap">
+        SELECT
+            id, order_no, request_no, user_id, trip_id, trip_no,
+            seat_number, price_snapshot, status, expires_at,
+            payment_no, paid_at, cancelled_at, cancel_reason,
+            version, created_at, updated_at
+        FROM booking_order
+        WHERE user_id = #{userId}
+        <if test="status != null">
+            AND status = #{status}
+        </if>
+        ORDER BY created_at
+        <choose>
+            <when test="sortByCreatedAtAscending">ASC</when>
+            <otherwise>DESC</otherwise>
+        </choose>
+        , id
+        <choose>
+            <when test="sortByCreatedAtAscending">ASC</when>
+            <otherwise>DESC</otherwise>
+        </choose>
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countByUserId" resultType="long">
+        SELECT COUNT(*)
+        FROM booking_order
+        WHERE user_id = #{userId}
+        <if test="status != null">
+            AND status = #{status}
+        </if>
+    </select>
+
+    <update id="updateWithVersion">
+        UPDATE booking_order
+        SET status = #{bookingOrder.status},
+            payment_no = #{bookingOrder.paymentNo},
+            paid_at = #{bookingOrder.paidAt},
+            cancelled_at = #{bookingOrder.cancelledAt},
+            cancel_reason = #{bookingOrder.cancelReason},
+            version = #{bookingOrder.version},
+            updated_at = #{bookingOrder.updatedAt}
+        WHERE id = #{bookingOrder.id}
+          AND version = #{expectedVersion}
+    </update>
+
+</mapper>

@@ -1,5 +1,7 @@
 package com.schoolbus.booking.application.booking;
 
+import com.schoolbus.booking.config.ConditionalOnEmbeddedBooking;
+
 import com.schoolbus.booking.domain.inventory.SeatInventory;
 import com.schoolbus.booking.domain.inventory.SeatInventoryRepository;
 import com.schoolbus.booking.domain.order.BookingId;
@@ -15,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.Objects;
 
+@ConditionalOnEmbeddedBooking
 @Service
 @Profile("!test")
 public class BookingExpirationTransaction {

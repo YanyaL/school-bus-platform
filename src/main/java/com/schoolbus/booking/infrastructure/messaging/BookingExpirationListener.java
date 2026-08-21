@@ -1,5 +1,7 @@
 package com.schoolbus.booking.infrastructure.messaging;
 
+import com.schoolbus.booking.config.ConditionalOnEmbeddedBooking;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rabbitmq.client.Channel;
 import com.schoolbus.booking.application.booking.BookingExpirationMessage;
@@ -15,6 +17,7 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.util.Objects;
 
+@ConditionalOnEmbeddedBooking
 @Component
 @Profile("local")
 public class BookingExpirationListener {

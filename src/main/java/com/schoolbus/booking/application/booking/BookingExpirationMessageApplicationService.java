@@ -1,5 +1,7 @@
 package com.schoolbus.booking.application.booking;
 
+import com.schoolbus.booking.config.ConditionalOnEmbeddedBooking;
+
 import com.schoolbus.booking.domain.order.BookingId;
 import com.schoolbus.booking.domain.order.BookingNumber;
 import org.springframework.context.annotation.Profile;
@@ -8,6 +10,7 @@ import org.springframework.stereotype.Service;
 import java.time.Clock;
 import java.util.Objects;
 
+@ConditionalOnEmbeddedBooking
 @Service
 @Profile("!test")
 public class BookingExpirationMessageApplicationService {

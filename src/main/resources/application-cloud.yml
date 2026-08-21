@@ -22,6 +22,9 @@ school-bus:
   iam:
     embedded:
       enabled: false
+  booking:
+    embedded:
+      enabled: false
   security:
     jwt:
       public-key-location: ${JWT_PUBLIC_KEY_LOCATION:}

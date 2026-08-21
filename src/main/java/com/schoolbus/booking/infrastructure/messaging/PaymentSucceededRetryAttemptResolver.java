@@ -1,5 +1,7 @@
 package com.schoolbus.booking.infrastructure.messaging;
 
+import com.schoolbus.booking.config.ConditionalOnEmbeddedBooking;
+
 import org.springframework.amqp.core.Message;
 import org.springframework.stereotype.Component;
 
@@ -7,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+@ConditionalOnEmbeddedBooking
 @Component
 public class PaymentSucceededRetryAttemptResolver {
 

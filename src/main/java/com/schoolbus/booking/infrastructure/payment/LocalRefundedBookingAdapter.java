@@ -1,5 +1,7 @@
 package com.schoolbus.booking.infrastructure.payment;
 
+import com.schoolbus.booking.config.ConditionalOnEmbeddedBooking;
+
 import com.schoolbus.booking.domain.order.BookingNumber;
 import com.schoolbus.booking.domain.order.BookingOrder;
 import com.schoolbus.booking.domain.order.BookingOrderRepository;
@@ -14,6 +16,7 @@ import org.springframework.stereotype.Component;
 import java.time.Instant;
 import java.util.Objects;
 
+@ConditionalOnEmbeddedBooking
 @Component
 @Profile("!test")
 public class LocalRefundedBookingAdapter implements RefundedBookingPort {

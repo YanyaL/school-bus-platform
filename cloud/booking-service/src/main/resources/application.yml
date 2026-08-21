@@ -1,0 +1,163 @@
+spring:
+  application:
+    name: school-bus-booking
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+  config:
+    import:
+      - optional:nacos:${NACOS_CONFIG_DATA_ID:school-bus-booking.yml}?group=${NACOS_CONFIG_GROUP:DEFAULT_GROUP}&refreshEnabled=true
+  cloud:
+    nacos:
+      username: ${NACOS_USERNAME:nacos}
+      password: ${NACOS_PASSWORD:nacos}
+      config:
+        enabled: ${NACOS_CONFIG_ENABLED:true}
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+        namespace: ${NACOS_NAMESPACE:}
+        health-indicator:
+          enabled: ${NACOS_HEALTH_INDICATOR_ENABLED:true}
+      discovery:
+        enabled: ${NACOS_DISCOVERY_ENABLED:true}
+        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
+        namespace: ${NACOS_NAMESPACE:}
+        group: ${NACOS_DISCOVERY_GROUP:DEFAULT_GROUP}
+        health-indicator:
+          enabled: ${NACOS_HEALTH_INDICATOR_ENABLED:true}
+  datasource:
+    url: ${DB_URL:jdbc:mysql://127.0.0.1:3306/school_bus_platform?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:root}
+  flyway:
+    enabled: false
+  jackson:
+    time-zone: UTC
+    default-property-inclusion: non_null
+  rabbitmq:
+    host: ${RABBITMQ_HOST:127.0.0.1}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
+    listener:
+      simple:
+        acknowledge-mode: manual
+        prefetch: ${RABBITMQ_LISTENER_PREFETCH:20}
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DATABASE:0}
+      connect-timeout: ${REDIS_CONNECT_TIMEOUT:2s}
+      timeout: ${REDIS_TIMEOUT:2s}
+
+server:
+  port: ${BOOKING_SERVER_PORT:8087}
+  shutdown: graceful
+  error:
+    include-message: never
+    include-binding-errors: never
+    include-stacktrace: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when_authorized
+  info:
+    env:
+      enabled: true
+
+mybatis:
+  configuration:
+    map-underscore-to-camel-case: true
+  mapper-locations: classpath:mapper/**/*.xml
+
+school-bus:
+  identity:
+    worker-id: ${SCHOOL_BUS_BOOKING_WORKER_ID:3}
+  booking:
+    payment-window: ${BOOKING_PAYMENT_WINDOW:PT15M}
+    maximum-attempts: ${BOOKING_MAXIMUM_ATTEMPTS:3}
+    expiration:
+      batch-size: ${BOOKING_EXPIRATION_BATCH_SIZE:100}
+      scheduler:
+        enabled: ${BOOKING_EXPIRATION_SCHEDULER_ENABLED:true}
+        initial-delay-ms: ${BOOKING_EXPIRATION_SCHEDULER_INITIAL_DELAY_MS:15000}
+        fixed-delay-ms: ${BOOKING_EXPIRATION_SCHEDULER_FIXED_DELAY_MS:10000}
+  security:
+    jwt:
+      issuer: ${JWT_ISSUER:https://school-bus.local}
+      audience: ${JWT_AUDIENCE:school-bus-api}
+      access-token-ttl: ${JWT_ACCESS_TOKEN_TTL:PT15M}
+      public-key-location: ${JWT_PUBLIC_KEY_LOCATION:}
+  messaging:
+    consumed-event-cache:
+      key-prefix: ${CONSUMED_EVENT_CACHE_PREFIX:school-bus:mq:consumed}
+    outbox-relay:
+      enabled: ${OUTBOX_RELAY_ENABLED:true}
+      batch-size: ${OUTBOX_RELAY_BATCH_SIZE:50}
+      claim-timeout: ${OUTBOX_RELAY_CLAIM_TIMEOUT:PT30S}
+      confirm-timeout: ${OUTBOX_RELAY_CONFIRM_TIMEOUT:PT5S}
+      initial-retry-delay: ${OUTBOX_RELAY_INITIAL_RETRY_DELAY:PT5S}
+      maximum-retry-delay: ${OUTBOX_RELAY_MAXIMUM_RETRY_DELAY:PT5M}
+      maximum-attempts: ${OUTBOX_RELAY_MAXIMUM_ATTEMPTS:10}
+      initial-delay-ms: ${OUTBOX_RELAY_INITIAL_DELAY_MS:5000}
+      fixed-delay-ms: ${OUTBOX_RELAY_FIXED_DELAY_MS:1000}
+    payment:
+      exchange: ${PAYMENT_EVENTS_EXCHANGE:schoolbus.payment.events}
+      refund-routing-key: ${PAYMENT_REFUND_ROUTING_KEY:payment.refund.required}
+      refund-queue: ${PAYMENT_REFUND_QUEUE:schoolbus.payment.refund}
+      dead-letter-exchange: ${PAYMENT_DLX:schoolbus.payment.dlx}
+      dead-letter-routing-key: ${PAYMENT_REFUND_DEAD_ROUTING_KEY:payment.refund.dead}
+      dead-letter-queue: ${PAYMENT_REFUND_DLQ:schoolbus.payment.refund.dlq}
+      succeeded-routing-key: ${PAYMENT_SUCCEEDED_ROUTING_KEY:payment.succeeded}
+      succeeded-queue: ${PAYMENT_SUCCEEDED_QUEUE:schoolbus.booking.payment-succeeded}
+      succeeded-dead-letter-routing-key: ${PAYMENT_SUCCEEDED_DEAD_ROUTING_KEY:payment.succeeded.dead}
+      succeeded-dead-letter-queue: ${PAYMENT_SUCCEEDED_DLQ:schoolbus.booking.payment-succeeded.dlq}
+    payment-succeeded-retry:
+      exchange: ${PAYMENT_SUCCEEDED_RETRY_EXCHANGE:schoolbus.booking.retry}
+      routing-key: ${PAYMENT_SUCCEEDED_RETRY_ROUTING_KEY:payment.succeeded.retry}
+      queue: ${PAYMENT_SUCCEEDED_RETRY_QUEUE:schoolbus.booking.payment-succeeded.retry}
+      delay: ${PAYMENT_SUCCEEDED_RETRY_DELAY:PT30S}
+      maximum-retries: ${PAYMENT_SUCCEEDED_MAXIMUM_RETRIES:3}
+      confirm-timeout: ${PAYMENT_SUCCEEDED_RETRY_CONFIRM_TIMEOUT:PT5S}
+    booking-expiration:
+      delay-exchange: ${BOOKING_EXPIRATION_DELAY_EXCHANGE:schoolbus.booking.expiration.delay}
+      delay-routing-key: ${BOOKING_EXPIRATION_DELAY_ROUTING_KEY:booking.payment.deadline.delay}
+      delay-queue: ${BOOKING_EXPIRATION_DELAY_QUEUE:schoolbus.booking.expiration.delay}
+      processing-exchange: ${BOOKING_EXPIRATION_PROCESSING_EXCHANGE:schoolbus.booking.events}
+      processing-routing-key: ${BOOKING_EXPIRATION_PROCESSING_ROUTING_KEY:booking.payment.deadline.reached}
+      processing-queue: ${BOOKING_EXPIRATION_PROCESSING_QUEUE:schoolbus.booking.expiration}
+      dead-letter-exchange: ${BOOKING_EXPIRATION_DLX:schoolbus.booking.dlx}
+      dead-letter-routing-key: ${BOOKING_EXPIRATION_DEAD_ROUTING_KEY:booking.expiration.dead}
+      dead-letter-queue: ${BOOKING_EXPIRATION_DLQ:schoolbus.booking.expiration.dlq}
+    trip-cancellation:
+      exchange: ${TRIP_CANCELLATION_EXCHANGE:schoolbus.transport.events}
+      requested-routing-key: ${TRIP_CANCELLATION_REQUESTED_ROUTING_KEY:trip.cancellation.requested}
+      requested-queue: ${TRIP_CANCELLATION_REQUESTED_QUEUE:schoolbus.booking.trip-cancellation}
+      dead-letter-exchange: ${TRIP_CANCELLATION_DLX:schoolbus.transport.dlx}
+      dead-letter-routing-key: ${TRIP_CANCELLATION_DEAD_ROUTING_KEY:trip.cancellation.dead}
+      dead-letter-queue: ${TRIP_CANCELLATION_DLQ:schoolbus.transport.trip-cancellation.dlq}
+    trip-cancellation-retry:
+      exchange: ${TRIP_CANCELLATION_RETRY_EXCHANGE:schoolbus.transport.cancellation.retry}
+      requested-routing-key: ${TRIP_CANCELLATION_REQUESTED_RETRY_ROUTING_KEY:trip.cancellation.requested.retry}
+      requested-queue: ${TRIP_CANCELLATION_REQUESTED_RETRY_QUEUE:schoolbus.booking.trip-cancellation.retry}
+      delay: ${TRIP_CANCELLATION_RETRY_DELAY:PT30S}
+      maximum-retries: ${TRIP_CANCELLATION_MAXIMUM_RETRIES:3}
+      confirm-timeout: ${TRIP_CANCELLATION_RETRY_CONFIRM_TIMEOUT:PT5S}
+
+info:
+  app:
+    name: ${spring.application.name}
+    role: booking-service
+  cloud:
+    registry: nacos
+  bookingOwner: booking

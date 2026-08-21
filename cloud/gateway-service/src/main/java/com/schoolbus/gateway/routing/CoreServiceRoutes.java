@@ -22,6 +22,7 @@ public class CoreServiceRoutes {
     public static final String IAM_ACCOUNTS_ROUTE_ID = "school-bus-iam-accounts";
     public static final String IAM_AUTH_ROUTE_ID = "school-bus-iam-auth";
     public static final String PAYMENT_ROUTE_ID = "school-bus-payment-callback";
+    public static final String BOOKING_ROUTE_ID = "school-bus-booking-api";
     public static final String CORE_ROUTE_ID = "school-bus-core-api";
 
     @Bean
@@ -36,7 +37,9 @@ public class CoreServiceRoutes {
             @Value("${school-bus.gateway.iam-service-id:school-bus-iam}")
             String iamServiceId,
             @Value("${school-bus.gateway.payment-service-id:school-bus-payment}")
-            String paymentServiceId
+            String paymentServiceId,
+            @Value("${school-bus.gateway.booking-service-id:school-bus-booking}")
+            String bookingServiceId
     ) {
         int connectTimeoutMs = Math.toIntExact(resilience.connectTimeout().toMillis());
         long responseTimeoutMs = resilience.responseTimeout().toMillis();
@@ -89,6 +92,11 @@ public class CoreServiceRoutes {
                         .path("/api/v1/payments/**")
                         .filters(filters -> stripUntrustedIdentityHeaders(filters))
                         .uri("lb://" + paymentServiceId))
+                .route(BOOKING_ROUTE_ID, route -> route
+                        .order(-12)
+                        .path("/api/v1/bookings", "/api/v1/bookings/**")
+                        .filters(filters -> stripUntrustedIdentityHeaders(filters))
+                        .uri("lb://" + bookingServiceId))
                 .route(CORE_ROUTE_ID, route -> route
                         .order(0)
                         .path("/api/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")

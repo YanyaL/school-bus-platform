@@ -1,5 +1,7 @@
 package com.schoolbus.booking.api;
 
+import com.schoolbus.booking.config.ConditionalOnEmbeddedBooking;
+
 import com.schoolbus.booking.application.booking.BookingApplicationService;
 import com.schoolbus.booking.application.booking.BookingCancellationApplicationService;
 import com.schoolbus.booking.application.booking.BookingQueryApplicationService;
@@ -34,6 +36,7 @@ import java.net.URI;
 import java.util.List;
 import java.util.Objects;
 
+@ConditionalOnEmbeddedBooking
 @RestController
 @RequestMapping("/api/v1/bookings")
 @Validated
