@@ -15,7 +15,8 @@ Payment 支持以下运行模式：
 $env:PAYMENT_BOOKING_WRITE_MODE='EVENT'
 ```
 
-默认仍为 `DIRECT`。在真实 RabbitMQ 验收完成前，不修改生产默认值。
+默认仍为 `DIRECT`。首次真实 RabbitMQ 主链路验收已经完成；故障注入、DLQ 和并发
+竞争验收完成前，暂不修改生产默认值。
 
 ## EVENT 模式调用链
 
@@ -46,17 +47,36 @@ $env:PAYMENT_BOOKING_WRITE_MODE='EVENT'
 | 重试发布失败 | RabbitMQ Confirm 失败 | NACK 原消息并重新入队 |
 | 超出重试次数 | 持续性技术故障 | 进入 DLQ，等待人工处理 |
 
+## 已完成的真实验收
+
+2026-08-21 使用真实 MySQL、RabbitMQ 和 Nacos 执行：
+
+```powershell
+.\scripts\cloud\verify-payment-event-cutover.ps1
+```
+
+最新报告：`target/payment-event-cutover-20260821-132529/report.json`。
+
+| 场景 | 真实结果 |
+|---|---|
+| Outbox 发布前 | Payment `SUCCEEDED`；Booking `PENDING_PAYMENT`；Seat `LOCKED` |
+| PaymentSucceeded 消费后 | Booking `PAID`；Seat `SOLD`；Outbox `PUBLISHED` |
+| 同一 `eventId` 重复投递 | `event_consumed=1`；Booking/Seat 版本号均未变化 |
+| 金额不匹配 | Payment `REFUNDED`；Booking 仍为 `PENDING_PAYMENT`；Seat 仍为 `LOCKED` |
+| 清理 | 临时数据库数据和 RabbitMQ 隔离拓扑均已删除 |
+
+退款完成时，只有原因 `TRIP_CANCELLED` 才会将 Booking 从
+`REFUND_PENDING` 推进为 `REFUNDED`。支付金额不一致、支付窗口过期、座位锁丢失等
+原因属于“异常入款补偿”，只能退款，不能误改原 Booking。
+
 ## 尚未完成的真实验收
 
 必须在 Docker、MySQL、Redis、RabbitMQ、Nacos 可用时验证：
 
-1. `EVENT` 模式下 Payment SQL 证据中不存在 Booking/Seat 更新。
-2. 正常支付最终得到 `payment_record=SUCCEEDED`、订单 `PAID`、座位 `SOLD`。
-3. 同一 `eventId` 重复投递不重复更新。
-4. 超时订单触发退款，最终支付记录为 `REFUNDED`。
-5. 注入一次数据库异常后，消息经过 retry queue 并成功恢复。
-6. 持续异常超过 3 次后进入 PaymentSucceeded DLQ。
-7. 支付与主动取消、超时取消并发时只有一个合法状态迁移获胜。
+1. 注入一次数据库异常后，消息经过 retry queue 并成功恢复。
+2. 持续异常超过 3 次后进入 PaymentSucceeded DLQ。
+3. 支付与主动取消、超时取消并发时只有一个合法状态迁移获胜。
 
-真实证据完成前，只能描述为“代码具备事件切流能力”，不能描述为“已经完成生产
-微服务数据解耦”。
+目前可以描述为“已完成 PaymentSucceeded 主链路、重复消费和业务补偿的真实
+RabbitMQ 验收”。仍不能描述为“已经完成生产级微服务数据解耦”，因为 Payment 与
+Booking 仍共享数据库，且故障注入与并发验收尚未全部完成。
