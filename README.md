@@ -14,6 +14,9 @@
 - Springdoc OpenAPI
 - Spring Boot Actuator
 - Sentinel 1.8.10
+- Redis 6+
+- RabbitMQ 4+
+- Canal 1.1.8（Binlog CDC，当前为影子一致性链路）
 
 ## 当前状态
 
@@ -35,8 +38,9 @@
 - Stability：Sentinel 保护登录、下单和支付回调入口，统一返回 HTTP 429（登录限流仍挂在 Core 入口路径；迁至 IAM 为后续项）
 - Flyway 仍由 core 执行；query / iam / payment 过渡期只读或读写共享库，独立服务均关闭 Flyway
 - **Payment 退款消息迁移**：代码迁移、单元测试与真实 RabbitMQ retry/DLQ 验收均已完成（脚本 `scripts/cloud/verify-payment-refund-messaging.ps1`；Core `/actuator/info` → `refundMessagingOwner=disabled`，Payment → `payment`）
+- **CDC 缓存一致性**：新增 `school-bus-cdc-cache-sync`，监听 `transport_trip` 与 `event_consumed` Binlog，经 RabbitMQ 投影到 Redis；2026-08-21 已完成一次真实联调，当前保留应用侧缓存失效作为影子期保护
 
-详见：`docs/08-nacos-gateway-foundation.md`、`docs/09-transport-query-strangler.md`、`docs/10-transport-query-ha.md`、`docs/12-transport-query-resilience.md`、`docs/13-iam-strangler.md`、`docs/14-payment-strangler.md`、`docs/15-payment-refund-messaging-extraction.md`
+详见：`docs/08-nacos-gateway-foundation.md`、`docs/09-transport-query-strangler.md`、`docs/10-transport-query-ha.md`、`docs/12-transport-query-resilience.md`、`docs/13-iam-strangler.md`、`docs/14-payment-strangler.md`、`docs/15-payment-refund-messaging-extraction.md`、`docs/18-canal-cache-consistency.md`
 
 ## Swagger 端到端演示
 
@@ -98,6 +102,20 @@ PowerShell 辅助逻辑单元测试：
 ```powershell
 .\scripts\cloud\verify-payment-refund-messaging.tests.ps1
 ```
+
+## Canal CDC 缓存一致性（影子链路）
+
+CDC 服务监听 MySQL 提交后的 Binlog：班次变化只删除 Redis List，后续读取按 Cache Aside 从 MySQL 重建；`event_consumed` 插入则投影为带 TTL 的 Redis `DONE` 标记。Redis 只负责加速，MySQL 唯一键仍是消息幂等的最终保证。
+
+```powershell
+.\scripts\cdc\prepare-canal-mysql.ps1
+docker compose -f .\cloud\docker-compose-cdc.yml up -d
+
+$env:CANAL_CLIENT_ENABLED='true'
+mvn -f .\cloud\cdc-cache-sync-service\pom.xml spring-boot:run
+```
+
+当前仍处于影子运行阶段，不应删除已有的应用侧班次缓存失效逻辑。设计、验收证据和切换条件见 `docs/18-canal-cache-consistency.md`。
 
 ## 本地启动
 

@@ -1,0 +1,67 @@
+spring:
+  application:
+    name: school-bus-cdc-cache-sync
+  rabbitmq:
+    host: ${RABBITMQ_HOST:127.0.0.1}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
+    listener:
+      simple:
+        acknowledge-mode: auto
+        default-requeue-rejected: true
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DATABASE:0}
+      connect-timeout: ${REDIS_CONNECT_TIMEOUT:2s}
+      timeout: ${REDIS_TIMEOUT:2s}
+
+server:
+  port: ${CDC_SYNC_SERVER_PORT:8086}
+  shutdown: graceful
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+school-bus:
+  cdc:
+    canal:
+      enabled: ${CANAL_CLIENT_ENABLED:false}
+      host: ${CANAL_HOST:127.0.0.1}
+      port: ${CANAL_PORT:11111}
+      destination: ${CANAL_DESTINATION:schoolbus}
+      username: ${CANAL_USERNAME:}
+      password: ${CANAL_PASSWORD:}
+      filter: ${CANAL_FILTER:school_bus_platform\.(transport_trip|event_consumed)}
+      batch-size: ${CANAL_BATCH_SIZE:100}
+      idle-delay: ${CANAL_IDLE_DELAY:PT0.2S}
+      retry-delay: ${CANAL_RETRY_DELAY:PT2S}
+    messaging:
+      exchange: ${CDC_EXCHANGE:schoolbus.cdc.events}
+      trip-routing-key: ${CDC_TRIP_ROUTING_KEY:cdc.transport-trip.changed}
+      trip-queue: ${CDC_TRIP_QUEUE:schoolbus.cache.trip.invalidate}
+      consumed-event-routing-key: ${CDC_CONSUMED_EVENT_ROUTING_KEY:cdc.consumed-event.recorded}
+      consumed-event-queue: ${CDC_CONSUMED_EVENT_QUEUE:schoolbus.cache.idempotency.project}
+      confirm-timeout: ${CDC_CONFIRM_TIMEOUT:PT5S}
+    cache:
+      trip-list-key: ${TRIP_LIST_CACHE_KEY:school-bus:transport:bookable-trips}
+      consumed-event-key-prefix: ${CONSUMED_EVENT_CACHE_PREFIX:school-bus:mq:consumed}
+      consumed-event-ttl: ${CONSUMED_EVENT_CACHE_TTL:P30D}
+
+info:
+  app:
+    name: ${spring.application.name}
+    role: canal-cdc-cache-projector
