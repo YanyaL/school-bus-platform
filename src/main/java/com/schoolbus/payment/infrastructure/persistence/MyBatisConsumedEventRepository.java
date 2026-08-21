@@ -1,6 +1,7 @@
 package com.schoolbus.payment.infrastructure.persistence;
 
 import com.schoolbus.payment.application.refund.ConsumedEventRepository;
+import com.schoolbus.shared.application.messaging.ConsumedEventCache;
 import com.schoolbus.shared.application.messaging.ConsumedEventStore;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
@@ -18,17 +19,25 @@ public class MyBatisConsumedEventRepository
     private static final ZoneOffset DATABASE_ZONE = ZoneOffset.UTC;
 
     private final ConsumedEventMapper mapper;
+    private final ConsumedEventCache cache;
 
-    public MyBatisConsumedEventRepository(ConsumedEventMapper mapper) {
+    public MyBatisConsumedEventRepository(
+            ConsumedEventMapper mapper,
+            ConsumedEventCache cache
+    ) {
         this.mapper = Objects.requireNonNull(mapper, "mapper must not be null");
+        this.cache = Objects.requireNonNull(cache, "cache must not be null");
     }
 
     @Override
     public boolean exists(String consumerName, String eventId) {
-        return mapper.exists(
-                requireText(consumerName, "consumerName"),
-                requireText(eventId, "eventId")
-        ) > 0;
+        String normalizedConsumerName = requireText(
+                consumerName,
+                "consumerName"
+        );
+        String normalizedEventId = requireText(eventId, "eventId");
+        return cache.contains(normalizedConsumerName, normalizedEventId)
+                || mapper.exists(normalizedConsumerName, normalizedEventId) > 0;
     }
 
     @Override
@@ -37,9 +46,17 @@ public class MyBatisConsumedEventRepository
             String eventId,
             Instant consumedAt
     ) {
+        String normalizedConsumerName = requireText(
+                consumerName,
+                "consumerName"
+        );
+        String normalizedEventId = requireText(eventId, "eventId");
+        if (cache.contains(normalizedConsumerName, normalizedEventId)) {
+            return false;
+        }
         return mapper.insertIfAbsent(
-                requireText(consumerName, "consumerName"),
-                requireText(eventId, "eventId"),
+                normalizedConsumerName,
+                normalizedEventId,
                 LocalDateTime.ofInstant(
                         Objects.requireNonNull(
                                 consumedAt,

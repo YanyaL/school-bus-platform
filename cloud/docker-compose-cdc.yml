@@ -1,0 +1,22 @@
+services:
+  canal:
+    image: canal/canal-server:v1.1.8
+    container_name: school-bus-canal
+    environment:
+      canal.auto.scan: "false"
+      canal.destinations: schoolbus
+      canal.instance.master.address: host.docker.internal:3306
+      canal.instance.dbUsername: ${CANAL_DB_USERNAME:-canal}
+      canal.instance.dbPassword: ${CANAL_DB_PASSWORD:-canal}
+      canal.instance.connectionCharset: UTF-8
+      # MySQL 8 CHECK constraints trigger a known TSDB parser failure in the
+      # Canal image; row events do not require the historical TSDB locally.
+      canal.instance.tsdb.enable: "false"
+      canal.instance.gtidon: "false"
+      canal.instance.filter.regex: school_bus_platform\.(transport_trip|event_consumed)
+    ports:
+      - "11111:11111"
+      - "11112:11112"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
