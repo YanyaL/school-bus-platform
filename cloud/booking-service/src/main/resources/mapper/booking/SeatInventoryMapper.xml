@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.schoolbus.bookingservice.infrastructure.persistence.inventory.SeatInventoryMapper">
+
+    <resultMap
+            id="SeatInventoryResultMap"
+            type="com.schoolbus.bookingservice.infrastructure.persistence.inventory.SeatInventoryDataObject">
+        <id property="tripId" column="trip_id"/>
+        <result property="totalSeats" column="total_seats"/>
+        <result property="availableSeats" column="available_seats"/>
+        <result property="version" column="version"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <insert
+            id="insertInventory"
+            parameterType="com.schoolbus.bookingservice.infrastructure.persistence.inventory.SeatInventoryDataObject">
+        INSERT INTO booking_trip_inventory (
+            trip_id, total_seats, available_seats,
+            version, created_at, updated_at
+        ) VALUES (
+            #{tripId}, #{totalSeats}, #{availableSeats},
+            #{version}, #{createdAt}, #{updatedAt}
+        )
+    </insert>
+
+    <select id="selectByTripId" resultMap="SeatInventoryResultMap">
+        SELECT
+            trip_id, total_seats, available_seats,
+            version, created_at, updated_at
+        FROM booking_trip_inventory
+        WHERE trip_id = #{tripId}
+        LIMIT 1
+    </select>
+
+    <update id="updateWithVersion">
+        UPDATE booking_trip_inventory
+        SET available_seats = #{inventory.availableSeats},
+            version = #{inventory.version},
+            updated_at = #{inventory.updatedAt}
+        WHERE trip_id = #{inventory.tripId}
+          AND version = #{expectedVersion}
+          AND (
+              (
+                  #{inventory.availableSeats} = available_seats - 1
+                  AND available_seats &gt; 0
+              )
+              OR
+              (
+                  #{inventory.availableSeats} = available_seats + 1
+                  AND available_seats &lt; total_seats
+              )
+          )
+    </update>
+
+</mapper>

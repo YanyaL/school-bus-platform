@@ -27,6 +27,7 @@ class TransportQueryRetryIntegrationTest {
     private static CountingHttpStub queryStub;
     private static CountingHttpStub coreStub;
     private static CountingHttpStub iamStub;
+    private static CountingHttpStub bookingStub;
 
     @Autowired
     private WebTestClient webTestClient;
@@ -36,6 +37,7 @@ class TransportQueryRetryIntegrationTest {
         queryStub = CountingHttpStub.start();
         coreStub = CountingHttpStub.start();
         iamStub = CountingHttpStub.start();
+        bookingStub = CountingHttpStub.start();
         registry.add(
                 "spring.cloud.discovery.client.simple.instances.school-bus-transport-query[0].uri",
                 queryStub::baseUri
@@ -47,6 +49,10 @@ class TransportQueryRetryIntegrationTest {
         registry.add(
                 "spring.cloud.discovery.client.simple.instances.school-bus-iam[0].uri",
                 iamStub::baseUri
+        );
+        registry.add(
+                "spring.cloud.discovery.client.simple.instances.school-bus-booking[0].uri",
+                bookingStub::baseUri
         );
         registry.add("school-bus.gateway.transport-query-resilience.enabled", () -> "true");
         registry.add("school-bus.gateway.transport-query-resilience.retries", () -> "1");
@@ -67,6 +73,9 @@ class TransportQueryRetryIntegrationTest {
         if (iamStub != null) {
             iamStub.close();
         }
+        if (bookingStub != null) {
+            bookingStub.close();
+        }
     }
 
     @BeforeEach
@@ -74,6 +83,7 @@ class TransportQueryRetryIntegrationTest {
         queryStub.reset();
         coreStub.reset();
         iamStub.reset();
+        bookingStub.reset();
         webTestClient = webTestClient.mutate().responseTimeout(Duration.ofSeconds(5)).build();
     }
 
@@ -171,8 +181,8 @@ class TransportQueryRetryIntegrationTest {
     }
 
     @Test
-    void coreBookingPostIsNotRetriedOn503() {
-        coreStub.respondWith(attempt ->
+    void bookingPostIsNotRetriedOn503() {
+        bookingStub.respondWith(attempt ->
                 CountingHttpStub.StubResponse.of(503, "{\"code\":\"UNAVAILABLE\"}"));
 
         webTestClient.post()
@@ -182,8 +192,23 @@ class TransportQueryRetryIntegrationTest {
                 .exchange()
                 .expectStatus().isEqualTo(503);
 
-        assertThat(coreStub.invocations()).isEqualTo(1);
+        assertThat(bookingStub.invocations()).isEqualTo(1);
+        assertThat(coreStub.invocations()).isZero();
         assertThat(queryStub.invocations()).isZero();
+    }
+
+    @Test
+    void bookingCancellationPostIsNotRetriedOn503() {
+        bookingStub.respondWith(attempt ->
+                CountingHttpStub.StubResponse.of(503, "{\"code\":\"UNAVAILABLE\"}"));
+
+        webTestClient.post()
+                .uri("/api/v1/bookings/11111111-1111-1111-1111-111111111111/cancellation")
+                .exchange()
+                .expectStatus().isEqualTo(503);
+
+        assertThat(bookingStub.invocations()).isEqualTo(1);
+        assertThat(coreStub.invocations()).isZero();
     }
 
     @Test

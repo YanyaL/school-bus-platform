@@ -1,5 +1,7 @@
 package com.schoolbus.booking.infrastructure.transport;
 
+import com.schoolbus.booking.config.ConditionalOnEmbeddedBooking;
+
 import com.schoolbus.booking.application.booking.BookableTripGateway;
 import com.schoolbus.booking.application.booking.BookableTripSnapshot;
 import com.schoolbus.booking.domain.order.BookingAmount;
@@ -15,6 +17,7 @@ import org.springframework.stereotype.Component;
 import java.util.Objects;
 import java.util.Optional;
 
+@ConditionalOnEmbeddedBooking
 @Component
 @Profile("!test")
 public class LocalBookableTripGateway

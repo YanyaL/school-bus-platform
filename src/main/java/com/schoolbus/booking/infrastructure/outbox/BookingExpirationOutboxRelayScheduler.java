@@ -1,5 +1,7 @@
 package com.schoolbus.booking.infrastructure.outbox;
 
+import com.schoolbus.booking.config.ConditionalOnEmbeddedBooking;
+
 import com.schoolbus.payment.infrastructure.outbox.OutboxRelayResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,6 +12,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.Objects;
 
+@ConditionalOnEmbeddedBooking
 @Component
 @Profile("!test")
 @ConditionalOnProperty(

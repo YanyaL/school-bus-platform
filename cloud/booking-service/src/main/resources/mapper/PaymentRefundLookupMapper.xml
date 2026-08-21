@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.schoolbus.bookingservice.infrastructure.persistence.PaymentRefundLookupMapper">
+
+    <select id="selectByPaymentNumber"
+            resultType="com.schoolbus.bookingservice.infrastructure.persistence.PaymentRefundLookupMapper$PaymentRefundRow">
+        SELECT
+            id,
+            payment_no AS paymentNumber,
+            order_no AS bookingNumber,
+            amount,
+            status,
+            completed_at AS completedAt,
+            version
+        FROM payment_record
+        WHERE payment_no = #{paymentNumber}
+        LIMIT 1
+    </select>
+
+    <update id="markRefundPending">
+        UPDATE payment_record
+        SET status = 'REFUND_PENDING',
+            failure_reason = #{reason},
+            version = version + 1,
+            updated_at = #{updatedAt}
+        WHERE id = #{id}
+          AND version = #{expectedVersion}
+          AND status = 'SUCCEEDED'
+    </update>
+
+</mapper>

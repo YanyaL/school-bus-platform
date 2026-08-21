@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.schoolbus.bookingservice.infrastructure.persistence.seat.TripSeatMapper">
+
+    <update id="tryLockSeat">
+        UPDATE transport_trip_seat
+        SET status = 'LOCKED',
+            locked_by_order_no = #{bookingNumber},
+            locked_by_user_id = #{userId},
+            lock_expires_at = #{lockExpiresAt},
+            version = version + 1,
+            updated_at = #{lockedAt}
+        WHERE trip_id = #{tripId}
+          AND seat_number = #{seatNumber}
+          AND status = 'AVAILABLE'
+    </update>
+
+    <update id="releaseSeat">
+        UPDATE transport_trip_seat
+        SET status = 'AVAILABLE',
+            locked_by_order_no = NULL,
+            locked_by_user_id = NULL,
+            lock_expires_at = NULL,
+            version = version + 1,
+            updated_at = #{releasedAt}
+        WHERE trip_id = #{tripId}
+          AND seat_number = #{seatNumber}
+          AND status = 'LOCKED'
+          AND locked_by_order_no = #{bookingNumber}
+    </update>
+
+    <update id="releaseSoldSeat">
+        UPDATE transport_trip_seat
+        SET status = 'AVAILABLE',
+            locked_by_order_no = NULL,
+            locked_by_user_id = NULL,
+            lock_expires_at = NULL,
+            version = version + 1,
+            updated_at = #{releasedAt}
+        WHERE trip_id = #{tripId}
+          AND seat_number = #{seatNumber}
+          AND status = 'SOLD'
+          AND locked_by_order_no = #{bookingNumber}
+    </update>
+
+    <update id="confirmSeatSold">
+        UPDATE transport_trip_seat
+        SET status = 'SOLD',
+            lock_expires_at = NULL,
+            version = version + 1,
+            updated_at = #{soldAt}
+        WHERE trip_id = #{tripId}
+          AND seat_number = #{seatNumber}
+          AND status = 'LOCKED'
+          AND locked_by_order_no = #{bookingNumber}
+    </update>
+
+</mapper>

@@ -1,5 +1,7 @@
 package com.schoolbus.booking.infrastructure.outbox;
 
+import com.schoolbus.booking.config.ConditionalOnEmbeddedBooking;
+
 import com.schoolbus.booking.application.booking.BookingPaymentDeadlineEvent;
 import com.schoolbus.booking.infrastructure.messaging.BookingExpirationEventPublisher;
 import com.schoolbus.payment.infrastructure.messaging.OutboxRelayProperties;
@@ -17,6 +19,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 
+@ConditionalOnEmbeddedBooking
 @Service
 @Profile("!test")
 public class BookingExpirationOutboxRelay {

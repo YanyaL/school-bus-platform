@@ -1,5 +1,7 @@
 package com.schoolbus.booking.infrastructure.outbox;
 
+import com.schoolbus.booking.config.ConditionalOnEmbeddedBooking;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.schoolbus.booking.application.booking.BookingExpirationOutboxPort;
@@ -17,6 +19,7 @@ import java.util.UUID;
 
 @Repository
 @Profile("!test")
+@ConditionalOnEmbeddedBooking
 public class MyBatisBookingExpirationOutbox
         implements BookingExpirationOutboxPort {
 

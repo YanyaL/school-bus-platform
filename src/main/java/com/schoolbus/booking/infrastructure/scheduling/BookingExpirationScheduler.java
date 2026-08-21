@@ -1,5 +1,7 @@
 package com.schoolbus.booking.infrastructure.scheduling;
 
+import com.schoolbus.booking.config.ConditionalOnEmbeddedBooking;
+
 import com.schoolbus.booking.application.booking.BookingExpirationApplicationService;
 import com.schoolbus.booking.application.booking.BookingExpirationResult;
 import org.slf4j.Logger;
@@ -10,6 +12,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.Objects;
 
+@ConditionalOnEmbeddedBooking
 @Component
 @ConditionalOnProperty(
         prefix = "school-bus.booking.expiration.scheduler",

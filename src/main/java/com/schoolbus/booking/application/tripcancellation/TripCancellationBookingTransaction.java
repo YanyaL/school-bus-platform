@@ -1,5 +1,7 @@
 package com.schoolbus.booking.application.tripcancellation;
 
+import com.schoolbus.booking.config.ConditionalOnEmbeddedBooking;
+
 import com.schoolbus.booking.application.booking.SeatReleaseRequest;
 import com.schoolbus.booking.application.booking.TripSeatReservationPort;
 import com.schoolbus.booking.domain.inventory.SeatInventory;
@@ -20,6 +22,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 
+@ConditionalOnEmbeddedBooking
 @Service
 @Profile("!test")
 public class TripCancellationBookingTransaction {

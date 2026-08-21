@@ -1,0 +1,58 @@
+spring:
+  cloud:
+    nacos:
+      discovery:
+        enabled: true
+  flyway:
+    enabled: false
+  rabbitmq:
+    host: ${RABBITMQ_HOST:127.0.0.1}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+
+server:
+  port: ${BOOKING_SERVER_PORT:8087}
+
+school-bus:
+  identity:
+    worker-id: ${SCHOOL_BUS_BOOKING_WORKER_ID:3}
+  booking:
+    payment-window: ${BOOKING_PAYMENT_WINDOW:PT15M}
+    expiration:
+      scheduler:
+        enabled: true
+  security:
+    jwt:
+      issuer: ${JWT_ISSUER:https://school-bus.local}
+      audience: ${JWT_AUDIENCE:school-bus-api}
+      access-token-ttl: ${JWT_ACCESS_TOKEN_TTL:PT15M}
+      public-key-location: ${JWT_PUBLIC_KEY_LOCATION:}
+  messaging:
+    outbox-relay:
+      enabled: true
+    payment:
+      exchange: ${PAYMENT_EVENTS_EXCHANGE:schoolbus.payment.events}
+      succeeded-routing-key: ${PAYMENT_SUCCEEDED_ROUTING_KEY:payment.succeeded}
+      succeeded-queue: ${PAYMENT_SUCCEEDED_QUEUE:schoolbus.booking.payment-succeeded}
+      dead-letter-exchange: ${PAYMENT_DLX:schoolbus.payment.dlx}
+      succeeded-dead-letter-routing-key: ${PAYMENT_SUCCEEDED_DEAD_ROUTING_KEY:payment.succeeded.dead}
+      succeeded-dead-letter-queue: ${PAYMENT_SUCCEEDED_DLQ:schoolbus.booking.payment-succeeded.dlq}
+    payment-succeeded-retry:
+      exchange: ${PAYMENT_SUCCEEDED_RETRY_EXCHANGE:schoolbus.booking.retry}
+      routing-key: ${PAYMENT_SUCCEEDED_RETRY_ROUTING_KEY:payment.succeeded.retry}
+      queue: ${PAYMENT_SUCCEEDED_RETRY_QUEUE:schoolbus.booking.payment-succeeded.retry}
+    booking-expiration:
+      delay-exchange: ${BOOKING_EXPIRATION_DELAY_EXCHANGE:schoolbus.booking.expiration.delay}
+      processing-exchange: ${BOOKING_EXPIRATION_PROCESSING_EXCHANGE:schoolbus.booking.events}
+      processing-queue: ${BOOKING_EXPIRATION_PROCESSING_QUEUE:schoolbus.booking.expiration}
+      dead-letter-exchange: ${BOOKING_EXPIRATION_DLX:schoolbus.booking.dlx}
+    trip-cancellation:
+      exchange: ${TRIP_CANCELLATION_EXCHANGE:schoolbus.transport.events}
+      requested-queue: ${TRIP_CANCELLATION_REQUESTED_QUEUE:schoolbus.booking.trip-cancellation}
+
+info:
+  cloud:
+    role: booking-service
+    registry: nacos
+  bookingOwner: booking

@@ -32,7 +32,10 @@ class CoreServiceRoutesTest {
             "GET, /api/v1/trips/11111111-1111-1111-1111-111111111111/seats, school-bus-transport-query-seats, lb://school-bus-transport-query",
             "GET, /api/v1/admin/trips, school-bus-core-api, lb://school-bus-core",
             "POST, /api/v1/admin/trips, school-bus-core-api, lb://school-bus-core",
-            "GET, /api/v1/bookings, school-bus-core-api, lb://school-bus-core",
+            "GET, /api/v1/bookings, school-bus-booking-api, lb://school-bus-booking",
+            "POST, /api/v1/bookings, school-bus-booking-api, lb://school-bus-booking",
+            "GET, /api/v1/bookings/11111111-1111-1111-1111-111111111111, school-bus-booking-api, lb://school-bus-booking",
+            "POST, /api/v1/bookings/11111111-1111-1111-1111-111111111111/cancellation, school-bus-booking-api, lb://school-bus-booking",
             "POST, /api/v1/accounts, school-bus-iam-accounts, lb://school-bus-iam",
             "POST, /api/v1/auth/login, school-bus-iam-auth, lb://school-bus-iam",
             "GET, /api/v1/auth/me, school-bus-iam-auth, lb://school-bus-iam",
@@ -119,7 +122,7 @@ class CoreServiceRoutesTest {
     }
 
     @Test
-    void coreRouteDoesNotIncludeRetryFilter() {
+    void bookingRouteDoesNotIncludeRetryFilter() {
         MockServerWebExchange exchange = MockServerWebExchange.from(
                 MockServerHttpRequest.post("/api/v1/bookings").build()
         );
@@ -128,9 +131,24 @@ class CoreServiceRoutesTest {
                 .blockFirst();
 
         assertThat(route).isNotNull();
-        assertThat(route.getId()).isEqualTo(CoreServiceRoutes.CORE_ROUTE_ID);
+        assertThat(route.getId()).isEqualTo(CoreServiceRoutes.BOOKING_ROUTE_ID);
+        assertThat(route.getUri()).isEqualTo(URI.create("lb://school-bus-booking"));
         assertThat(route.getFilters().stream().map(Object::toString).anyMatch(s ->
                 s.contains("Retry") || s.contains("retry"))).isFalse();
+    }
+
+    @Test
+    void coreFallbackDoesNotCaptureBookingRoutes() {
+        MockServerWebExchange exchange = MockServerWebExchange.from(
+                MockServerHttpRequest.get("/api/v1/bookings").build()
+        );
+        Route route = routeLocator.getRoutes()
+                .filterWhen(candidate -> Mono.from(candidate.getPredicate().apply(exchange)))
+                .blockFirst();
+
+        assertThat(route).isNotNull();
+        assertThat(route.getId()).isNotEqualTo(CoreServiceRoutes.CORE_ROUTE_ID);
+        assertThat(route.getId()).isEqualTo(CoreServiceRoutes.BOOKING_ROUTE_ID);
     }
 
     @Test

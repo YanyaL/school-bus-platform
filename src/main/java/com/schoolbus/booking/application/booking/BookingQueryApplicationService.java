@@ -1,5 +1,7 @@
 package com.schoolbus.booking.application.booking;
 
+import com.schoolbus.booking.config.ConditionalOnEmbeddedBooking;
+
 import com.schoolbus.booking.domain.order.BookingNumber;
 import com.schoolbus.booking.domain.order.BookingOrder;
 import com.schoolbus.booking.domain.order.BookingOrderRepository;
@@ -10,6 +12,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Objects;
 
+@ConditionalOnEmbeddedBooking
 @Service
 @Profile("!test")
 public class BookingQueryApplicationService {

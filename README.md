@@ -22,6 +22,7 @@
 
 - IAM：独立服务 `school-bus-iam`（:8084）承接注册 / 登录 / refresh / logout / me（绞杀者第二刀）；本地单体默认仍可嵌入
 - Payment：独立服务 `school-bus-payment`（:8085）承接支付回调与 **退款 Outbox Relay + RabbitMQ 消费者**（绞杀者第三刀第二阶段）；本地单体默认 Core 仍嵌入退款消息链路
+- Booking（绞杀者第四刀，第一阶段，**真实验收已通过**）：独立服务 `school-bus-booking`（:8087）承接 `/api/v1/bookings/**` 与 Booking 侧消息消费（支付成功 / 订单过期 / 班次取消）；Cloud Core 通过 `school-bus.booking.embedded.enabled=false` 关闭嵌入式 Booking 入口，本地单体默认仍嵌入
 - Transport 写路径与管理端：仍在 core
 - Transport Query（绞杀者第一刀）：独立服务 `school-bus-transport-query`（可多实例，如 :8082/:8083）承接学生端只读
   - `GET /api/v1/trips`
@@ -30,17 +31,19 @@
   - 上述 GET → `lb://school-bus-transport-query`
   - `POST /api/v1/accounts`、`/api/v1/auth/**` → `lb://school-bus-iam`
   - `POST /api/v1/payments/**` → `lb://school-bus-payment`（不配置自动重试）
+  - `/api/v1/bookings/**` → `lb://school-bus-booking`（不配置自动重试）
   - 其余 `/api/**` → core（:8081）
 - Cloud Core：关闭嵌入式 IAM、支付回调与 **退款 Relay/Consumer**（`school-bus.payment.refund-messaging.embedded=false`）；只校验 JWT 公钥
 - Query 双实例 HA 验收脚本：`scripts/cloud/verify-transport-query-ha.ps1`（见 `docs/10-transport-query-ha.md`）
 - Query GET 路由级超时 + 有限重试（仅 502/503/504，最多 2 次调用）：见 `docs/12-transport-query-resilience.md`；对照脚本 `scripts/cloud/verify-transport-query-resilience.ps1`
-- Booking / Payment 仍共享 MySQL；Payment 过渡期直接更新 `payment_record` 与 `booking_order`；Outbox 写入仍可在 Core 或 Payment 回调路径
+- Booking / Payment 仍共享 MySQL；Payment 过渡期直接更新 `payment_record` 与 `booking_order`，Booking 的班次取消结算适配器也直接读写 `payment_record`；Booking 还直接读取 Transport 表。这些是第一阶段明确保留的技术债
 - Stability：Sentinel 保护登录、下单和支付回调入口，统一返回 HTTP 429（登录限流仍挂在 Core 入口路径；迁至 IAM 为后续项）
 - Flyway 仍由 core 执行；query / iam / payment 过渡期只读或读写共享库，独立服务均关闭 Flyway
 - **Payment 退款消息迁移**：代码迁移、单元测试与真实 RabbitMQ retry/DLQ 验收均已完成（脚本 `scripts/cloud/verify-payment-refund-messaging.ps1`；Core `/actuator/info` → `refundMessagingOwner=disabled`，Payment → `payment`）
 - **CDC 缓存一致性**：新增 `school-bus-cdc-cache-sync`，监听 `transport_trip` 与 `event_consumed` Binlog，经 RabbitMQ 投影到 Redis；2026-08-21 已完成一次真实联调，当前保留应用侧缓存失效作为影子期保护
+- **Booking 拆分状态**：Core 537、Booking 53、Gateway 42 项测试全绿；Core ownership 测试覆盖 24 个 Booking 旧 Bean。修订后的真实验收已在 Nacos + MySQL + RabbitMQ + Gateway 上跑通（报告 `target/booking-service-extraction-20260821-165445/report.json`），覆盖路由、写路径无重试、ownership、下单幂等、401、支付成功、过期与班次取消。验收使用 9 个 run-scoped 队列和 7 个交换机，停止服务后逐项删除，不清空共享业务队列。前置检查失败记 `BLOCKED`，业务断言失败记 `FAILED`/`PARTIAL`
 
-详见：`docs/08-nacos-gateway-foundation.md`、`docs/09-transport-query-strangler.md`、`docs/10-transport-query-ha.md`、`docs/12-transport-query-resilience.md`、`docs/13-iam-strangler.md`、`docs/14-payment-strangler.md`、`docs/15-payment-refund-messaging-extraction.md`、`docs/18-canal-cache-consistency.md`
+详见：`docs/08-nacos-gateway-foundation.md`、`docs/09-transport-query-strangler.md`、`docs/10-transport-query-ha.md`、`docs/12-transport-query-resilience.md`、`docs/13-iam-strangler.md`、`docs/14-payment-strangler.md`、`docs/15-payment-refund-messaging-extraction.md`、`docs/18-canal-cache-consistency.md`、`docs/19-booking-strangler.md`
 
 ## Swagger 端到端演示
 

@@ -1,5 +1,7 @@
 package com.schoolbus.booking.infrastructure.messaging;
 
+import com.schoolbus.booking.config.ConditionalOnEmbeddedBooking;
+
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageBuilder;
 import org.springframework.amqp.core.ReturnedMessage;
@@ -13,6 +15,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+@ConditionalOnEmbeddedBooking
 @Component
 public class RabbitPaymentSucceededRetryPublisher
         implements PaymentSucceededRetryPublisher {

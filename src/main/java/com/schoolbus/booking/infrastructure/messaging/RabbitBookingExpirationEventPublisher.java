@@ -1,5 +1,7 @@
 package com.schoolbus.booking.infrastructure.messaging;
 
+import com.schoolbus.booking.config.ConditionalOnEmbeddedBooking;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.schoolbus.booking.application.booking.BookingExpirationMessage;
@@ -23,6 +25,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+@ConditionalOnEmbeddedBooking
 @Component
 public class RabbitBookingExpirationEventPublisher
         implements BookingExpirationEventPublisher {

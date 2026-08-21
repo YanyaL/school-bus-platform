@@ -11,6 +11,9 @@ school-bus:
   iam:
     embedded:
       enabled: false
+  booking:
+    embedded:
+      enabled: false
   trip-list-cache:
     ttl: PT1M
   security:
