@@ -116,4 +116,25 @@ public interface PaymentConfirmationMapper {
             @Param("traceId") String traceId,
             @Param("occurredAt") LocalDateTime occurredAt
     );
+
+    @Insert("""
+            INSERT INTO event_outbox (
+                event_id, context_name, aggregate_type, aggregate_id,
+                aggregate_version, event_type, payload, trace_id,
+                status, retry_count, next_retry_at, occurred_at,
+                created_at, published_at, version
+            ) VALUES (
+                #{eventId}, 'payment', 'PaymentRecord', #{aggregateId},
+                0, 'PaymentSucceeded', CAST(#{payload} AS JSON), #{traceId},
+                'NEW', 0, NULL, #{occurredAt},
+                #{occurredAt}, NULL, 0
+            )
+            """)
+    int insertSucceededOutbox(
+            @Param("eventId") String eventId,
+            @Param("aggregateId") String aggregateId,
+            @Param("payload") String payload,
+            @Param("traceId") String traceId,
+            @Param("occurredAt") LocalDateTime occurredAt
+    );
 }

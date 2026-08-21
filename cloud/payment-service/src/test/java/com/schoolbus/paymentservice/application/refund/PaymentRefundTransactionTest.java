@@ -70,6 +70,27 @@ class PaymentRefundTransactionTest {
     }
 
     @Test
+    void shouldTransitionSucceededPaymentToRefundPending() {
+        PaymentRecord payment = succeeded();
+        when(paymentRepository.findByPaymentNumber(any()))
+                .thenReturn(Optional.of(payment));
+        when(paymentRepository.save(any())).thenAnswer(
+                invocation -> invocation.getArgument(0)
+        );
+
+        RefundPreparation preparation = transaction.prepareRefund(
+                envelope()
+        );
+
+        assertThat(preparation.alreadyRefunded()).isFalse();
+        assertThat(payment.status())
+                .isEqualTo(PaymentStatus.REFUND_PENDING);
+        assertThat(payment.failureReason())
+                .isEqualTo("PAYMENT_WINDOW_EXPIRED");
+        verify(paymentRepository).save(payment);
+    }
+
+    @Test
     void shouldAtomicallyRecordConsumptionAndCompleteRefund() {
         PaymentRecord payment = refundPending();
         when(consumedRepository.insertIfAbsent(
@@ -166,6 +187,18 @@ class PaymentRefundTransactionTest {
                 BookingNumber.of(BOOKING_NO),
                 BookingAmount.of("5.50"),
                 "PAYMENT_WINDOW_EXPIRED",
+                PAID_AT,
+                NOW.minusSeconds(20)
+        );
+    }
+
+    private PaymentRecord succeeded() {
+        return PaymentRecord.succeeded(
+                PaymentId.of(9001L),
+                PaymentNumber.of(PAYMENT_NO),
+                PaymentRequestNumber.of("callback-1"),
+                BookingNumber.of(BOOKING_NO),
+                BookingAmount.of("5.50"),
                 PAID_AT,
                 NOW.minusSeconds(20)
         );

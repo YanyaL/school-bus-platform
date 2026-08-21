@@ -86,12 +86,22 @@ class EmbeddedRefundMessagingConfigurationTest {
                         "school-bus.messaging.payment.dead-letter-exchange=schoolbus.payment.dlx",
                         "school-bus.messaging.payment.dead-letter-routing-key=payment.refund.dead",
                         "school-bus.messaging.payment.dead-letter-queue=schoolbus.payment.refund.dlq",
+                        "school-bus.messaging.payment.succeeded-routing-key=payment.succeeded",
+                        "school-bus.messaging.payment.succeeded-queue=schoolbus.booking.payment-succeeded",
+                        "school-bus.messaging.payment.succeeded-dead-letter-routing-key=payment.succeeded.dead",
+                        "school-bus.messaging.payment.succeeded-dead-letter-queue=schoolbus.booking.payment-succeeded.dlq",
                         "school-bus.messaging.payment-refund-retry.exchange=schoolbus.payment.retry",
                         "school-bus.messaging.payment-refund-retry.routing-key=payment.refund.retry",
                         "school-bus.messaging.payment-refund-retry.queue=schoolbus.payment.refund.retry",
                         "school-bus.messaging.payment-refund-retry.delay=PT30S",
                         "school-bus.messaging.payment-refund-retry.maximum-retries=3",
-                        "school-bus.messaging.payment-refund-retry.confirm-timeout=PT5S"
+                        "school-bus.messaging.payment-refund-retry.confirm-timeout=PT5S",
+                        "school-bus.messaging.payment-succeeded-retry.exchange=schoolbus.booking.retry",
+                        "school-bus.messaging.payment-succeeded-retry.routing-key=payment.succeeded.retry",
+                        "school-bus.messaging.payment-succeeded-retry.queue=schoolbus.booking.payment-succeeded.retry",
+                        "school-bus.messaging.payment-succeeded-retry.delay=PT30S",
+                        "school-bus.messaging.payment-succeeded-retry.maximum-retries=3",
+                        "school-bus.messaging.payment-succeeded-retry.confirm-timeout=PT5S"
                 )
                 .withUserConfiguration(RabbitMqConfiguration.class)
                 .run(context -> {

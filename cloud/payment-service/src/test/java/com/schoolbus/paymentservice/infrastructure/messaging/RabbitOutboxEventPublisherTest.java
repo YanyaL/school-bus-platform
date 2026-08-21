@@ -68,6 +68,40 @@ class RabbitOutboxEventPublisherTest {
     }
 
     @Test
+    void shouldRoutePaymentSucceededEventToBookingQueue() {
+        doAnswer(invocation -> {
+            CorrelationData correlation = invocation.getArgument(3);
+            correlation.getFuture().complete(
+                    new CorrelationData.Confirm(true, null)
+            );
+            return null;
+        }).when(rabbitTemplate).send(
+                eq("schoolbus.payment.events"),
+                eq("payment.succeeded"),
+                any(Message.class),
+                any(CorrelationData.class)
+        );
+
+        publisher.publish(new ClaimedOutboxEvent(
+                2L,
+                "event-2",
+                "PaymentSucceeded",
+                "{\"bookingNumber\":\"BOOKING-1\"}",
+                "trace-2",
+                0,
+                Instant.parse("2026-08-10T10:00:00Z"),
+                1L
+        ));
+
+        verify(rabbitTemplate).send(
+                eq("schoolbus.payment.events"),
+                eq("payment.succeeded"),
+                any(Message.class),
+                any(CorrelationData.class)
+        );
+    }
+
+    @Test
     void shouldRejectNegativePublisherConfirmation() {
         doAnswer(invocation -> {
             CorrelationData correlation = invocation.getArgument(3);
@@ -84,7 +118,7 @@ class RabbitOutboxEventPublisherTest {
 
         assertThatThrownBy(() -> publisher.publish(event(0)))
                 .isInstanceOf(OutboxPublishException.class)
-                .hasMessageContaining("RabbitMQ rejected refund event")
+                .hasMessageContaining("RabbitMQ rejected payment event")
                 .hasMessageContaining("exchange unavailable");
     }
 

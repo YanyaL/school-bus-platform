@@ -16,6 +16,9 @@ import java.util.Objects;
 @Service
 public class PaymentRefundOutboxRelay {
 
+    private static final String PAYMENT_CONTEXT = "payment";
+    private static final String PAYMENT_SUCCEEDED = "PaymentSucceeded";
+
     private static final Logger log = LoggerFactory.getLogger(
             PaymentRefundOutboxRelay.class
     );
@@ -48,11 +51,26 @@ public class PaymentRefundOutboxRelay {
 
     public OutboxRelayResult relayReadyEvents() {
         Instant claimedAt = clock.instant();
-        List<ClaimedOutboxEvent> events = repository.claimReady(
+        List<ClaimedOutboxEvent> refundEvents = repository.claimReady(
                 claimedAt,
                 properties.batchSize(),
                 properties.claimTimeout()
         );
+        List<ClaimedOutboxEvent> succeededEvents = repository.claimReady(
+                PAYMENT_CONTEXT,
+                PAYMENT_SUCCEEDED,
+                claimedAt,
+                properties.batchSize(),
+                properties.claimTimeout()
+        );
+        List<ClaimedOutboxEvent> events = new java.util.ArrayList<>(
+                refundEvents.size() + succeededEvents.size()
+        );
+        events.addAll(refundEvents);
+        events.addAll(succeededEvents);
+        events.sort(java.util.Comparator.comparingLong(
+                ClaimedOutboxEvent::id
+        ));
         int published = 0;
         int failed = 0;
         for (ClaimedOutboxEvent event : events) {

@@ -49,6 +49,33 @@ class PaymentRefundOutboxRelayTest {
     }
 
     @Test
+    void shouldRelayPaymentSucceededEvents() {
+        ClaimedOutboxEvent event = new ClaimedOutboxEvent(
+                2L,
+                "event-2",
+                "PaymentSucceeded",
+                "{\"bookingNumber\":\"BOOKING-1\"}",
+                "trace-2",
+                0,
+                NOW.minusSeconds(10),
+                1L
+        );
+        when(repository.claimReady(
+                "payment",
+                "PaymentSucceeded",
+                NOW,
+                50,
+                Duration.ofSeconds(30)
+        )).thenReturn(List.of(event));
+
+        OutboxRelayResult result = relay(10).relayReadyEvents();
+
+        assertThat(result).isEqualTo(new OutboxRelayResult(1, 1, 0));
+        verify(publisher).publish(event);
+        verify(repository).markPublished(event, NOW);
+    }
+
+    @Test
     void shouldScheduleExponentialRetryWhenPublishingFails() {
         ClaimedOutboxEvent event = event(2);
         when(repository.claimReady(

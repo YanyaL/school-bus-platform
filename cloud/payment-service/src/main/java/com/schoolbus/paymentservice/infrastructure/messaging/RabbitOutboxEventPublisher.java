@@ -19,6 +19,10 @@ import java.util.concurrent.TimeoutException;
 @Component
 public class RabbitOutboxEventPublisher implements OutboxEventPublisher {
 
+    private static final String PAYMENT_REFUND_REQUIRED =
+            "PaymentRefundRequired";
+    private static final String PAYMENT_SUCCEEDED = "PaymentSucceeded";
+
     private final RabbitTemplate rabbitTemplate;
     private final PaymentMessagingProperties messagingProperties;
     private final OutboxRelayProperties relayProperties;
@@ -53,7 +57,7 @@ public class RabbitOutboxEventPublisher implements OutboxEventPublisher {
         );
         rabbitTemplate.send(
                 messagingProperties.exchange(),
-                messagingProperties.refundRoutingKey(),
+                routingKey(checked),
                 toMessage(checked),
                 correlation
         );
@@ -64,16 +68,28 @@ public class RabbitOutboxEventPublisher implements OutboxEventPublisher {
         ReturnedMessage returned = correlation.getReturned();
         if (returned != null) {
             throw new OutboxPublishException(
-                    "refund event was returned by RabbitMQ: "
+                    "payment event was returned by RabbitMQ: "
                             + returned.getReplyText()
             );
         }
         if (!confirm.isAck()) {
             throw new OutboxPublishException(
-                    "RabbitMQ rejected refund event: "
+                    "RabbitMQ rejected payment event: "
                             + confirm.getReason()
             );
         }
+    }
+
+    private String routingKey(ClaimedOutboxEvent event) {
+        return switch (event.eventType()) {
+            case PAYMENT_REFUND_REQUIRED ->
+                    messagingProperties.refundRoutingKey();
+            case PAYMENT_SUCCEEDED ->
+                    messagingProperties.succeededRoutingKey();
+            default -> throw new OutboxPublishException(
+                    "unsupported payment event type: " + event.eventType()
+            );
+        };
     }
 
     private CorrelationData.Confirm waitForConfirm(

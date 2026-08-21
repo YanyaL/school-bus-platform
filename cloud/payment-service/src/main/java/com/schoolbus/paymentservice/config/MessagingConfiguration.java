@@ -1,5 +1,6 @@
 package com.schoolbus.paymentservice.config;
 
+import com.schoolbus.paymentservice.application.PaymentMigrationProperties;
 import com.schoolbus.paymentservice.infrastructure.messaging.OutboxRelayProperties;
 import com.schoolbus.paymentservice.infrastructure.messaging.PaymentMessagingProperties;
 import com.schoolbus.paymentservice.infrastructure.messaging.RefundRetryProperties;
@@ -16,7 +17,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableConfigurationProperties({
         PaymentMessagingProperties.class,
         OutboxRelayProperties.class,
-        RefundRetryProperties.class
+        RefundRetryProperties.class,
+        PaymentMigrationProperties.class
 })
 public class MessagingConfiguration {
 

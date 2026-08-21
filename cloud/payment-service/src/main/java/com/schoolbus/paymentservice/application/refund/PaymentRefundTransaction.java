@@ -52,7 +52,7 @@ public class PaymentRefundTransaction {
         );
     }
 
-    @Transactional(readOnly = true)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public RefundPreparation prepareRefund(
             RefundMessageEnvelope envelope
     ) {
@@ -66,6 +66,14 @@ public class PaymentRefundTransaction {
                     payment.refundReference(),
                     payment.refundedAt()
             );
+        }
+        if (payment.status() == PaymentStatus.SUCCEEDED) {
+            payment.requestRefund(
+                    checked.payload().reason(),
+                    clock.instant()
+            );
+            paymentRecordRepository.save(payment);
+            return RefundPreparation.ready();
         }
         if (payment.status() != PaymentStatus.REFUND_PENDING) {
             throw new RefundMessageConflictException(
@@ -154,15 +162,16 @@ public class PaymentRefundTransaction {
             PaymentRecord payment,
             PaymentRefundRequiredMessage message
     ) {
-        boolean matches = payment.bookingNumber().toString()
+        boolean identityMatches = payment.bookingNumber().toString()
                         .equals(message.bookingNumber())
                 && payment.amount().amount()
-                        .compareTo(message.amount()) == 0
-                && Objects.equals(
+                        .compareTo(message.amount()) == 0;
+        boolean reasonMatches = payment.status() == PaymentStatus.SUCCEEDED
+                || Objects.equals(
                         payment.failureReason(),
                         message.reason()
                 );
-        if (!matches) {
+        if (!identityMatches || !reasonMatches) {
             throw new RefundMessageConflictException(
                     "refund message conflicts with payment record: "
                             + message.paymentNumber()

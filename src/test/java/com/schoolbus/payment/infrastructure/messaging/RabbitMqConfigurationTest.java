@@ -30,6 +30,10 @@ class RabbitMqConfigurationTest {
                             "school-bus.messaging.payment.dead-letter-exchange=schoolbus.payment.dlx",
                             "school-bus.messaging.payment.dead-letter-routing-key=payment.refund.dead",
                             "school-bus.messaging.payment.dead-letter-queue=schoolbus.payment.refund.dlq",
+                            "school-bus.messaging.payment.succeeded-routing-key=payment.succeeded",
+                            "school-bus.messaging.payment.succeeded-queue=schoolbus.booking.payment-succeeded",
+                            "school-bus.messaging.payment.succeeded-dead-letter-routing-key=payment.succeeded.dead",
+                            "school-bus.messaging.payment.succeeded-dead-letter-queue=schoolbus.booking.payment-succeeded.dlq",
                             "school-bus.messaging.outbox-relay.enabled=true",
                             "school-bus.messaging.outbox-relay.batch-size=50",
                             "school-bus.messaging.outbox-relay.claim-timeout=30s",
@@ -42,7 +46,13 @@ class RabbitMqConfigurationTest {
                             "school-bus.messaging.payment-refund-retry.queue=schoolbus.payment.refund.retry",
                             "school-bus.messaging.payment-refund-retry.delay=30s",
                             "school-bus.messaging.payment-refund-retry.maximum-retries=3",
-                            "school-bus.messaging.payment-refund-retry.confirm-timeout=5s"
+                            "school-bus.messaging.payment-refund-retry.confirm-timeout=5s",
+                            "school-bus.messaging.payment-succeeded-retry.exchange=schoolbus.booking.retry",
+                            "school-bus.messaging.payment-succeeded-retry.routing-key=payment.succeeded.retry",
+                            "school-bus.messaging.payment-succeeded-retry.queue=schoolbus.booking.payment-succeeded.retry",
+                            "school-bus.messaging.payment-succeeded-retry.delay=30s",
+                            "school-bus.messaging.payment-succeeded-retry.maximum-retries=3",
+                            "school-bus.messaging.payment-succeeded-retry.confirm-timeout=5s"
                     );
 
     @Test
@@ -91,6 +101,24 @@ class RabbitMqConfigurationTest {
             assertThat(deadLetterQueue.getName())
                     .isEqualTo("schoolbus.payment.refund.dlq");
 
+            Queue succeededQueue = context.getBean(
+                    "paymentSucceededQueue",
+                    Queue.class
+            );
+            assertThat(succeededQueue.getName())
+                    .isEqualTo("schoolbus.booking.payment-succeeded");
+            assertThat(succeededQueue.getArguments())
+                    .containsEntry(
+                            "x-dead-letter-routing-key",
+                            "payment.succeeded.dead"
+                    );
+            Queue succeededDlq = context.getBean(
+                    "paymentSucceededDeadLetterQueue",
+                    Queue.class
+            );
+            assertThat(succeededDlq.getName())
+                    .isEqualTo("schoolbus.booking.payment-succeeded.dlq");
+
             DirectExchange retryExchange = context.getBean(
                     "paymentRefundRetryExchange",
                     DirectExchange.class
@@ -112,6 +140,31 @@ class RabbitMqConfigurationTest {
                     .containsEntry(
                             "x-dead-letter-routing-key",
                             "payment.refund.required"
+                    );
+
+            DirectExchange succeededRetryExchange = context.getBean(
+                    "paymentSucceededRetryExchange",
+                    DirectExchange.class
+            );
+            assertThat(succeededRetryExchange.getName())
+                    .isEqualTo("schoolbus.booking.retry");
+            Queue succeededRetryQueue = context.getBean(
+                    "paymentSucceededRetryQueue",
+                    Queue.class
+            );
+            assertThat(succeededRetryQueue.getName())
+                    .isEqualTo(
+                            "schoolbus.booking.payment-succeeded.retry"
+                    );
+            assertThat(succeededRetryQueue.getArguments())
+                    .containsEntry("x-message-ttl", 30_000)
+                    .containsEntry(
+                            "x-dead-letter-exchange",
+                            "schoolbus.payment.events"
+                    )
+                    .containsEntry(
+                            "x-dead-letter-routing-key",
+                            "payment.succeeded"
                     );
         });
     }
@@ -141,6 +194,15 @@ class RabbitMqConfigurationTest {
             assertThat(deadLetterBinding.getRoutingKey())
                     .isEqualTo("payment.refund.dead");
 
+            Binding succeededBinding = context.getBean(
+                    "paymentSucceededBinding",
+                    Binding.class
+            );
+            assertThat(succeededBinding.getRoutingKey())
+                    .isEqualTo("payment.succeeded");
+            assertThat(succeededBinding.getDestination())
+                    .isEqualTo("schoolbus.booking.payment-succeeded");
+
             Binding retryBinding = context.getBean(
                     "paymentRefundRetryBinding",
                     Binding.class
@@ -151,6 +213,19 @@ class RabbitMqConfigurationTest {
                     .isEqualTo("schoolbus.payment.refund.retry");
             assertThat(retryBinding.getRoutingKey())
                     .isEqualTo("payment.refund.retry");
+
+            Binding succeededRetryBinding = context.getBean(
+                    "paymentSucceededRetryBinding",
+                    Binding.class
+            );
+            assertThat(succeededRetryBinding.getExchange())
+                    .isEqualTo("schoolbus.booking.retry");
+            assertThat(succeededRetryBinding.getDestination())
+                    .isEqualTo(
+                            "schoolbus.booking.payment-succeeded.retry"
+                    );
+            assertThat(succeededRetryBinding.getRoutingKey())
+                    .isEqualTo("payment.succeeded.retry");
         });
     }
 
