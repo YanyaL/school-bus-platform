@@ -324,6 +324,21 @@ public final class BookingOrder {
         version++;
     }
 
+    public void requestRefundBecauseUserCancelled(Instant requestedAt) {
+        if (status != BookingStatus.PAID) {
+            throw new InvalidBookingStateTransitionException(
+                    status,
+                    BookingStatus.REFUND_PENDING
+            );
+        }
+        Instant operationTime = validateChangeTime(requestedAt);
+        status = BookingStatus.REFUND_PENDING;
+        cancelledAt = operationTime;
+        cancellationReason = CancellationReason.USER_CANCELLED;
+        updatedAt = operationTime;
+        version++;
+    }
+
     public void confirmRefund(Instant refundedAt) {
         if (status != BookingStatus.REFUND_PENDING) {
             throw new InvalidBookingStateTransitionException(

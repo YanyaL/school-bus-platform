@@ -15,8 +15,11 @@ import com.schoolbus.bookingservice.domain.order.SeatNumber;
 import com.schoolbus.bookingservice.domain.trip.PublicTripNumber;
 import com.schoolbus.bookingservice.domain.trip.TripReference;
 import com.schoolbus.bookingservice.shared.domain.identity.UserId;
+import com.schoolbus.bookingservice.support.payment.application.PaymentRefundOutboxPort;
+import com.schoolbus.bookingservice.support.payment.application.RefundRequiredEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.dao.OptimisticLockingFailureException;
 
 import java.time.Clock;
@@ -30,6 +33,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class BookingCancellationTransactionTest {
@@ -40,6 +44,8 @@ class BookingCancellationTransactionTest {
             Instant.parse("2026-08-08T00:15:00Z");
     private static final Instant CANCELLED_AT =
             Instant.parse("2026-08-08T00:05:00Z");
+    private static final Instant PAID_AT =
+            Instant.parse("2026-08-08T00:03:00Z");
     private static final TripReference TRIP =
             TripReference.of(2001L);
     private static final PublicTripNumber TRIP_NUMBER =
@@ -50,10 +56,13 @@ class BookingCancellationTransactionTest {
             BookingNumber.of(
                     "55555555-5555-5555-5555-555555555555"
             );
+    private static final String PAYMENT_NO =
+            "66666666-6666-6666-6666-666666666666";
 
     private BookingOrderRepository orderRepository;
     private SeatInventoryRepository inventoryRepository;
     private TripSeatReservationPort seatReservationPort;
+    private PaymentRefundOutboxPort refundOutboxPort;
     private BookingCancellationTransaction transaction;
 
     @BeforeEach
@@ -61,6 +70,7 @@ class BookingCancellationTransactionTest {
         orderRepository = mock(BookingOrderRepository.class);
         inventoryRepository = mock(SeatInventoryRepository.class);
         seatReservationPort = mock(TripSeatReservationPort.class);
+        refundOutboxPort = mock(PaymentRefundOutboxPort.class);
         Clock clock = Clock.fixed(
                 CANCELLED_AT,
                 ZoneOffset.UTC
@@ -69,12 +79,13 @@ class BookingCancellationTransactionTest {
                 orderRepository,
                 inventoryRepository,
                 seatReservationPort,
+                refundOutboxPort,
                 clock
         );
     }
 
     @Test
-    void shouldCancelPendingBookingAndReleaseResources() {
+    void shouldCancelPendingBookingAndReleaseResourcesWithoutRefundOutbox() {
         BookingOrder order = pendingOrder();
         SeatInventory inventory = reservedInventory();
         when(orderRepository.findByBookingNumber(BOOKING_NUMBER))
@@ -98,6 +109,42 @@ class BookingCancellationTransactionTest {
         assertThat(result.cancelReason())
                 .isEqualTo(CancellationReason.USER_CANCELLED);
         assertThat(order.cancelledAt()).isEqualTo(CANCELLED_AT);
+        verifyNoInteractions(refundOutboxPort);
+    }
+
+    @Test
+    void shouldRequestRefundOutboxForPaidBookingCancel() {
+        BookingOrder order = paidOrder();
+        SeatInventory inventory = reservedInventory();
+        when(orderRepository.findByBookingNumber(BOOKING_NUMBER))
+                .thenReturn(Optional.of(order));
+        when(inventoryRepository.findByTripReference(TRIP))
+                .thenReturn(Optional.of(inventory));
+        when(seatReservationPort.releaseSoldSeat(any()))
+                .thenReturn(true);
+        when(inventoryRepository.save(any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(orderRepository.save(any()))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        CancelBookingResult result = transaction.cancelOne(
+                UserId.of(1001L),
+                BOOKING_NUMBER
+        );
+
+        assertThat(result.newlyCancelled()).isTrue();
+        assertThat(result.status()).isEqualTo(BookingStatus.REFUND_PENDING);
+        assertThat(order.cancellationReason())
+                .isEqualTo(CancellationReason.USER_CANCELLED);
+        ArgumentCaptor<RefundRequiredEvent> captor =
+                ArgumentCaptor.forClass(RefundRequiredEvent.class);
+        verify(refundOutboxPort).append(captor.capture());
+        assertThat(captor.getValue().reason())
+                .isEqualTo("USER_CANCELLED");
+        assertThat(captor.getValue().paymentNumber().toString())
+                .isEqualTo(PAYMENT_NO);
+        assertThat(captor.getValue().bookingNumber())
+                .isEqualTo(BOOKING_NUMBER);
     }
 
     @Test
@@ -115,25 +162,7 @@ class BookingCancellationTransactionTest {
         assertThat(result.newlyCancelled()).isFalse();
         verify(seatReservationPort, never()).releaseSeat(any());
         verify(orderRepository, never()).save(any());
-    }
-
-    @Test
-    void shouldRejectCancellationForPaidBooking() {
-        BookingOrder order = pendingOrder();
-        order.confirmPayment(
-                PaymentReference.of(
-                        "66666666-6666-6666-6666-666666666666"
-                ),
-                CANCELLED_AT.minusSeconds(60),
-                CANCELLED_AT
-        );
-        when(orderRepository.findByBookingNumber(BOOKING_NUMBER))
-                .thenReturn(Optional.of(order));
-
-        assertThatThrownBy(() -> transaction.cancelOne(
-                UserId.of(1001L),
-                BOOKING_NUMBER
-        )).isInstanceOf(BookingNotCancellableException.class);
+        verifyNoInteractions(refundOutboxPort);
     }
 
     @Test
@@ -176,6 +205,16 @@ class BookingCancellationTransactionTest {
                 EXPIRES_AT,
                 PLACED_AT
         );
+    }
+
+    private BookingOrder paidOrder() {
+        BookingOrder order = pendingOrder();
+        order.confirmPayment(
+                PaymentReference.of(PAYMENT_NO),
+                PAID_AT,
+                PAID_AT.plusSeconds(1)
+        );
+        return order;
     }
 
     private SeatInventory reservedInventory() {

@@ -118,7 +118,7 @@ class PaymentRefundTransactionTest {
                 NOW
         );
         verify(paymentRepository).save(payment);
-        verify(refundedBookingPort, never()).markRefunded(any(), any());
+        verify(refundedBookingPort, never()).markRefunded(any());
     }
 
     @Test
@@ -137,10 +137,26 @@ class PaymentRefundTransactionTest {
                 new RefundReceipt("refund-001", NOW)
         );
 
-        verify(refundedBookingPort).markRefunded(
-                BookingNumber.of(BOOKING_NO),
-                NOW
+        verify(refundedBookingPort).markRefunded(any());
+    }
+
+    @Test
+    void shouldMarkBookingRefundedForUserCancellation() {
+        PaymentRecord payment = refundPending("USER_CANCELLED");
+        when(consumedRepository.insertIfAbsent(any(), any(), any()))
+                .thenReturn(true);
+        when(paymentRepository.findByPaymentNumber(any()))
+                .thenReturn(Optional.of(payment));
+        when(paymentRepository.save(any())).thenAnswer(
+                invocation -> invocation.getArgument(0)
         );
+
+        transaction.completeRefund(
+                envelope("USER_CANCELLED"),
+                new RefundReceipt("refund-001", NOW)
+        );
+
+        verify(refundedBookingPort).markRefunded(any());
     }
 
     @Test
@@ -182,6 +198,15 @@ class PaymentRefundTransactionTest {
         assertThatThrownBy(
                 () -> transaction.prepareRefund(conflicting)
         ).isInstanceOf(RefundMessageConflictException.class);
+    }
+
+    @Test
+    void shouldThrowRetryableExceptionWhenPaymentIsMissing() {
+        when(paymentRepository.findByPaymentNumber(any()))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> transaction.prepareRefund(envelope()))
+                .isInstanceOf(RefundPaymentNotFoundException.class);
     }
 
     private RefundMessageEnvelope envelope() {

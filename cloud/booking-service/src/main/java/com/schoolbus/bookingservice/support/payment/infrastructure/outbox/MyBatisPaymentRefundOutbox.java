@@ -2,9 +2,9 @@ package com.schoolbus.bookingservice.support.payment.infrastructure.outbox;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.schoolbus.bookingservice.shared.web.TraceContext;
 import com.schoolbus.bookingservice.support.payment.application.PaymentRefundOutboxPort;
 import com.schoolbus.bookingservice.support.payment.application.RefundRequiredEvent;
-import com.schoolbus.bookingservice.shared.web.TraceContext;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
@@ -20,6 +20,10 @@ import java.util.UUID;
 public class MyBatisPaymentRefundOutbox
         implements PaymentRefundOutboxPort {
 
+    public static final String CONTEXT_NAME = "booking";
+    public static final String AGGREGATE_TYPE = "BookingOrder";
+    public static final String EVENT_TYPE = "RefundRequested";
+
     private static final ZoneOffset DATABASE_ZONE = ZoneOffset.UTC;
 
     private final OutboxMapper mapper;
@@ -30,7 +34,10 @@ public class MyBatisPaymentRefundOutbox
             ObjectMapper objectMapper
     ) {
         this.mapper = Objects.requireNonNull(mapper, "mapper must not be null");
-        this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper must not be null");
+        this.objectMapper = Objects.requireNonNull(
+                objectMapper,
+                "objectMapper must not be null"
+        );
     }
 
     @Override
@@ -45,18 +52,20 @@ public class MyBatisPaymentRefundOutbox
         );
         int inserted = mapper.insertEvent(
                 UUID.randomUUID().toString(),
-                "payment",
-                "PaymentRecord",
-                validated.paymentNumber().toString(),
+                CONTEXT_NAME,
+                AGGREGATE_TYPE,
+                validated.bookingNumber().toString(),
                 0L,
-                "PaymentRefundRequired",
+                EVENT_TYPE,
                 serialize(validated),
                 TraceContext.currentTraceId(),
                 occurredAt,
                 occurredAt
         );
         if (inserted != 1) {
-            throw new IllegalStateException("failed to insert refund outbox event");
+            throw new IllegalStateException(
+                    "failed to insert RefundRequested outbox event"
+            );
         }
     }
 
@@ -71,7 +80,10 @@ public class MyBatisPaymentRefundOutbox
         try {
             return objectMapper.writeValueAsString(payload);
         } catch (JsonProcessingException exception) {
-            throw new IllegalStateException("failed to serialize refund event", exception);
+            throw new IllegalStateException(
+                    "failed to serialize RefundRequested event",
+                    exception
+            );
         }
     }
 }

@@ -4,7 +4,6 @@ import com.schoolbus.paymentservice.domain.PaymentNumber;
 import com.schoolbus.paymentservice.domain.PaymentRecord;
 import com.schoolbus.paymentservice.domain.PaymentRecordRepository;
 import com.schoolbus.paymentservice.domain.PaymentStatus;
-import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,12 +11,18 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Objects;
+import java.util.Set;
 
 @Service
 public class PaymentRefundTransaction {
 
     public static final String CONSUMER_NAME = "payment-refund-consumer";
     static final String TRIP_CANCELLED = "TRIP_CANCELLED";
+    static final String USER_CANCELLED = "USER_CANCELLED";
+    private static final Set<String> BOOKING_REFUND_REASONS = Set.of(
+            TRIP_CANCELLED,
+            USER_CANCELLED
+    );
 
     private final PaymentRecordRepository paymentRecordRepository;
     private final ConsumedEventRepository consumedEventRepository;
@@ -131,11 +136,15 @@ public class PaymentRefundTransaction {
                 checkedReceipt.refundReference(),
                 checkedReceipt.refundedAt()
         );
-        if (TRIP_CANCELLED.equals(message.reason())) {
-            refundedBookingPort.markRefunded(
+        if (BOOKING_REFUND_REASONS.contains(message.reason())) {
+            refundedBookingPort.markRefunded(new PaymentRefundedCommand(
+                    message.paymentNumber(),
                     payment.bookingNumber(),
-                    checkedReceipt.refundedAt()
-            );
+                    checkedReceipt.refundReference(),
+                    message.reason(),
+                    checkedReceipt.refundedAt(),
+                    now
+            ));
         }
         paymentRecordRepository.save(payment);
         return new RefundProcessingResult(

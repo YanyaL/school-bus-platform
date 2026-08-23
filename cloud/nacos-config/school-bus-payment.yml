@@ -20,7 +20,7 @@ school-bus:
   payment:
     callback-secret: ${PAYMENT_CALLBACK_SECRET:}
     migration:
-      booking-write-mode: ${PAYMENT_BOOKING_WRITE_MODE:DIRECT}
+      booking-write-mode: ${PAYMENT_BOOKING_WRITE_MODE:EVENT}
   messaging:
     outbox-relay:
       enabled: true

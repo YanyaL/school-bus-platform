@@ -13,7 +13,11 @@ public record PaymentMessagingProperties(
         String succeededRoutingKey,
         String succeededQueue,
         String succeededDeadLetterRoutingKey,
-        String succeededDeadLetterQueue
+        String succeededDeadLetterQueue,
+        String refundedRoutingKey,
+        String refundedQueue,
+        String refundedDeadLetterRoutingKey,
+        String refundedDeadLetterQueue
 ) {
 
     public PaymentMessagingProperties(
@@ -34,7 +38,11 @@ public record PaymentMessagingProperties(
                 "payment.succeeded",
                 "schoolbus.booking.payment-succeeded",
                 "payment.succeeded.dead",
-                "schoolbus.booking.payment-succeeded.dlq"
+                "schoolbus.booking.payment-succeeded.dlq",
+                "payment.refunded",
+                "schoolbus.booking.payment-refunded",
+                "payment.refunded.dead",
+                "schoolbus.booking.payment-refunded.dlq"
         );
     }
 
@@ -73,6 +81,30 @@ public record PaymentMessagingProperties(
         succeededDeadLetterQueue = requireText(
                 succeededDeadLetterQueue,
                 "succeededDeadLetterQueue"
+        );
+        refundedRoutingKey = requireText(
+                refundedRoutingKey == null
+                        ? "payment.refunded"
+                        : refundedRoutingKey,
+                "refundedRoutingKey"
+        );
+        refundedQueue = requireText(
+                refundedQueue == null
+                        ? "schoolbus.booking.payment-refunded"
+                        : refundedQueue,
+                "refundedQueue"
+        );
+        refundedDeadLetterRoutingKey = requireText(
+                refundedDeadLetterRoutingKey == null
+                        ? "payment.refunded.dead"
+                        : refundedDeadLetterRoutingKey,
+                "refundedDeadLetterRoutingKey"
+        );
+        refundedDeadLetterQueue = requireText(
+                refundedDeadLetterQueue == null
+                        ? "schoolbus.booking.payment-refunded.dlq"
+                        : refundedDeadLetterQueue,
+                "refundedDeadLetterQueue"
         );
     }
 

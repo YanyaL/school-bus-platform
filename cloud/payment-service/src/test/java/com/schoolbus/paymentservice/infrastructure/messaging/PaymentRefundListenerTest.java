@@ -116,6 +116,42 @@ class PaymentRefundListenerTest {
         verify(channel).basicNack(101L, false, true);
     }
 
+    @Test
+    void shouldAcceptRefundRequestedEventType() throws IOException {
+        when(service.process(any())).thenReturn(
+                new RefundProcessingResult(
+                        RefundProcessingOutcome.REFUNDED,
+                        "77777777-7777-7777-7777-777777777777",
+                        "refund-001"
+                )
+        );
+        Message message = validMessage();
+        message.getMessageProperties().setHeader(
+                "eventType",
+                "RefundRequested"
+        );
+
+        listener.consume(message, channel);
+
+        verify(channel).basicAck(101L, false);
+    }
+
+    @Test
+    void shouldRetryWhenPaymentIsTemporarilyMissing()
+            throws IOException {
+        when(service.process(any())).thenThrow(
+                new com.schoolbus.paymentservice.application.refund
+                        .RefundPaymentNotFoundException(
+                        "77777777-7777-7777-7777-777777777777"
+                )
+        );
+
+        listener.consume(validMessage(), channel);
+
+        verify(retryPublisher).scheduleRetry(any(Message.class));
+        verify(channel).basicAck(101L, false);
+    }
+
     private Message validMessage() {
         return message("""
                 {

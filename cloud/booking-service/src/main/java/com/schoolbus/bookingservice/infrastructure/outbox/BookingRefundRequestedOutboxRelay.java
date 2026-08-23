@@ -1,7 +1,11 @@
-package com.schoolbus.paymentservice.infrastructure.outbox;
+package com.schoolbus.bookingservice.infrastructure.outbox;
 
-import com.schoolbus.paymentservice.infrastructure.messaging.OutboxEventPublisher;
-import com.schoolbus.paymentservice.infrastructure.messaging.OutboxRelayProperties;
+import com.schoolbus.bookingservice.infrastructure.messaging.BookingRefundRequestedEventPublisher;
+import com.schoolbus.bookingservice.support.payment.infrastructure.messaging.OutboxRelayProperties;
+import com.schoolbus.bookingservice.support.payment.infrastructure.outbox.ClaimedOutboxEvent;
+import com.schoolbus.bookingservice.support.payment.infrastructure.outbox.MyBatisOutboxRelayRepository;
+import com.schoolbus.bookingservice.support.payment.infrastructure.outbox.MyBatisPaymentRefundOutbox;
+import com.schoolbus.bookingservice.support.payment.infrastructure.outbox.OutboxRelayResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Profile;
@@ -14,24 +18,21 @@ import java.util.List;
 import java.util.Objects;
 
 @Service
-public class PaymentRefundOutboxRelay {
-
-    private static final String PAYMENT_CONTEXT = "payment";
-    private static final String PAYMENT_SUCCEEDED = "PaymentSucceeded";
-    private static final String PAYMENT_REFUNDED = "PaymentRefunded";
+@Profile("!test")
+public class BookingRefundRequestedOutboxRelay {
 
     private static final Logger log = LoggerFactory.getLogger(
-            PaymentRefundOutboxRelay.class
+            BookingRefundRequestedOutboxRelay.class
     );
 
     private final MyBatisOutboxRelayRepository repository;
-    private final OutboxEventPublisher publisher;
+    private final BookingRefundRequestedEventPublisher publisher;
     private final OutboxRelayProperties properties;
     private final Clock clock;
 
-    public PaymentRefundOutboxRelay(
+    public BookingRefundRequestedOutboxRelay(
             MyBatisOutboxRelayRepository repository,
-            OutboxEventPublisher publisher,
+            BookingRefundRequestedEventPublisher publisher,
             OutboxRelayProperties properties,
             Clock clock
     ) {
@@ -52,36 +53,13 @@ public class PaymentRefundOutboxRelay {
 
     public OutboxRelayResult relayReadyEvents() {
         Instant claimedAt = clock.instant();
-        List<ClaimedOutboxEvent> refundEvents = repository.claimReady(
+        List<ClaimedOutboxEvent> events = repository.claimReady(
+                MyBatisPaymentRefundOutbox.CONTEXT_NAME,
+                MyBatisPaymentRefundOutbox.EVENT_TYPE,
                 claimedAt,
                 properties.batchSize(),
                 properties.claimTimeout()
         );
-        List<ClaimedOutboxEvent> succeededEvents = repository.claimReady(
-                PAYMENT_CONTEXT,
-                PAYMENT_SUCCEEDED,
-                claimedAt,
-                properties.batchSize(),
-                properties.claimTimeout()
-        );
-        List<ClaimedOutboxEvent> refundedEvents = repository.claimReady(
-                PAYMENT_CONTEXT,
-                PAYMENT_REFUNDED,
-                claimedAt,
-                properties.batchSize(),
-                properties.claimTimeout()
-        );
-        List<ClaimedOutboxEvent> events = new java.util.ArrayList<>(
-                refundEvents.size()
-                        + succeededEvents.size()
-                        + refundedEvents.size()
-        );
-        events.addAll(refundEvents);
-        events.addAll(succeededEvents);
-        events.addAll(refundedEvents);
-        events.sort(java.util.Comparator.comparingLong(
-                ClaimedOutboxEvent::id
-        ));
         int published = 0;
         int failed = 0;
         for (ClaimedOutboxEvent event : events) {
@@ -112,14 +90,14 @@ public class PaymentRefundOutboxRelay {
         }
         if (retryAt == null) {
             log.error(
-                    "Outbox event {} exhausted {} publish attempts",
+                    "RefundRequested event {} exhausted {} publish attempts",
                     event.eventId(),
                     properties.maximumAttempts(),
                     publishFailure
             );
         } else {
             log.warn(
-                    "Outbox event {} publish failed; next attempt at {}",
+                    "RefundRequested event {} publish failed; next attempt at {}",
                     event.eventId(),
                     retryAt,
                     publishFailure

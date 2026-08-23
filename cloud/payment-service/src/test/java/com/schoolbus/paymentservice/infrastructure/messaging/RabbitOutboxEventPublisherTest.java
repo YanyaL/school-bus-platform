@@ -102,6 +102,40 @@ class RabbitOutboxEventPublisherTest {
     }
 
     @Test
+    void shouldRoutePaymentRefundedEventToBookingQueue() {
+        doAnswer(invocation -> {
+            CorrelationData correlation = invocation.getArgument(3);
+            correlation.getFuture().complete(
+                    new CorrelationData.Confirm(true, null)
+            );
+            return null;
+        }).when(rabbitTemplate).send(
+                eq("schoolbus.payment.events"),
+                eq("payment.refunded"),
+                any(Message.class),
+                any(CorrelationData.class)
+        );
+
+        publisher.publish(new ClaimedOutboxEvent(
+                3L,
+                "event-3",
+                "PaymentRefunded",
+                "{\"bookingNumber\":\"BOOKING-1\"}",
+                "trace-3",
+                0,
+                Instant.parse("2026-08-10T10:00:00Z"),
+                1L
+        ));
+
+        verify(rabbitTemplate).send(
+                eq("schoolbus.payment.events"),
+                eq("payment.refunded"),
+                any(Message.class),
+                any(CorrelationData.class)
+        );
+    }
+
+    @Test
     void shouldRejectNegativePublisherConfirmation() {
         doAnswer(invocation -> {
             CorrelationData correlation = invocation.getArgument(3);

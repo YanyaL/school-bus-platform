@@ -12,17 +12,21 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
-import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.util.Objects;
+import java.util.Set;
 
 @Component
 public class PaymentRefundListener {
 
     private static final Logger log = LoggerFactory.getLogger(
             PaymentRefundListener.class
+    );
+    private static final Set<String> ACCEPTED_EVENT_TYPES = Set.of(
+            "PaymentRefundRequired",
+            "RefundRequested"
     );
 
     private final PaymentRefundApplicationService applicationService;
@@ -78,10 +82,16 @@ public class PaymentRefundListener {
                     result.outcome()
             );
         } catch (MalformedRefundMessageException
-                 | RefundPaymentNotFoundException
                  | RefundMessageConflictException exception) {
             log.error("Refund event rejected as non-retryable", exception);
             channel.basicReject(deliveryTag, false);
+        } catch (RefundPaymentNotFoundException exception) {
+            scheduleRetryOrReject(
+                    message,
+                    channel,
+                    deliveryTag,
+                    exception
+            );
         } catch (RuntimeException exception) {
             scheduleRetryOrReject(
                     message,
@@ -133,6 +143,18 @@ public class PaymentRefundListener {
 
     private RefundMessageEnvelope toEnvelope(Message message) {
         String eventId = message.getMessageProperties().getMessageId();
+        Object rawType = message.getMessageProperties().getHeaders()
+                .get("eventType");
+        if (rawType == null) {
+            rawType = message.getMessageProperties().getType();
+        }
+        if (rawType != null
+                && !ACCEPTED_EVENT_TYPES.contains(rawType.toString())) {
+            throw new MalformedRefundMessageException(
+                    "unsupported refund event type: " + rawType,
+                    null
+            );
+        }
         try {
             PaymentRefundRequiredMessage payload = objectMapper.readValue(
                     message.getBody(),
