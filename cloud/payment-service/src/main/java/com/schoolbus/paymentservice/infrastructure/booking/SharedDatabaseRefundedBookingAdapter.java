@@ -2,10 +2,11 @@ package com.schoolbus.paymentservice.infrastructure.booking;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.schoolbus.paymentservice.application.refund.PaymentRefundedCommand;
 import com.schoolbus.paymentservice.application.refund.RefundedBookingPort;
-import com.schoolbus.paymentservice.domain.BookingNumber;
 import com.schoolbus.paymentservice.infrastructure.persistence.RefundBookingMapper;
 import org.slf4j.MDC;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -17,6 +18,11 @@ import java.util.Objects;
 import java.util.UUID;
 
 @Component
+@ConditionalOnProperty(
+        prefix = "school-bus.payment.migration",
+        name = "booking-write-mode",
+        havingValue = "DIRECT"
+)
 public class SharedDatabaseRefundedBookingAdapter
         implements RefundedBookingPort {
 
@@ -40,17 +46,15 @@ public class SharedDatabaseRefundedBookingAdapter
     }
 
     @Override
-    public void markRefunded(
-            BookingNumber bookingNumber,
-            Instant refundedAt
-    ) {
-        BookingNumber checked = Objects.requireNonNull(bookingNumber);
-        Instant checkedTime = Objects.requireNonNull(refundedAt);
+    public void markRefunded(PaymentRefundedCommand command) {
+        PaymentRefundedCommand checked = Objects.requireNonNull(command);
+        Instant checkedTime = checked.refundedAt();
         RefundBookingMapper.BookingRefundRow booking = mapper
-                .selectBookingForRefund(checked.value());
+                .selectBookingForRefund(checked.bookingNumber().value());
         if (booking == null) {
             throw new IllegalStateException(
-                    "booking was not found for refund " + checked
+                    "booking was not found for refund "
+                            + checked.bookingNumber()
             );
         }
         if (REFUNDED.equals(booking.status())
@@ -59,7 +63,8 @@ public class SharedDatabaseRefundedBookingAdapter
         }
         if (!REFUND_PENDING.equals(booking.status())) {
             throw new IllegalStateException(
-                    "booking is not waiting for refund: " + checked
+                    "booking is not waiting for refund: "
+                            + checked.bookingNumber()
             );
         }
         int updated = mapper.confirmBookingRefunded(
@@ -68,7 +73,8 @@ public class SharedDatabaseRefundedBookingAdapter
         );
         if (updated != 1) {
             throw new IllegalStateException(
-                    "failed to mark booking refunded: " + checked
+                    "failed to mark booking refunded: "
+                            + checked.bookingNumber()
             );
         }
         if (booking.tripId() == null) {

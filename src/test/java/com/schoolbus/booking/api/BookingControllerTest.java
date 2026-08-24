@@ -589,15 +589,16 @@ class BookingControllerTest {
     }
 
     @Test
-    void shouldRejectCancellationForPaidBooking() throws Exception {
+    void shouldCancelPaidBookingIntoRefundPending() throws Exception {
         when(cancellationApplicationService.cancelMyBooking(
                 1000001L,
                 "55555555-5555-5555-5555-555555555555"
-        )).thenThrow(new BookingNotCancellableException(
-                BookingNumber.of(
-                        "55555555-5555-5555-5555-555555555555"
-                ),
-                BookingStatus.PAID
+        )).thenReturn(new CancelBookingResult(
+                "55555555-5555-5555-5555-555555555555",
+                BookingStatus.REFUND_PENDING,
+                CancellationReason.USER_CANCELLED,
+                Instant.parse("2026-08-08T00:05:00Z"),
+                true
         ));
 
         mockMvc.perform(
@@ -607,9 +608,11 @@ class BookingControllerTest {
                                 .with(jwt().jwt(builder -> builder
                                         .subject("1000001")))
                 )
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.code")
-                        .value("BOOKING_NOT_CANCELLABLE"));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status")
+                        .value("REFUND_PENDING"))
+                .andExpect(jsonPath("$.data.cancelReason")
+                        .value("USER_CANCELLED"));
     }
 
     private BookingDetailView bookingDetail() {

@@ -1,12 +1,15 @@
-package com.schoolbus.paymentservice.infrastructure.messaging;
+package com.schoolbus.bookingservice.infrastructure.messaging;
 
-import com.schoolbus.paymentservice.infrastructure.outbox.ClaimedOutboxEvent;
+import com.schoolbus.bookingservice.support.payment.infrastructure.messaging.OutboxRelayProperties;
+import com.schoolbus.bookingservice.support.payment.infrastructure.outbox.ClaimedOutboxEvent;
+import com.schoolbus.bookingservice.support.payment.infrastructure.outbox.MyBatisPaymentRefundOutbox;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageDeliveryMode;
 import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.core.ReturnedMessage;
 import org.springframework.amqp.rabbit.connection.CorrelationData;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
@@ -17,18 +20,15 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 @Component
-public class RabbitOutboxEventPublisher implements OutboxEventPublisher {
-
-    private static final String PAYMENT_REFUND_REQUIRED =
-            "PaymentRefundRequired";
-    private static final String PAYMENT_SUCCEEDED = "PaymentSucceeded";
-    private static final String PAYMENT_REFUNDED = "PaymentRefunded";
+@Profile("!test")
+public class RabbitBookingRefundRequestedEventPublisher
+        implements BookingRefundRequestedEventPublisher {
 
     private final RabbitTemplate rabbitTemplate;
     private final PaymentMessagingProperties messagingProperties;
     private final OutboxRelayProperties relayProperties;
 
-    public RabbitOutboxEventPublisher(
+    public RabbitBookingRefundRequestedEventPublisher(
             RabbitTemplate rabbitTemplate,
             PaymentMessagingProperties messagingProperties,
             OutboxRelayProperties relayProperties
@@ -53,12 +53,18 @@ public class RabbitOutboxEventPublisher implements OutboxEventPublisher {
                 event,
                 "event must not be null"
         );
-        CorrelationData correlation = new CorrelationData(
-                checked.eventId()
-        );
+        if (!MyBatisPaymentRefundOutbox.EVENT_TYPE.equals(
+                checked.eventType()
+        )) {
+            throw new IllegalArgumentException(
+                    "unsupported booking refund event type: "
+                            + checked.eventType()
+            );
+        }
+        CorrelationData correlation = new CorrelationData(checked.eventId());
         rabbitTemplate.send(
                 messagingProperties.exchange(),
-                routingKey(checked),
+                messagingProperties.refundRoutingKey(),
                 toMessage(checked),
                 correlation
         );
@@ -68,31 +74,40 @@ public class RabbitOutboxEventPublisher implements OutboxEventPublisher {
         );
         ReturnedMessage returned = correlation.getReturned();
         if (returned != null) {
-            throw new OutboxPublishException(
-                    "payment event was returned by RabbitMQ: "
+            throw new BookingRefundRequestedPublishException(
+                    "RefundRequested event was returned by RabbitMQ: "
                             + returned.getReplyText()
             );
         }
         if (!confirm.isAck()) {
-            throw new OutboxPublishException(
-                    "RabbitMQ rejected payment event: "
+            throw new BookingRefundRequestedPublishException(
+                    "RabbitMQ rejected RefundRequested event: "
                             + confirm.getReason()
             );
         }
     }
 
-    private String routingKey(ClaimedOutboxEvent event) {
-        return switch (event.eventType()) {
-            case PAYMENT_REFUND_REQUIRED ->
-                    messagingProperties.refundRoutingKey();
-            case PAYMENT_SUCCEEDED ->
-                    messagingProperties.succeededRoutingKey();
-            case PAYMENT_REFUNDED ->
-                    messagingProperties.refundedRoutingKey();
-            default -> throw new OutboxPublishException(
-                    "unsupported payment event type: " + event.eventType()
-            );
-        };
+    private Message toMessage(ClaimedOutboxEvent event) {
+        MessageProperties properties = new MessageProperties();
+        properties.setMessageId(event.eventId());
+        properties.setType(MyBatisPaymentRefundOutbox.EVENT_TYPE);
+        properties.setContentType(MessageProperties.CONTENT_TYPE_JSON);
+        properties.setContentEncoding(StandardCharsets.UTF_8.name());
+        properties.setDeliveryMode(MessageDeliveryMode.PERSISTENT);
+        properties.setTimestamp(Date.from(event.occurredAt()));
+        properties.setHeader("eventId", event.eventId());
+        properties.setHeader(
+                "eventType",
+                MyBatisPaymentRefundOutbox.EVENT_TYPE
+        );
+        properties.setHeader("occurredAt", event.occurredAt().toString());
+        if (event.traceId() != null) {
+            properties.setHeader("traceId", event.traceId());
+        }
+        return new Message(
+                event.payload().getBytes(StandardCharsets.UTF_8),
+                properties
+        );
     }
 
     private CorrelationData.Confirm waitForConfirm(
@@ -106,35 +121,15 @@ public class RabbitOutboxEventPublisher implements OutboxEventPublisher {
             );
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
-            throw new OutboxPublishException(
+            throw new BookingRefundRequestedPublishException(
                     "interrupted while confirming event " + event.eventId(),
                     exception
             );
         } catch (ExecutionException | TimeoutException exception) {
-            throw new OutboxPublishException(
+            throw new BookingRefundRequestedPublishException(
                     "failed to confirm event " + event.eventId(),
                     exception
             );
         }
-    }
-
-    private Message toMessage(ClaimedOutboxEvent event) {
-        MessageProperties properties = new MessageProperties();
-        properties.setMessageId(event.eventId());
-        properties.setType(event.eventType());
-        properties.setContentType(MessageProperties.CONTENT_TYPE_JSON);
-        properties.setContentEncoding(StandardCharsets.UTF_8.name());
-        properties.setDeliveryMode(MessageDeliveryMode.PERSISTENT);
-        properties.setTimestamp(Date.from(event.occurredAt()));
-        properties.setHeader("eventId", event.eventId());
-        properties.setHeader("eventType", event.eventType());
-        properties.setHeader("occurredAt", event.occurredAt().toString());
-        if (event.traceId() != null) {
-            properties.setHeader("traceId", event.traceId());
-        }
-        return new Message(
-                event.payload().getBytes(StandardCharsets.UTF_8),
-                properties
-        );
     }
 }

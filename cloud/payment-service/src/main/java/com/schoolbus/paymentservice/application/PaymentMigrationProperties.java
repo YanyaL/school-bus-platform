@@ -9,7 +9,7 @@ public record PaymentMigrationProperties(
 
     public PaymentMigrationProperties {
         bookingWriteMode = bookingWriteMode == null
-                ? PaymentBookingWriteMode.DIRECT
+                ? PaymentBookingWriteMode.EVENT
                 : bookingWriteMode;
     }
 

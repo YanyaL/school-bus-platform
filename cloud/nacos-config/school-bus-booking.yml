@@ -38,10 +38,18 @@ school-bus:
       dead-letter-exchange: ${PAYMENT_DLX:schoolbus.payment.dlx}
       succeeded-dead-letter-routing-key: ${PAYMENT_SUCCEEDED_DEAD_ROUTING_KEY:payment.succeeded.dead}
       succeeded-dead-letter-queue: ${PAYMENT_SUCCEEDED_DLQ:schoolbus.booking.payment-succeeded.dlq}
+      refunded-routing-key: ${PAYMENT_REFUNDED_ROUTING_KEY:payment.refunded}
+      refunded-queue: ${PAYMENT_REFUNDED_QUEUE:schoolbus.booking.payment-refunded}
+      refunded-dead-letter-routing-key: ${PAYMENT_REFUNDED_DEAD_ROUTING_KEY:payment.refunded.dead}
+      refunded-dead-letter-queue: ${PAYMENT_REFUNDED_DLQ:schoolbus.booking.payment-refunded.dlq}
     payment-succeeded-retry:
       exchange: ${PAYMENT_SUCCEEDED_RETRY_EXCHANGE:schoolbus.booking.retry}
       routing-key: ${PAYMENT_SUCCEEDED_RETRY_ROUTING_KEY:payment.succeeded.retry}
       queue: ${PAYMENT_SUCCEEDED_RETRY_QUEUE:schoolbus.booking.payment-succeeded.retry}
+    payment-refunded-retry:
+      exchange: ${PAYMENT_REFUNDED_RETRY_EXCHANGE:schoolbus.booking.retry}
+      routing-key: ${PAYMENT_REFUNDED_RETRY_ROUTING_KEY:payment.refunded.retry}
+      queue: ${PAYMENT_REFUNDED_RETRY_QUEUE:schoolbus.booking.payment-refunded.retry}
     booking-expiration:
       delay-exchange: ${BOOKING_EXPIRATION_DELAY_EXCHANGE:schoolbus.booking.expiration.delay}
       processing-exchange: ${BOOKING_EXPIRATION_PROCESSING_EXCHANGE:schoolbus.booking.events}

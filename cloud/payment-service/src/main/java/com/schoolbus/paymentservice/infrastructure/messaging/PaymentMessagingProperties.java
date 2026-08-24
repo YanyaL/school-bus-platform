@@ -13,7 +13,8 @@ public record PaymentMessagingProperties(
         String succeededRoutingKey,
         String succeededQueue,
         String succeededDeadLetterRoutingKey,
-        String succeededDeadLetterQueue
+        String succeededDeadLetterQueue,
+        String refundedRoutingKey
 ) {
 
     public PaymentMessagingProperties(
@@ -34,7 +35,8 @@ public record PaymentMessagingProperties(
                 "payment.succeeded",
                 "schoolbus.booking.payment-succeeded",
                 "payment.succeeded.dead",
-                "schoolbus.booking.payment-succeeded.dlq"
+                "schoolbus.booking.payment-succeeded.dlq",
+                "payment.refunded"
         );
     }
 
@@ -73,6 +75,10 @@ public record PaymentMessagingProperties(
         succeededDeadLetterQueue = requireText(
                 succeededDeadLetterQueue,
                 "succeededDeadLetterQueue"
+        );
+        refundedRoutingKey = requireText(
+                refundedRoutingKey == null ? "payment.refunded" : refundedRoutingKey,
+                "refundedRoutingKey"
         );
     }
 

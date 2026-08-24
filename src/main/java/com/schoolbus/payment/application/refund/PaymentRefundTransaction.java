@@ -21,6 +21,9 @@ public class PaymentRefundTransaction {
 
     public static final String CONSUMER_NAME = "payment-refund-consumer";
     static final String TRIP_CANCELLED = "TRIP_CANCELLED";
+    static final String USER_CANCELLED = "USER_CANCELLED";
+    private static final java.util.Set<String> BOOKING_REFUND_REASONS =
+            java.util.Set.of(TRIP_CANCELLED, USER_CANCELLED);
 
     private final PaymentRecordRepository paymentRecordRepository;
     private final ConsumedEventRepository consumedEventRepository;
@@ -126,7 +129,7 @@ public class PaymentRefundTransaction {
                 checkedReceipt.refundReference(),
                 checkedReceipt.refundedAt()
         );
-        if (TRIP_CANCELLED.equals(message.reason())) {
+        if (BOOKING_REFUND_REASONS.contains(message.reason())) {
             refundedBookingPort.markRefunded(
                     payment.bookingNumber(),
                     checkedReceipt.refundedAt()

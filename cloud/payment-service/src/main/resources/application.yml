@@ -83,7 +83,7 @@ school-bus:
   payment:
     callback-secret: ${PAYMENT_CALLBACK_SECRET:local-payment-secret-change-me-1234}
     migration:
-      booking-write-mode: ${PAYMENT_BOOKING_WRITE_MODE:DIRECT}
+      booking-write-mode: ${PAYMENT_BOOKING_WRITE_MODE:EVENT}
   messaging:
     consumed-event-cache:
       key-prefix: ${CONSUMED_EVENT_CACHE_PREFIX:school-bus:mq:consumed}
@@ -108,6 +108,7 @@ school-bus:
       succeeded-queue: ${PAYMENT_SUCCEEDED_QUEUE:schoolbus.booking.payment-succeeded}
       succeeded-dead-letter-routing-key: ${PAYMENT_SUCCEEDED_DEAD_ROUTING_KEY:payment.succeeded.dead}
       succeeded-dead-letter-queue: ${PAYMENT_SUCCEEDED_DLQ:schoolbus.booking.payment-succeeded.dlq}
+      refunded-routing-key: ${PAYMENT_REFUNDED_ROUTING_KEY:payment.refunded}
     payment-refund-retry:
       exchange: ${PAYMENT_REFUND_RETRY_EXCHANGE:schoolbus.payment.retry}
       routing-key: ${PAYMENT_REFUND_RETRY_ROUTING_KEY:payment.refund.retry}
