@@ -6,6 +6,16 @@ import {
   type LoginResponse,
 } from '@/types/auth';
 import { useAuthStore } from '@/stores/auth';
+import type { SsoCallbackResult, SsoSession } from '@/security/oidc';
+
+const ssoMocks = vi.hoisted(() => ({
+  beginSsoLogin: vi.fn<(returnTo: string) => Promise<void>>(async () => undefined),
+  completeSsoLogin: vi.fn<() => Promise<SsoCallbackResult>>(),
+  restoreSsoSession: vi.fn<() => Promise<SsoSession | null>>(async () => null),
+  removeSsoSession: vi.fn<() => Promise<void>>(async () => undefined),
+}));
+
+vi.mock('@/security/oidc', () => ssoMocks);
 
 const loginResponse: LoginResponse = {
   userId: '1001',
@@ -45,6 +55,61 @@ describe('auth store', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     localStorage.clear();
+    sessionStorage.clear();
+    ssoMocks.completeSsoLogin.mockReset();
+    ssoMocks.restoreSsoSession.mockResolvedValue(null);
+    ssoMocks.removeSsoSession.mockClear();
+  });
+
+  it('applies an OIDC callback without persisting a refresh token', async () => {
+    ssoMocks.completeSsoLogin.mockResolvedValue({
+      returnTo: '/bookings',
+      session: {
+        accessToken: 'sso-access-token',
+        accessTokenExpiresAt: '2100-01-01T00:00:00.000Z',
+        userId: '1000001',
+        studentNumber: 'S4789503',
+        roles: ['STUDENT'],
+      },
+    });
+    const store = useAuthStore();
+
+    const returnTo = await store.completeSsoLogin();
+
+    expect(returnTo).toBe('/bookings');
+    expect(store.authMode).toBe('sso');
+    expect(store.accessToken).toBe('sso-access-token');
+    expect(localStorage.getItem(REFRESH_TOKEN_STORAGE_KEY)).toBeNull();
+  });
+
+  it('restores an unexpired OIDC session before legacy refresh', async () => {
+    ssoMocks.restoreSsoSession.mockResolvedValue({
+      accessToken: 'restored-sso-token',
+      accessTokenExpiresAt: '2100-01-01T00:00:00.000Z',
+      userId: '1000001',
+      studentNumber: 'S4789503',
+      roles: ['STUDENT'],
+    });
+    const store = useAuthStore();
+
+    await store.initializeSession();
+
+    expect(store.authMode).toBe('sso');
+    expect(store.accessToken).toBe('restored-sso-token');
+  });
+
+  it('removes a partial OIDC user when callback processing fails', async () => {
+    ssoMocks.completeSsoLogin.mockRejectedValue(
+      new Error('invalid callback state'),
+    );
+    const store = useAuthStore();
+
+    await expect(store.completeSsoLogin()).rejects.toThrow(
+      'invalid callback state',
+    );
+
+    expect(ssoMocks.removeSsoSession).toHaveBeenCalledOnce();
+    expect(store.isAuthenticated).toBe(false);
   });
 
   it('stores login session in memory and refresh token in localStorage', async () => {

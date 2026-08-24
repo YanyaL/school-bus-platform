@@ -73,6 +73,8 @@ school-bus:
     refresh-token:
       ttl: ${REFRESH_TOKEN_TTL:PT168H}
     sso:
+      allowed-origins:
+        - ${SSO_STUDENT_ORIGIN:http://127.0.0.1:5173}
       student:
         client-id: ${SSO_STUDENT_CLIENT_ID:school-bus-student-web}
         redirect-uri: ${SSO_STUDENT_REDIRECT_URI:http://127.0.0.1:5173/auth/callback}

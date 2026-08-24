@@ -3,7 +3,9 @@ package com.schoolbus.iamservice.infrastructure.security.sso;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.schoolbus.iamservice.infrastructure.security.jwt.JwtProperties;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -25,6 +27,10 @@ import org.springframework.security.oauth2.server.authorization.token.OAuth2Toke
 import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.CorsUtils;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.time.Duration;
 import java.util.List;
@@ -36,13 +42,22 @@ public class SsoAuthorizationServerConfiguration {
     @Bean
     @Order(1)
     SecurityFilterChain authorizationServerSecurityFilterChain(
-            HttpSecurity http
+            HttpSecurity http,
+            @Qualifier("ssoCorsConfigurationSource")
+            CorsConfigurationSource corsConfigurationSource
     ) throws Exception {
         OAuth2AuthorizationServerConfigurer authorizationServer =
                 OAuth2AuthorizationServerConfigurer.authorizationServer();
 
         http
-                .securityMatcher(authorizationServer.getEndpointsMatcher())
+                .securityMatcher(request ->
+                        authorizationServer.getEndpointsMatcher()
+                                .matches(request)
+                                || isSsoPreflightRequest(request)
+                )
+                .cors(cors -> cors.configurationSource(
+                        corsConfigurationSource
+                ))
                 .with(authorizationServer, server -> server
                         .oidc(Customizer.withDefaults())
                 )
@@ -56,6 +71,40 @@ public class SsoAuthorizationServerConfiguration {
                 );
 
         return http.build();
+    }
+
+    private static boolean isSsoPreflightRequest(
+            HttpServletRequest request
+    ) {
+        if (!CorsUtils.isPreFlightRequest(request)) {
+            return false;
+        }
+        String path = request.getRequestURI()
+                .substring(request.getContextPath().length());
+        return path.startsWith("/oauth2/")
+                || path.startsWith("/.well-known/");
+    }
+
+    @Bean
+    CorsConfigurationSource ssoCorsConfigurationSource(
+            SsoProperties properties
+    ) {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(properties.allowedOrigins());
+        configuration.setAllowedMethods(List.of("GET", "POST", "OPTIONS"));
+        configuration.setAllowedHeaders(List.of(
+                "Accept",
+                "Content-Type",
+                "Origin"
+        ));
+        configuration.setAllowCredentials(false);
+        configuration.setMaxAge(3600L);
+
+        UrlBasedCorsConfigurationSource source =
+                new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/oauth2/**", configuration);
+        source.registerCorsConfiguration("/.well-known/**", configuration);
+        return source;
     }
 
     @Bean

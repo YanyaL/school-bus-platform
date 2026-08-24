@@ -7,6 +7,7 @@
 - Vue 3 + TypeScript + Vite
 - Vue Router + Pinia
 - Axios
+- oidc-client-ts（OpenID Connect / Authorization Code + PKCE）
 - Element Plus
 - Vitest + Vue Test Utils
 - ESLint + Prettier
@@ -38,7 +39,11 @@ npm install
 npm run dev
 ```
 
-浏览器访问：`http://localhost:5173`
+浏览器访问：`http://127.0.0.1:5173`
+
+> SSO 回调地址注册为 `http://127.0.0.1:5173/auth/callback`。不要从
+> `http://localhost:5173` 发起登录，否则浏览器会把两者视为不同来源，
+> 回调页无法读取发起登录时保存在 `sessionStorage` 的 state 和 PKCE 数据。
 
 开发环境通过 Vite 代理转发：
 
@@ -81,12 +86,47 @@ cd E:\HS1\projects\school-bus-platform
 mvn spring-boot:run
 ```
 
+## SSO 登录（推荐路径）
+
+登录页的“使用校园统一身份认证”按钮通过 `oidc-client-ts` 发起
+Authorization Code + PKCE 流程：
+
+```text
+学生端 → IAM /oauth2/authorize → 登录 → 携带 code 回调
+      → 校验 state/nonce → code + verifier 换取 Token → 访问 Gateway
+```
+
+`oidc-client-ts` 负责生成和校验 state、nonce、PKCE verifier/challenge，
+并读取 Discovery 与 JWK 元数据。回调路由为 `/auth/callback`，回调成功后
+恢复原始业务页面；外部 return URL 会被拒绝，避免开放重定向。
+
+本地联调时 IAM 的 Issuer 必须与前端 Authority 完全一致。默认前端
+Authority 是 `http://localhost:8084`，因此应使用同一值启动 IAM 及资源服务：
+
+```powershell
+$env:JWT_ISSUER='http://localhost:8084'
+$env:SSO_STUDENT_ORIGIN='http://127.0.0.1:5173'
+```
+
+也可以通过以下 Vite 环境变量覆盖：
+
+```text
+VITE_OIDC_AUTHORITY
+VITE_OIDC_CLIENT_ID
+VITE_OIDC_REDIRECT_URI
+VITE_OIDC_POST_LOGOUT_REDIRECT_URI
+```
+
 ## Token 策略与安全权衡
 
-| Token | 存储位置 |
-|-------|----------|
-| accessToken | Pinia 内存 |
-| refreshToken | `localStorage`（键：`school-bus.refreshToken`） |
+| 登录模式 | Access Token | Refresh Token |
+|----------|--------------|---------------|
+| SSO / PKCE | Pinia + OIDC `sessionStorage` | 公共 SPA 不签发 |
+| 旧 JSON 登录 | Pinia 内存 | `localStorage`（`school-bus.refreshToken`） |
+
+SSO 页面刷新时从 OIDC `sessionStorage` 恢复仍有效的会话。Access Token
+到期后清理当前应用会话并重新进入授权流程；由于 IAM 浏览器会话仍存在，
+通常可以无感重新认证，但这不是 Refresh Token 轮换。
 
 为保证刷新页面后仍能展示当前账号，非敏感的学号另存为
 `localStorage` 的 `school-bus.studentNumber`；登出时与 refreshToken 一并清除。
@@ -95,22 +135,31 @@ mvn spring-boot:run
 
 Axios 拦截器在 **401** 时只允许自动刷新 **一次**；并发 401 共享同一个 refresh Promise。刷新失败会清理本地状态并跳转 `/login`。刷新请求使用**独立 Axios 实例**，避免无限重试循环。
 
-> **安全说明：** 将 refreshToken 放在 localStorage 是当前后端在 JSON 响应体返回 refresh token 条件下的工程折中，存在 XSS 风险。正式生产环境更推荐使用 Secure、HttpOnly、SameSite Cookie 承载 refresh token。
+> **安全说明：** sessionStorage 与 localStorage 中的 Token 都无法抵御成功的
+> XSS。旧登录将 refreshToken 放在 localStorage 是迁移期折中；正式生产环境
+> 更推荐使用可信 BFF，并由 Secure、HttpOnly、SameSite Cookie 承载服务端会话。
+
+SSO 当前“退出”只清理学生端本地会话，不会结束 IAM 浏览器会话，也不代表
+跨系统统一登出。RP-Initiated Logout、Token 撤销和管理端联调属于后续阶段。
 
 ## 当前支持的业务流程
 
-1. 注册 / 登录 / 登出
-2. 登录态恢复与 Token 刷新
-3. 可预约班次列表
-4. 班次座位图（AVAILABLE / LOCKED / SOLD）
-5. 选座创建订单（带 Idempotency-Key）
-6. 我的订单列表（状态筛选 + 分页）
-7. 订单详情、待支付剩余时间展示
-8. 待支付订单主动取消
+1. 校园统一身份认证登录与旧版账号登录回退
+2. OIDC 回调、state/nonce/PKCE 校验与本地退出
+3. 登录态恢复；旧登录支持 Token 刷新
+4. 可预约班次列表
+5. 班次座位图（AVAILABLE / LOCKED / SOLD）
+6. 选座创建订单（带 Idempotency-Key）
+7. 我的订单列表（状态筛选 + 分页）
+8. 订单详情、待支付剩余时间展示
+9. 待支付订单主动取消
 
 ## 当前不支持
 
 - 管理员后台
+- 管理端 SSO 前端闭环
+- RP-Initiated Logout / 跨系统统一登出
+- SSO 公共客户端 Refresh Token（当前明确不签发）
 - 车辆 / 路线 / 班次管理
 - 浏览器端模拟支付回调
 - WebSocket 实时推送
