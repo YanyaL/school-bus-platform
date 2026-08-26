@@ -29,6 +29,11 @@ const router = createRouter({
       component: () => import('@/views/AuthCallbackView.vue'),
     },
     {
+      path: '/auth/logout/callback',
+      name: 'auth-logout-callback',
+      component: () => import('@/views/AuthLogoutCallbackView.vue'),
+    },
+    {
       path: '/trips',
       name: 'trips',
       component: () => import('@/views/TripListView.vue'),

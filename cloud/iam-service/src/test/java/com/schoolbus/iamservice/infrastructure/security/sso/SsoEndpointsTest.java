@@ -116,6 +116,8 @@ class SsoEndpointsTest {
                         .value("https://school-bus.local"))
                 .andExpect(jsonPath("$.authorization_endpoint")
                         .value("https://school-bus.local/oauth2/authorize"))
+                .andExpect(jsonPath("$.end_session_endpoint")
+                        .value("https://school-bus.local/connect/logout"))
                 .andExpect(jsonPath("$.code_challenge_methods_supported[0]")
                         .value("S256"));
 
@@ -263,6 +265,74 @@ class SsoEndpointsTest {
                 .isEqualTo("S4789503");
         assertThat(accessToken.getClaimAsStringList("roles"))
                 .containsExactly("STUDENT");
+    }
+
+    @Test
+    void shouldRedirectToRegisteredClientAfterOidcLogout() throws Exception {
+        String verifier =
+                "logoutabcdefghijklmnopqrstuvwxyz0123456789ABCDE";
+        String challenge = Base64.getUrlEncoder()
+                .withoutPadding()
+                .encodeToString(
+                        MessageDigest.getInstance("SHA-256").digest(
+                                verifier.getBytes(StandardCharsets.US_ASCII)
+                        )
+                );
+
+        MvcResult authorization = mockMvc.perform(get("/oauth2/authorize")
+                        .with(user(studentPrincipal()))
+                        .queryParam("response_type", "code")
+                        .queryParam("client_id", "school-bus-student-web")
+                        .queryParam("scope", "openid profile")
+                        .queryParam("state", "logout-login-state")
+                        .queryParam("nonce", "logout-nonce")
+                        .queryParam(
+                                "redirect_uri",
+                                "http://127.0.0.1:5173/auth/callback"
+                        )
+                        .queryParam("code_challenge", challenge)
+                        .queryParam("code_challenge_method", "S256"))
+                .andExpect(status().is3xxRedirection())
+                .andReturn();
+
+        MvcResult tokenResponse = mockMvc.perform(post("/oauth2/token")
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                        .param("grant_type", "authorization_code")
+                        .param("client_id", "school-bus-student-web")
+                        .param(
+                                "code",
+                                queryParameter(
+                                        authorization.getResponse()
+                                                .getRedirectedUrl(),
+                                        "code"
+                                )
+                        )
+                        .param("code_verifier", verifier)
+                        .param(
+                                "redirect_uri",
+                                "http://127.0.0.1:5173/auth/callback"
+                        ))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id_token").isString())
+                .andReturn();
+
+        String idToken = objectMapper.readTree(
+                tokenResponse.getResponse().getContentAsString()
+        ).get("id_token").asText();
+
+        mockMvc.perform(get("/connect/logout")
+                        .queryParam("id_token_hint", idToken)
+                        .queryParam(
+                                "post_logout_redirect_uri",
+                                "http://127.0.0.1:5173/auth/logout/callback"
+                        )
+                        .queryParam("state", "logout-state-001"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(header().string(
+                        "Location",
+                        "http://127.0.0.1:5173/auth/logout/callback"
+                                + "?state=logout-state-001"
+                ));
     }
 
     private static SchoolBusUserPrincipal studentPrincipal() {

@@ -21,6 +21,15 @@ describe('router auth guard', () => {
     expect(router.currentRoute.value.name).toBe('auth-callback');
   });
 
+  it('allows the public OIDC logout callback route', async () => {
+    const store = useAuthStore();
+    store.$patch({ initialized: true, accessToken: null });
+
+    await router.push('/auth/logout/callback?state=test');
+
+    expect(router.currentRoute.value.name).toBe('auth-logout-callback');
+  });
+
   it('redirects unauthenticated users to login for protected routes', async () => {
     const store = useAuthStore();
     store.$patch({ initialized: true, accessToken: null });
