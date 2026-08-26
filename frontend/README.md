@@ -41,7 +41,8 @@ npm run dev
 
 浏览器访问：`http://127.0.0.1:5173`
 
-> SSO 回调地址注册为 `http://127.0.0.1:5173/auth/callback`。不要从
+> SSO 登录回调地址注册为 `http://127.0.0.1:5173/auth/callback`，退出回调
+> 地址注册为 `http://127.0.0.1:5173/auth/logout/callback`。不要从
 > `http://localhost:5173` 发起登录，否则浏览器会把两者视为不同来源，
 > 回调页无法读取发起登录时保存在 `sessionStorage` 的 state 和 PKCE 数据。
 
@@ -139,8 +140,11 @@ Axios 拦截器在 **401** 时只允许自动刷新 **一次**；并发 401 共�
 > XSS。旧登录将 refreshToken 放在 localStorage 是迁移期折中；正式生产环境
 > 更推荐使用可信 BFF，并由 Secure、HttpOnly、SameSite Cookie 承载服务端会话。
 
-SSO 当前“退出”只清理学生端本地会话，不会结束 IAM 浏览器会话，也不代表
-跨系统统一登出。RP-Initiated Logout、Token 撤销和管理端联调属于后续阶段。
+SSO “退出统一认证”通过 Discovery 中的 `end_session_endpoint` 发起
+RP-Initiated Logout。`oidc-client-ts` 携带 `id_token_hint`、已登记的
+`post_logout_redirect_uri` 与随机 `state`，IAM 结束浏览器认证会话后回调前端，
+前端校验退出状态并清除本地会话。该流程不会主动撤销已经签发给其他应用的
+Access Token；跨应用 Token 撤销、Back-Channel Logout 和管理端联调仍属于后续阶段。
 
 ## 当前支持的业务流程
 

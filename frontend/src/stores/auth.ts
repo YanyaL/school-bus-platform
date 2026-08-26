@@ -7,13 +7,16 @@ import type { AuthSession, LoginRequest } from '@/types/auth';
 import { REFRESH_TOKEN_STORAGE_KEY, STUDENT_NUMBER_STORAGE_KEY } from '@/types/auth';
 import {
   beginSsoLogin as redirectToSso,
+  beginSsoLogout as redirectToSsoLogout,
   completeSsoLogin as processSsoCallback,
+  completeSsoLogout as processSsoLogoutCallback,
   removeSsoSession,
   restoreSsoSession,
   type SsoSession,
 } from '@/security/oidc';
 
 type AuthMode = 'legacy' | 'sso';
+export type LogoutResult = 'completed' | 'local-fallback' | 'redirected';
 
 interface AuthState {
   accessToken: string | null;
@@ -168,6 +171,15 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
+    async completeSsoLogout(): Promise<void> {
+      try {
+        await processSsoLogoutCallback();
+      } finally {
+        this.clearSession();
+        this.initialized = true;
+      }
+    },
+
     async refreshSession(): Promise<string> {
       if (this.authMode === 'sso') {
         await removeSsoSession();
@@ -240,15 +252,19 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
-    async logout(): Promise<void> {
+    async logout(): Promise<LogoutResult> {
       if (this.authMode === 'sso') {
         try {
-          await removeSsoSession();
-        } finally {
-          this.clearSession();
-          this.initialized = true;
+          if (await redirectToSsoLogout()) {
+            return 'redirected';
+          }
+        } catch {
+          // IAM 不可达时仍允许清理本地会话，避免用户被困在页面中
+          await removeSsoSession().catch(() => undefined);
         }
-        return;
+        this.clearSession();
+        this.initialized = true;
+        return 'local-fallback';
       }
       if (this.accessToken) {
         try {
@@ -260,6 +276,7 @@ export const useAuthStore = defineStore('auth', {
       }
       this.clearSession();
       this.initialized = true;
+      return 'completed';
     },
   },
 });

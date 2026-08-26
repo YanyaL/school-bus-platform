@@ -9,6 +9,9 @@ describe('OIDC client configuration', () => {
     expect(settings.response_type).toBe('code');
     expect(settings.client_id).toBe('school-bus-student-web');
     expect(settings.scope).toContain('openid');
+    expect(settings.post_logout_redirect_uri).toBe(
+      'http://127.0.0.1:5173/auth/logout/callback',
+    );
     expect(settings.automaticSilentRenew).toBe(false);
     expect(settings.userStore).toBeDefined();
     expect(settings.stateStore).toBeDefined();

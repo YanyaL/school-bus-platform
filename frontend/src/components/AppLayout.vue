@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ElMessageBox } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import { useAuthStore } from '@/stores/auth';
 
 const authStore = useAuthStore();
@@ -17,10 +17,21 @@ async function handleLogout() {
       confirmButtonText: '退出',
       cancelButtonText: '取消',
     });
-    await authStore.logout();
+  } catch {
+    return;
+  }
+
+  try {
+    const result = await authStore.logout();
+    if (result === 'redirected') {
+      return;
+    }
+    if (result === 'local-fallback') {
+      ElMessage.warning('本地会话已清理，但未能确认统一认证中心会话已退出');
+    }
     await router.push('/login');
   } catch {
-    // 用户取消
+    ElMessage.error('退出登录失败，请稍后重试');
   }
 }
 </script>
@@ -42,7 +53,7 @@ async function handleLogout() {
       <div class="user-area">
         <span class="user-name">{{ authStore.displayName }}</span>
         <el-button link type="primary" @click="handleLogout">
-          {{ authStore.authMode === 'sso' ? '退出当前应用' : '退出登录' }}
+          {{ authStore.authMode === 'sso' ? '退出统一认证' : '退出登录' }}
         </el-button>
       </div>
     </el-header>

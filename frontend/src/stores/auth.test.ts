@@ -10,7 +10,9 @@ import type { SsoCallbackResult, SsoSession } from '@/security/oidc';
 
 const ssoMocks = vi.hoisted(() => ({
   beginSsoLogin: vi.fn<(returnTo: string) => Promise<void>>(async () => undefined),
+  beginSsoLogout: vi.fn<() => Promise<boolean>>(async () => true),
   completeSsoLogin: vi.fn<() => Promise<SsoCallbackResult>>(),
+  completeSsoLogout: vi.fn<() => Promise<void>>(async () => undefined),
   restoreSsoSession: vi.fn<() => Promise<SsoSession | null>>(async () => null),
   removeSsoSession: vi.fn<() => Promise<void>>(async () => undefined),
 }));
@@ -57,6 +59,10 @@ describe('auth store', () => {
     localStorage.clear();
     sessionStorage.clear();
     ssoMocks.completeSsoLogin.mockReset();
+    ssoMocks.beginSsoLogout.mockReset();
+    ssoMocks.beginSsoLogout.mockResolvedValue(true);
+    ssoMocks.completeSsoLogout.mockReset();
+    ssoMocks.completeSsoLogout.mockResolvedValue(undefined);
     ssoMocks.restoreSsoSession.mockResolvedValue(null);
     ssoMocks.removeSsoSession.mockClear();
   });
@@ -99,14 +105,10 @@ describe('auth store', () => {
   });
 
   it('removes a partial OIDC user when callback processing fails', async () => {
-    ssoMocks.completeSsoLogin.mockRejectedValue(
-      new Error('invalid callback state'),
-    );
+    ssoMocks.completeSsoLogin.mockRejectedValue(new Error('invalid callback state'));
     const store = useAuthStore();
 
-    await expect(store.completeSsoLogin()).rejects.toThrow(
-      'invalid callback state',
-    );
+    await expect(store.completeSsoLogin()).rejects.toThrow('invalid callback state');
 
     expect(ssoMocks.removeSsoSession).toHaveBeenCalledOnce();
     expect(store.isAuthenticated).toBe(false);
@@ -140,6 +142,55 @@ describe('auth store', () => {
     expect(store.accessToken).toBeNull();
     expect(localStorage.getItem(REFRESH_TOKEN_STORAGE_KEY)).toBeNull();
     expect(localStorage.getItem(STUDENT_NUMBER_STORAGE_KEY)).toBeNull();
+  });
+
+  it('redirects an SSO session through the provider logout endpoint', async () => {
+    const store = useAuthStore();
+    store.applySsoSession({
+      accessToken: 'sso-access-token',
+      accessTokenExpiresAt: '2100-01-01T00:00:00.000Z',
+      userId: '1000001',
+      studentNumber: 'S4789503',
+      roles: ['STUDENT'],
+    });
+
+    const result = await store.logout();
+
+    expect(result).toBe('redirected');
+    expect(ssoMocks.beginSsoLogout).toHaveBeenCalledOnce();
+  });
+
+  it('falls back to local logout when no OIDC ID Token is available', async () => {
+    ssoMocks.beginSsoLogout.mockResolvedValue(false);
+    const store = useAuthStore();
+    store.applySsoSession({
+      accessToken: 'sso-access-token',
+      accessTokenExpiresAt: '2100-01-01T00:00:00.000Z',
+      userId: '1000001',
+      studentNumber: 'S4789503',
+      roles: ['STUDENT'],
+    });
+
+    const result = await store.logout();
+
+    expect(result).toBe('local-fallback');
+    expect(store.isAuthenticated).toBe(false);
+  });
+
+  it('clears local state even when logout callback validation fails', async () => {
+    ssoMocks.completeSsoLogout.mockRejectedValue(new Error('invalid logout state'));
+    const store = useAuthStore();
+    store.applySsoSession({
+      accessToken: 'sso-access-token',
+      accessTokenExpiresAt: '2100-01-01T00:00:00.000Z',
+      userId: '1000001',
+      studentNumber: 'S4789503',
+      roles: ['STUDENT'],
+    });
+
+    await expect(store.completeSsoLogout()).rejects.toThrow('invalid logout state');
+
+    expect(store.isAuthenticated).toBe(false);
   });
 
   it('restores the non-sensitive student number for display after reload', async () => {

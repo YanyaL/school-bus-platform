@@ -81,10 +81,11 @@ All JWT resource services participating in the run must trust the same issuer.
 
 ## Logout boundary
 
-The current SSO logout removes the OIDC user and application state from the
-student frontend only. It does not terminate the IAM browser session and is not
-global SSO logout. Returning to the authorization endpoint may therefore sign
-the user in again without asking for credentials.
+The local-only logout described by the original Phase 2 implementation has
+been replaced by OIDC RP-Initiated Logout in Phase 3. The frontend now redirects
+to IAM's discovered `end_session_endpoint` with an ID Token hint and a
+registered post-logout callback. See `docs/23-sso-rp-initiated-logout.md` for the
+flow, tests and the remaining cross-application revocation boundary.
 
 ## Verification
 
@@ -103,6 +104,5 @@ the user in again without asking for credentials.
 1. Run a real browser acceptance test against IAM, Gateway and a resource
    service.
 2. Integrate the administrator frontend as the second OIDC client.
-3. Implement RP-Initiated Logout and define cross-application session
-   revocation semantics.
+3. Define cross-application token revocation or Back-Channel Logout semantics.
 4. Evaluate a confidential BFF if server-side refresh-token rotation is needed.

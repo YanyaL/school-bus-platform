@@ -32,7 +32,7 @@ export function createOidcSettings(): UserManagerSettings {
       import.meta.env.VITE_OIDC_REDIRECT_URI ?? 'http://127.0.0.1:5173/auth/callback',
     post_logout_redirect_uri:
       import.meta.env.VITE_OIDC_POST_LOGOUT_REDIRECT_URI ??
-      'http://127.0.0.1:5173/login',
+      'http://127.0.0.1:5173/auth/logout/callback',
     response_type: 'code',
     scope: 'openid profile schoolbus.read schoolbus.write',
     automaticSilentRenew: false,
@@ -85,6 +85,37 @@ export async function restoreSsoSession(): Promise<SsoSession | null> {
 
 export async function removeSsoSession(): Promise<void> {
   await getUserManager().removeUser();
+}
+
+/**
+ * Starts OIDC RP-Initiated Logout when an ID Token is available.
+ *
+ * oidc-client-ts adds id_token_hint, post_logout_redirect_uri and state to the
+ * end-session request. A session created before this feature may not contain an
+ * ID Token; in that case we deliberately fall back to local logout.
+ */
+export async function beginSsoLogout(): Promise<boolean> {
+  const manager = getUserManager();
+  const user = await manager.getUser();
+  if (!user?.id_token) {
+    await manager.removeUser();
+    return false;
+  }
+
+  await manager.signoutRedirect();
+  return true;
+}
+
+/** Completes the logout response and validates the stored OIDC state. */
+export async function completeSsoLogout(): Promise<void> {
+  const manager = getUserManager();
+  try {
+    await manager.signoutCallback();
+  } finally {
+    // Defensive and idempotent: signoutRedirect normally removes it before
+    // navigating, but callback failures must not leave a usable local session.
+    await manager.removeUser();
+  }
 }
 
 export function toSsoSession(user: User): SsoSession {
