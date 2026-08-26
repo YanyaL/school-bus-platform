@@ -50,8 +50,10 @@ from stateless APIs to server sessions.
 
 ## Remaining work
 
-1. Add student/admin frontend callback routes and a standards-compliant OIDC
-   client library.
+Student frontend integration is now implemented in Phase 2; see
+`docs/22-student-sso-frontend.md`.
+
+1. Add the admin frontend callback route and OIDC client integration.
 2. Decide between SPA-only access tokens and a confidential BFF for refresh
    token rotation.
 3. Implement RP-initiated logout and distributed session revocation.

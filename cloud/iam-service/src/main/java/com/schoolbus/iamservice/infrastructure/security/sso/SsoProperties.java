@@ -2,10 +2,13 @@ package com.schoolbus.iamservice.infrastructure.security.sso;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+import java.util.List;
+
 @ConfigurationProperties(prefix = "school-bus.security.sso")
 public record SsoProperties(
         Client student,
-        Client admin
+        Client admin,
+        List<String> allowedOrigins
 ) {
 
     public SsoProperties {
@@ -14,6 +17,9 @@ public record SsoProperties(
                     "Both student and admin SSO clients must be configured"
             );
         }
+        allowedOrigins = List.copyOf(allowedOrigins == null
+                ? List.of()
+                : allowedOrigins);
     }
 
     public record Client(

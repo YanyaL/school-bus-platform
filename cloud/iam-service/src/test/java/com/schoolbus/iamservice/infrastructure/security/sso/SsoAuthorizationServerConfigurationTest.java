@@ -25,7 +25,8 @@ class SsoAuthorizationServerConfigurationTest {
                         "admin-web",
                         "http://127.0.0.1:5174/auth/callback",
                         "http://127.0.0.1:5174/login"
-                )
+                ),
+                java.util.List.of("http://127.0.0.1:5173")
         );
 
         RegisteredClientRepository repository =

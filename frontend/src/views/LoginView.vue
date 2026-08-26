@@ -15,6 +15,20 @@ const form = reactive({
 });
 
 const loading = ref(false);
+const ssoLoading = ref(false);
+
+async function handleSsoLogin() {
+  ssoLoading.value = true;
+  try {
+    const redirect =
+      typeof route.query.redirect === 'string' ? route.query.redirect : '/trips';
+    await authStore.beginSsoLogin(redirect);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '无法启动统一认证';
+    ElMessage.error(message);
+    ssoLoading.value = false;
+  }
+}
 
 async function handleSubmit() {
   if (!form.studentNumber.trim() || !form.password) {
@@ -46,6 +60,15 @@ async function handleSubmit() {
       <template #header>
         <div class="card-title">学生登录</div>
       </template>
+      <el-button
+        type="primary"
+        class="submit-btn"
+        :loading="ssoLoading"
+        @click="handleSsoLogin"
+      >
+        使用校园统一身份认证
+      </el-button>
+      <el-divider>旧版账号登录（迁移回退）</el-divider>
       <el-form label-position="top" @submit.prevent="handleSubmit">
         <el-form-item label="学号">
           <el-input v-model="form.studentNumber" autocomplete="username" />

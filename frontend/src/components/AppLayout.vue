@@ -41,7 +41,9 @@ async function handleLogout() {
       </el-menu>
       <div class="user-area">
         <span class="user-name">{{ authStore.displayName }}</span>
-        <el-button link type="primary" @click="handleLogout">退出登录</el-button>
+        <el-button link type="primary" @click="handleLogout">
+          {{ authStore.authMode === 'sso' ? '退出当前应用' : '退出登录' }}
+        </el-button>
       </div>
     </el-header>
     <el-main class="app-main">

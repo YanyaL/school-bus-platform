@@ -35,6 +35,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -120,6 +122,35 @@ class SsoEndpointsTest {
         mockMvc.perform(get("/oauth2/jwks"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.keys[0].kty").value("RSA"));
+    }
+
+    @Test
+    void shouldAllowConfiguredStudentOriginToExchangeCode() throws Exception {
+        mockMvc.perform(options("/oauth2/token")
+                        .header("Origin", "http://127.0.0.1:5173")
+                        .header(
+                                "Access-Control-Request-Method",
+                                "POST"
+                        ))
+                .andExpect(status().isOk())
+                .andExpect(header().string(
+                        "Access-Control-Allow-Origin",
+                        "http://127.0.0.1:5173"
+                ));
+    }
+
+    @Test
+    void shouldRejectUntrustedOriginFromTokenEndpoint() throws Exception {
+        mockMvc.perform(options("/oauth2/token")
+                        .header("Origin", "https://attacker.example")
+                        .header(
+                                "Access-Control-Request-Method",
+                                "POST"
+                        ))
+                .andExpect(status().isForbidden())
+                .andExpect(header().doesNotExist(
+                        "Access-Control-Allow-Origin"
+                ));
     }
 
     @Test

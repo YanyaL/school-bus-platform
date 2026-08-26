@@ -7,8 +7,18 @@ describe('router auth guard', () => {
   beforeEach(async () => {
     setActivePinia(createPinia());
     localStorage.clear();
+    sessionStorage.clear();
     await router.push('/');
     await router.isReady();
+  });
+
+  it('allows the public OIDC callback route', async () => {
+    const store = useAuthStore();
+    store.$patch({ initialized: true, accessToken: null });
+
+    await router.push('/auth/callback?code=test&state=test');
+
+    expect(router.currentRoute.value.name).toBe('auth-callback');
   });
 
   it('redirects unauthenticated users to login for protected routes', async () => {
