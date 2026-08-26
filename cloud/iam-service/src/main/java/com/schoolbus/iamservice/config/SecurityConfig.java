@@ -12,6 +12,7 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
@@ -30,12 +31,14 @@ public class SecurityConfig {
     };
 
     @Bean
-    SecurityFilterChain securityFilterChain(
+    @Order(2)
+    SecurityFilterChain apiSecurityFilterChain(
             HttpSecurity http,
             JwtAuthenticationConverter jwtAuthenticationConverter,
             AccessDeniedHandler accessDeniedHandler
     ) throws Exception {
         return http
+                .securityMatcher("/api/**", "/actuator/**")
                 .csrf(csrf -> csrf.disable())
                 .cors(Customizer.withDefaults())
                 .sessionManagement(session ->
@@ -67,6 +70,20 @@ public class SecurityConfig {
                                 jwtAuthenticationConverter
                         ))
                 )
+                .build();
+    }
+
+    @Bean
+    @Order(3)
+    SecurityFilterChain browserSecurityFilterChain(
+            HttpSecurity http
+    ) throws Exception {
+        return http
+                .authorizeHttpRequests(authorize -> authorize
+                        .requestMatchers("/login", "/error").permitAll()
+                        .anyRequest().authenticated()
+                )
+                .formLogin(Customizer.withDefaults())
                 .build();
     }
 

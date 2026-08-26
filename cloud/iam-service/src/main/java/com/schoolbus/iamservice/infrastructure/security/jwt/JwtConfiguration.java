@@ -8,6 +8,7 @@ import com.nimbusds.jose.proc.SecurityContext;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.security.converter.RsaKeyConverters;
@@ -78,7 +79,7 @@ public class JwtConfiguration {
     }
 
     @Bean
-    JwtEncoder jwtEncoder(KeyPair jwtKeyPair) {
+    JWKSource<SecurityContext> jwtJwkSource(KeyPair jwtKeyPair) {
         RSAPublicKey publicKey =
                 (RSAPublicKey) jwtKeyPair.getPublic();
         RSAPrivateKey privateKey =
@@ -88,13 +89,16 @@ public class JwtConfiguration {
                 .privateKey(privateKey)
                 .keyID(UUID.randomUUID().toString())
                 .build();
-        JWKSource<SecurityContext> jwkSource =
-                new ImmutableJWKSet<>(new JWKSet(rsaKey));
-
-        return new NimbusJwtEncoder(jwkSource);
+        return new ImmutableJWKSet<>(new JWKSet(rsaKey));
     }
 
     @Bean
+    JwtEncoder jwtEncoder(JWKSource<SecurityContext> jwtJwkSource) {
+        return new NimbusJwtEncoder(jwtJwkSource);
+    }
+
+    @Bean
+    @Primary
     JwtDecoder jwtDecoder(
             KeyPair jwtKeyPair,
             JwtProperties properties

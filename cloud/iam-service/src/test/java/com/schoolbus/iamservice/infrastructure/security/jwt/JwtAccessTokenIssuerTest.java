@@ -59,7 +59,9 @@ class JwtAccessTokenIssuerTest {
                 properties,
                 new DefaultResourceLoader()
         );
-        JwtEncoder jwtEncoder = configuration.jwtEncoder(keyPair);
+        JwtEncoder jwtEncoder = configuration.jwtEncoder(
+                configuration.jwtJwkSource(keyPair)
+        );
         jwtDecoder = configuration.jwtDecoder(keyPair, properties);
         tokenIssuer = new JwtAccessTokenIssuer(
                 jwtEncoder,
