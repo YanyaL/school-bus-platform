@@ -24,7 +24,7 @@ class SsoAuthorizationServerConfigurationTest {
                 new SsoProperties.Client(
                         "admin-web",
                         "http://127.0.0.1:5174/auth/callback",
-                        "http://127.0.0.1:5174/login"
+                        "http://127.0.0.1:5174/auth/logout/callback"
                 ),
                 java.util.List.of("http://127.0.0.1:5173")
         );
@@ -40,7 +40,7 @@ class SsoAuthorizationServerConfigurationTest {
         assertPublicPkceClient(
                 repository.findByClientId("admin-web"),
                 "http://127.0.0.1:5174/auth/callback",
-                "http://127.0.0.1:5174/login"
+                "http://127.0.0.1:5174/auth/logout/callback"
         );
     }
 

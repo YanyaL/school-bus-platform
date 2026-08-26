@@ -63,6 +63,20 @@
         )
     </insert>
 
+    <insert id="insertRoleIfAbsent">
+        INSERT INTO iam_account_role (
+            account_id,
+            role_code,
+            created_at
+        ) VALUES (
+            #{accountId},
+            #{roleCode},
+            #{createdAt}
+        )
+        ON DUPLICATE KEY UPDATE
+            account_id = VALUES(account_id)
+    </insert>
+
     <select
             id="selectByStudentNumber"
             resultMap="AccountResultMap">

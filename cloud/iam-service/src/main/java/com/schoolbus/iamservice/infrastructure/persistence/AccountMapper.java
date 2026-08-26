@@ -27,6 +27,15 @@ public interface AccountMapper {
         LocalDateTime createdAt
     );
 
+    int insertRoleIfAbsent(
+        @Param("accountId")
+        Long accountId,
+        @Param("roleCode")
+        String roleCode,
+        @Param("createdAt")
+        LocalDateTime createdAt
+    );
+
     AccountDataObject selectByStudentNumber(
         @Param("studentNumber")
         String studentNumber
