@@ -1,51 +1,81 @@
 # School Bus Platform
 
-校园班车预约平台，从模块化单体开始实现，再逐步演进为 Spring Cloud 微服务。
+面向高校学生的班车预约与支付平台，覆盖统一认证、班次与座位查询、并发锁座、支付退款、订单取消和超时关单。项目从模块化单体起步，通过 Strangler Fig（绞杀者）模式逐步演进为 Spring Cloud 微服务。
 
-## 技术基线
+A school bus booking and payment platform covering OIDC SSO, trip and seat discovery, concurrent seat reservation, payment/refund, cancellation and timeout processing. It starts as a modular monolith and is being incrementally extracted into Spring Cloud services with the Strangler Fig pattern.
+
+> **项目状态 / Status：持续开发中（WIP）。** 学生端核心业务闭环、IAM / Booking / Payment / Transport Query 服务提取、Booking↔Payment 事件解耦及主要基础设施验收已经完成；管理端、独立数据库和跨应用 Token 撤销仍在推进。
+
+## 技术栈 / Tech Stack
 
 - Java 21
 - Spring Boot 3.5.16
+- Spring Cloud Gateway、Nacos、Spring Cloud LoadBalancer
 - Maven 3.9+
 - MyBatis Spring Boot Starter 3.0.4
-- MySQL 8
-- Flyway
-- Spring Security
+- MySQL 8、Flyway、Redis 6+
+- RabbitMQ 4+、Transactional Outbox
+- Spring Security、Spring Authorization Server、OAuth 2.1 / OIDC / JWT
 - Springdoc OpenAPI
 - Spring Boot Actuator
 - Sentinel 1.8.10
-- Redis 6+
-- RabbitMQ 4+
 - Canal 1.1.8（Binlog CDC，当前为影子一致性链路）
+- Vue 3、TypeScript、Vite、Pinia、Element Plus
 
-## 当前状态
+## 核心能力 / Highlights
 
-- IAM：独立服务 `school-bus-iam`（:8084）承接注册 / 登录 / refresh / logout / me（绞杀者第二刀）；新增 Spring Authorization Server SSO 第一阶段，提供 OIDC Discovery/JWK 与学生端、管理端 Authorization Code + PKCE 公共客户端；本地单体默认仍可嵌入
-- Payment：独立服务 `school-bus-payment`（:8085）承接支付回调与 **退款 Outbox Relay + RabbitMQ 消费者**（绞杀者第三刀第二阶段）；本地单体默认 Core 仍嵌入退款消息链路
-- Booking（绞杀者第四刀，第一阶段，**真实验收已通过**）：独立服务 `school-bus-booking`（:8087）承接 `/api/v1/bookings/**` 与 Booking 侧消息消费（支付成功 / 订单过期 / 班次取消）；Cloud Core 通过 `school-bus.booking.embedded.enabled=false` 关闭嵌入式 Booking 入口，本地单体默认仍嵌入
-- Transport 写路径与管理端：仍在 core
-- Transport Query（绞杀者第一刀）：独立服务 `school-bus-transport-query`（可多实例，如 :8082/:8083）承接学生端只读
-  - `GET /api/v1/trips`
-  - `GET /api/v1/trips/{tripNumber}/seats`
-- Gateway（:8080）经 Nacos + Spring Cloud LoadBalancer：
-  - 上述 GET → `lb://school-bus-transport-query`
-  - `POST /api/v1/accounts`、`/api/v1/auth/**` → `lb://school-bus-iam`
-  - `POST /api/v1/payments/**` → `lb://school-bus-payment`（不配置自动重试）
-  - `/api/v1/bookings/**` → `lb://school-bus-booking`（不配置自动重试）
-  - 其余 `/api/**` → core（:8081）
-- Cloud Core：关闭嵌入式 IAM、支付回调与 **退款 Relay/Consumer**（`school-bus.payment.refund-messaging.embedded=false`）；只校验 JWT 公钥
-- Query 双实例 HA 验收脚本：`scripts/cloud/verify-transport-query-ha.ps1`（见 `docs/10-transport-query-ha.md`）
-- Query GET 路由级超时 + 有限重试（仅 502/503/504，最多 2 次调用）：见 `docs/12-transport-query-resilience.md`；对照脚本 `scripts/cloud/verify-transport-query-resilience.ps1`
-- Booking / Payment 仍共享 MySQL；**云默认已切 EVENT 解耦**：Booking 不再读写 `payment_record`（`RefundRequested` Outbox），Payment EVENT 模式不再直接更新 `booking_order`（`PaymentSucceeded` / `PaymentRefunded`）。DIRECT 适配器仍保留给测试回退。Booking 还直接读取 Transport 表。详见 `docs/20-booking-payment-event-decoupling.md`
-- Stability：Sentinel 保护登录、下单和支付回调入口，统一返回 HTTP 429（登录限流仍挂在 Core 入口路径；迁至 IAM 为后续项）
-- Flyway 仍由 core 执行；query / iam / payment 过渡期只读或读写共享库，独立服务均关闭 Flyway
-- **Payment 退款消息迁移**：代码迁移、单元测试与真实 RabbitMQ retry/DLQ 验收均已完成（脚本 `scripts/cloud/verify-payment-refund-messaging.ps1`；Core `/actuator/info` → `refundMessagingOwner=disabled`，Payment → `payment`）
-- **CDC 缓存一致性**：新增 `school-bus-cdc-cache-sync`，监听 `transport_trip` 与 `event_consumed` Binlog，经 RabbitMQ 投影到 Redis；2026-08-21 已完成一次真实联调，当前保留应用侧缓存失效作为影子期保护
-- **Booking 拆分状态**：Core 537、Booking 53、Gateway 42 项测试全绿；Core ownership 测试覆盖 24 个 Booking 旧 Bean。修订后的真实验收已在 Nacos + MySQL + RabbitMQ + Gateway 上跑通（报告 `target/booking-service-extraction-20260821-165445/report.json`），覆盖路由、写路径无重试、ownership、下单幂等、401、支付成功、过期与班次取消。验收使用 9 个 run-scoped 队列和 7 个交换机，停止服务后逐项删除，不清空共享业务队列。前置检查失败记 `BLOCKED`，业务断言失败记 `FAILED`/`PARTIAL`
-- **Booking↔Payment 事件解耦（进行中/本分支）**：已实现 `RefundRequested` / `PaymentRefunded`、PAID 用户取消、Payment 云默认 EVENT；验收脚本 `scripts/cloud/verify-booking-payment-event-decoupling.ps1`（见 `docs/20-booking-payment-event-decoupling.md`）
-- **学生端 SSO 第三阶段**：在 IAM OIDC 授权服务器之上完成 Vue 学生端 Authorization Code + PKCE 登录及 RP-Initiated Logout；`oidc-client-ts` 管理 Discovery、state、nonce、PKCE 与退出回调状态，IAM 校验登记过的 `post_logout_redirect_uri` 并结束浏览器认证会话。公共 SPA 不签发 Refresh Token；已签发 Access Token 撤销、管理端联调与跨应用 Back-Channel Logout 仍是后续工作（见 `docs/21-iam-sso-authorization-server.md`、`docs/22-student-sso-frontend.md`、`docs/23-sso-rp-initiated-logout.md`）
+- **统一认证**：基于 Spring Authorization Server 实现 OIDC Discovery/JWK、Authorization Code + PKCE 与 RP-Initiated Logout；学生端 SSO 与旧 JSON 登录并行迁移。
+- **并发预约**：同一 MySQL 事务内完成条件更新锁座、`version` 乐观锁扣减库存、订单与 Outbox 落库，通过幂等请求号和唯一索引防止重复下单与超卖。
+- **事件驱动支付**：Booking 与 Payment 通过 `PaymentSucceeded`、`RefundRequested`、`PaymentRefunded` 事件协作，结合 Transactional Outbox、消费幂等、有限重试与 DLQ 实现最终一致性。
+- **超时与补偿**：RabbitMQ TTL + DLX 处理未支付订单，数据库定时扫描兜底；取消时在本地事务内释放具体座位并恢复汇总库存。
+- **服务治理**：Gateway + Nacos 完成服务发现、动态路由和 Query 双实例负载均衡；只对幂等 GET 配置超时与有限重试，写请求不盲目重试。
+- **缓存一致性**：Redis List 缓存可预约班次，Spring 定时任务推进班次状态；Canal 监听 MySQL Binlog，经 RabbitMQ 异步失效或投影 Redis，MySQL 仍作为最终正确性边界。
+- **稳定性与验证**：Sentinel 保护登录、下单和支付回调热点入口；提供 k6、PowerShell、架构守卫及真实 MySQL / Redis / RabbitMQ / Nacos 验收脚本。
 
-详见：`docs/08-nacos-gateway-foundation.md`、`docs/09-transport-query-strangler.md`、`docs/10-transport-query-ha.md`、`docs/12-transport-query-resilience.md`、`docs/13-iam-strangler.md`、`docs/14-payment-strangler.md`、`docs/15-payment-refund-messaging-extraction.md`、`docs/18-canal-cache-consistency.md`、`docs/19-booking-strangler.md`、`docs/20-booking-payment-event-decoupling.md`、`docs/21-iam-sso-authorization-server.md`、`docs/22-student-sso-frontend.md`、`docs/23-sso-rp-initiated-logout.md`
+## 当前进度 / Progress
+
+| 能力 | 状态 | 说明 |
+| --- | --- | --- |
+| 学生端业务闭环 | ✅ 已完成 | 注册登录、查班次/座位、并发下单、订单查询/取消、模拟支付退款与超时关单 |
+| Transport Query 服务 | ✅ 已提取并验收 | Nacos 注册发现、双实例负载分布、故障摘除、幂等 GET 有限重试 |
+| IAM 服务与学生端 SSO | ✅ 已实现并通过自动化测试 | PKCE 登录、OIDC Discovery/JWK、RP-Initiated Logout；管理端前端尚未接入 |
+| Booking 服务 | ✅ 已提取并验收 | HTTP 写链路、支付/过期/班次取消消息职责由独立服务承接 |
+| Payment 服务 | ✅ 已提取并验收 | 支付回调、退款 Outbox Relay、RabbitMQ Consumer、retry/DLQ |
+| Booking ↔ Payment 解耦 | ✅ 已验收 | 云模式使用领域事件，不再跨领域直接写对方业务表 |
+| Canal CDC 缓存链路 | 🟡 影子运行 | 真实联调已通过，暂时保留应用侧缓存失效作为保护 |
+| Transport 写路径与管理端 | 🚧 进行中 | 车辆、路线和班次管理仍主要位于 Core |
+| 数据库自治与全局 Token 撤销 | 📋 待完成 | 当前服务仍共享 MySQL 物理实例；未实现 Back-Channel Logout 或 JWT 实时撤销 |
+
+## 当前架构 / Architecture
+
+```text
+Vue 3 Student SPA
+        │ OIDC / REST
+        ▼
+Spring Cloud Gateway (:8080)
+        ├── school-bus-iam (:8084)
+        ├── school-bus-transport-query (:8082 / :8083)
+        ├── school-bus-payment (:8085)
+        ├── school-bus-booking (:8087)
+        └── school-bus-core (:8081, remaining write/admin paths)
+
+Nacos ─ service discovery/configuration
+MySQL ─ transactional source of truth
+Redis ─ sessions, trip cache and idempotency fast path
+RabbitMQ + Outbox ─ payment/refund/expiration domain events
+Canal ─ Binlog CDC cache projection (shadow mode)
+```
+
+渐进拆分阶段仍共享 MySQL，但已通过 ownership 开关、Gateway 路由和架构守卫限制职责回流；项目不宣称已经完成拆库或分布式事务。
+
+## 设计与验收文档 / Engineering Notes
+
+- [Nacos + Gateway 基础](docs/08-nacos-gateway-foundation.md)
+- [Transport Query 绞杀者提取](docs/09-transport-query-strangler.md)、[双实例 HA](docs/10-transport-query-ha.md)、[路由韧性](docs/12-transport-query-resilience.md)
+- [IAM 服务提取](docs/13-iam-strangler.md)、[OIDC Authorization Server](docs/21-iam-sso-authorization-server.md)、[学生端 SSO](docs/22-student-sso-frontend.md)、[统一登出](docs/23-sso-rp-initiated-logout.md)
+- [Payment 服务提取](docs/14-payment-strangler.md)、[退款消息职责迁移](docs/15-payment-refund-messaging-extraction.md)
+- [Canal CDC 缓存一致性](docs/18-canal-cache-consistency.md)
+- [Booking 服务提取](docs/19-booking-strangler.md)、[Booking↔Payment 事件解耦](docs/20-booking-payment-event-decoupling.md)
 
 ## Swagger 端到端演示
 
