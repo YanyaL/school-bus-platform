@@ -4,7 +4,7 @@
 
 A school bus booking and payment platform covering OIDC SSO, trip and seat discovery, concurrent seat reservation, payment/refund, cancellation and timeout processing. It starts as a modular monolith and is being incrementally extracted into Spring Cloud services with the Strangler Fig pattern.
 
-> **项目状态 / Status：持续开发中（WIP）。** 学生端核心业务闭环、IAM / Booking / Payment / Transport Query 服务提取、Booking↔Payment 事件解耦及主要基础设施验收已经完成；管理端、独立数据库和跨应用 Token 撤销仍在推进。
+> **项目状态 / Status：持续开发中（WIP）。** 学生端核心业务闭环、IAM / Booking / Payment / Transport Query 服务提取、Booking↔Payment 事件解耦及主要基础设施验收已经完成；学生端与管理端两个 OIDC 客户端及管理控制台代码已经接入，真实浏览器 SSO 联调、独立数据库和跨应用 Token 撤销仍在推进。
 
 ## 技术栈 / Tech Stack
 
@@ -24,7 +24,7 @@ A school bus booking and payment platform covering OIDC SSO, trip and seat disco
 
 ## 核心能力 / Highlights
 
-- **统一认证**：基于 Spring Authorization Server 实现 OIDC Discovery/JWK、Authorization Code + PKCE 与 RP-Initiated Logout；学生端 SSO 与旧 JSON 登录并行迁移。
+- **统一认证**：基于 Spring Authorization Server 实现 OIDC Discovery/JWK、Authorization Code + PKCE 与 RP-Initiated Logout；学生端和管理端作为独立公共客户端共享 IAM 登录会话，分别签发 Token。
 - **并发预约**：同一 MySQL 事务内完成条件更新锁座、`version` 乐观锁扣减库存、订单与 Outbox 落库，通过幂等请求号和唯一索引防止重复下单与超卖。
 - **事件驱动支付**：Booking 与 Payment 通过 `PaymentSucceeded`、`RefundRequested`、`PaymentRefunded` 事件协作，结合 Transactional Outbox、消费幂等、有限重试与 DLQ 实现最终一致性。
 - **超时与补偿**：RabbitMQ TTL + DLX 处理未支付订单，数据库定时扫描兜底；取消时在本地事务内释放具体座位并恢复汇总库存。
@@ -38,20 +38,21 @@ A school bus booking and payment platform covering OIDC SSO, trip and seat disco
 | --- | --- | --- |
 | 学生端业务闭环 | ✅ 已完成 | 注册登录、查班次/座位、并发下单、订单查询/取消、模拟支付退款与超时关单 |
 | Transport Query 服务 | ✅ 已提取并验收 | Nacos 注册发现、双实例负载分布、故障摘除、幂等 GET 有限重试 |
-| IAM 服务与学生端 SSO | ✅ 已实现并通过自动化测试 | PKCE 登录、OIDC Discovery/JWK、RP-Initiated Logout；管理端前端尚未接入 |
+| IAM 服务与双客户端 SSO | 🟡 代码与自动化测试已完成 | 学生端和管理端均使用 PKCE；真实浏览器跨应用免密与统一登出联调待验收 |
 | Booking 服务 | ✅ 已提取并验收 | HTTP 写链路、支付/过期/班次取消消息职责由独立服务承接 |
 | Payment 服务 | ✅ 已提取并验收 | 支付回调、退款 Outbox Relay、RabbitMQ Consumer、retry/DLQ |
 | Booking ↔ Payment 解耦 | ✅ 已验收 | 云模式使用领域事件，不再跨领域直接写对方业务表 |
 | Canal CDC 缓存链路 | 🟡 影子运行 | 真实联调已通过，暂时保留应用侧缓存失效作为保护 |
-| Transport 写路径与管理端 | 🚧 进行中 | 车辆、路线和班次管理仍主要位于 Core |
+| Transport 写路径与管理端 | 🟡 管理界面已接入 | 车辆、路线和班次管理仍由 Core 提供；独立管理 SPA 已完成，写服务尚未提取 |
 | 数据库自治与全局 Token 撤销 | 📋 待完成 | 当前服务仍共享 MySQL 物理实例；未实现 Back-Channel Logout 或 JWT 实时撤销 |
 
 ## 当前架构 / Architecture
 
 ```text
-Vue 3 Student SPA
-        │ OIDC / REST
-        ▼
+Vue 3 Student SPA ─┐
+                   ├─ OIDC / REST
+Vue 3 Admin SPA ───┘
+                   ▼
 Spring Cloud Gateway (:8080)
         ├── school-bus-iam (:8084)
         ├── school-bus-transport-query (:8082 / :8083)
@@ -72,7 +73,7 @@ Canal ─ Binlog CDC cache projection (shadow mode)
 
 - [Nacos + Gateway 基础](docs/08-nacos-gateway-foundation.md)
 - [Transport Query 绞杀者提取](docs/09-transport-query-strangler.md)、[双实例 HA](docs/10-transport-query-ha.md)、[路由韧性](docs/12-transport-query-resilience.md)
-- [IAM 服务提取](docs/13-iam-strangler.md)、[OIDC Authorization Server](docs/21-iam-sso-authorization-server.md)、[学生端 SSO](docs/22-student-sso-frontend.md)、[统一登出](docs/23-sso-rp-initiated-logout.md)
+- [IAM 服务提取](docs/13-iam-strangler.md)、[OIDC Authorization Server](docs/21-iam-sso-authorization-server.md)、[学生端 SSO](docs/22-student-sso-frontend.md)、[统一登出](docs/23-sso-rp-initiated-logout.md)、[管理端 OIDC 客户端](docs/24-admin-sso-frontend.md)
 - [Payment 服务提取](docs/14-payment-strangler.md)、[退款消息职责迁移](docs/15-payment-refund-messaging-extraction.md)
 - [Canal CDC 缓存一致性](docs/18-canal-cache-consistency.md)
 - [Booking 服务提取](docs/19-booking-strangler.md)、[Booking↔Payment 事件解耦](docs/20-booking-payment-event-decoupling.md)

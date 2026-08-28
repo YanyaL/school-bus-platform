@@ -142,6 +142,21 @@ class SsoEndpointsTest {
     }
 
     @Test
+    void shouldAllowConfiguredAdminOriginToExchangeCode() throws Exception {
+        mockMvc.perform(options("/oauth2/token")
+                        .header("Origin", "http://127.0.0.1:5174")
+                        .header(
+                                "Access-Control-Request-Method",
+                                "POST"
+                        ))
+                .andExpect(status().isOk())
+                .andExpect(header().string(
+                        "Access-Control-Allow-Origin",
+                        "http://127.0.0.1:5174"
+                ));
+    }
+
+    @Test
     void shouldRejectUntrustedOriginFromTokenEndpoint() throws Exception {
         mockMvc.perform(options("/oauth2/token")
                         .header("Origin", "https://attacker.example")
