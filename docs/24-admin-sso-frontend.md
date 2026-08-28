@@ -65,6 +65,17 @@ Snowflake ID 在 HTTP JSON 中保持字符串，前端不转换为 JavaScript `n
 - 管理端回跳地址只接受站内路径；
 - 无 `ADMIN` 角色的有效 Token 会被管理端拒绝；
 - 管理端 lint、TypeScript 类型检查、单元测试及生产构建。
+- IAM 集成测试使用同一个 `MockHttpSession` 先后请求学生端和管理端授权，两个客户端均直接获得不同授权码，证明认证中心会话可复用且不需要第二次提交凭证。
+
+真实 Chrome 验收脚本：
+
+```powershell
+$env:TEST_STUDENT_NUMBER='S4789503'
+$env:TEST_PASSWORD='your-password'
+.\scripts\cloud\verify-admin-sso-browser.ps1
+```
+
+脚本的通过条件包括：两个客户端均授权、第二个客户端未出现密码页、Access Token 不同但 `sub` 相同、管理 Token 包含 `ADMIN`、统一登出后新的授权重新要求登录。它还明确记录旧学生页面中已经签发的 Token 仍然存在，避免把“结束 IAM Cookie”错误描述成“已经撤销所有 JWT”。
 
 尚未宣称完成：
 
@@ -72,7 +83,7 @@ Snowflake ID 在 HTTP JSON 中保持字符串，前端不转换为 JavaScript `n
 - 从任一应用统一登出后，验证另一个应用重新授权时必须登录；
 - Access Token 的实时跨应用撤销或 OIDC Back-Channel Logout。
 
-因此当前可以描述为“第二 OIDC 客户端和管理端代码已接入并通过自动化测试”，不能把真实双应用免密联调写成已验收。
+2026-08-28 首次执行生成 `target/admin-sso-browser-20260828-185047/report.json`，由于 IAM 与 Gateway 未启动，状态为 `BLOCKED`、`failedInPhase=Assert-IAM`，浏览器测试未执行。因此当前可以描述为“第二 OIDC 客户端、管理端及真实浏览器验收工具已完成，服务端会话复用测试通过”，仍不能把真实双应用免密联调写成已验收。
 
 ## 6. 面试说明
 

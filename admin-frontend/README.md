@@ -47,3 +47,13 @@ npm run build
 ```
 
 本阶段自动化测试覆盖 OIDC 客户端参数、回跳地址约束、Snowflake ID 字符串保真、管理员角色校验和统一登出调用。真实双应用浏览器免密跳转仍需在完整基础设施启动后验收。
+
+完整基础设施启动后，可从项目根目录执行真实 Chrome 验收：
+
+```powershell
+$env:TEST_STUDENT_NUMBER='S4789503'
+$env:TEST_PASSWORD='your-password'
+.\scripts\cloud\verify-admin-sso-browser.ps1
+```
+
+脚本会按需启动两个 Vite 前端，使用同一个 Chrome BrowserContext 完成学生端登录、管理端免密授权和 RP-Initiated Logout，并输出不包含 Token 或密码的 JSON 报告。环境缺失时报告为 `BLOCKED`，浏览器断言失败时为 `FAILED`，所有证据成立时才是 `PASSED`。

@@ -1,38 +1,50 @@
 package com.schoolbus.iamservice.infrastructure.security.sso;
 
-import com.schoolbus.iamservice.infrastructure.persistence.MyBatisAccountRepository;
-import com.schoolbus.iamservice.infrastructure.session.RedisLoginSessionRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.schoolbus.iamservice.domain.account.Account;
+import com.schoolbus.iamservice.domain.account.AccountStatus;
+import com.schoolbus.iamservice.domain.account.PasswordHash;
+import com.schoolbus.iamservice.domain.account.Role;
+import com.schoolbus.iamservice.domain.account.StudentNumber;
+import com.schoolbus.iamservice.domain.identity.UserId;
+import com.schoolbus.iamservice.infrastructure.persistence.MyBatisAccountRepository;
+import com.schoolbus.iamservice.infrastructure.session.RedisLoginSessionRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.http.MediaType;
 
+import java.net.URI;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.MessageDigest;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
-import java.security.MessageDigest;
-import java.net.URI;
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.Base64;
+import java.util.Optional;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestBuilders.formLogin;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
@@ -101,6 +113,9 @@ class SsoEndpointsTest {
     @Autowired
     @Qualifier("jwtDecoder")
     private JwtDecoder jwtDecoder;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     @MockitoBean
     private MyBatisAccountRepository myBatisAccountRepository;
@@ -215,6 +230,45 @@ class SsoEndpointsTest {
                                 "http://127.0.0.1:5173/auth/callback?"
                         )
                         .contains("code=", "state=state-001"));
+    }
+
+    @Test
+    void shouldReuseOneBrowserLoginSessionAcrossStudentAndAdminClients()
+            throws Exception {
+        when(myBatisAccountRepository.findByStudentNumber(any()))
+                .thenReturn(Optional.of(adminAccount("StrongPass!2026")));
+
+        MvcResult login = mockMvc.perform(formLogin()
+                        .user("S4789503")
+                        .password("StrongPass!2026"))
+                .andExpect(status().is3xxRedirection())
+                .andReturn();
+
+        jakarta.servlet.http.HttpSession session = login.getRequest()
+                .getSession(false);
+        assertThat(session).isNotNull();
+
+        String studentLocation = authorizeWithSession(
+                session,
+                "school-bus-student-web",
+                "http://127.0.0.1:5173/auth/callback",
+                "student-session-state"
+        );
+        String adminLocation = authorizeWithSession(
+                session,
+                "school-bus-admin-web",
+                "http://127.0.0.1:5174/auth/callback",
+                "admin-session-state"
+        );
+
+        assertThat(studentLocation)
+                .startsWith("http://127.0.0.1:5173/auth/callback?")
+                .contains("code=", "state=student-session-state");
+        assertThat(adminLocation)
+                .startsWith("http://127.0.0.1:5174/auth/callback?")
+                .contains("code=", "state=admin-session-state");
+        assertThat(queryParameter(studentLocation, "code"))
+                .isNotEqualTo(queryParameter(adminLocation, "code"));
     }
 
     @Test
@@ -357,6 +411,44 @@ class SsoEndpointsTest {
                 "{bcrypt}$2a$10$encodedPassword",
                 Set.of("STUDENT"),
                 true
+        );
+    }
+
+    private String authorizeWithSession(
+            jakarta.servlet.http.HttpSession session,
+            String clientId,
+            String redirectUri,
+            String state
+    ) throws Exception {
+        return mockMvc.perform(get("/oauth2/authorize")
+                        .session((org.springframework.mock.web.MockHttpSession) session)
+                        .queryParam("response_type", "code")
+                        .queryParam("client_id", clientId)
+                        .queryParam("scope", "openid profile")
+                        .queryParam("state", state)
+                        .queryParam("nonce", state + "-nonce")
+                        .queryParam("redirect_uri", redirectUri)
+                        .queryParam(
+                                "code_challenge",
+                                "0123456789012345678901234567890123456789012"
+                        )
+                        .queryParam("code_challenge_method", "S256"))
+                .andExpect(status().is3xxRedirection())
+                .andReturn()
+                .getResponse()
+                .getRedirectedUrl();
+    }
+
+    private Account adminAccount(String rawPassword) {
+        Instant now = Instant.parse("2026-08-28T00:00:00Z");
+        return Account.restore(
+                UserId.of(1000001L),
+                StudentNumber.of("S4789503"),
+                PasswordHash.of(passwordEncoder.encode(rawPassword)),
+                Set.of(Role.STUDENT, Role.ADMIN),
+                AccountStatus.ACTIVE,
+                now,
+                now
         );
     }
 

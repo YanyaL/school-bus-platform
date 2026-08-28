@@ -69,6 +69,8 @@ Canal ─ Binlog CDC cache projection (shadow mode)
 
 渐进拆分阶段仍共享 MySQL，但已通过 ownership 开关、Gateway 路由和架构守卫限制职责回流；项目不宣称已经完成拆库或分布式事务。
 
+双客户端 SSO 已增加服务端共享 Session 集成测试及真实 Chrome 验收脚本。2026-08-28 的首次浏览器验收因 IAM/Gateway 未启动而得到 `BLOCKED` 报告，并未宣称真实免密流程已经通过。
+
 ## 设计与验收文档 / Engineering Notes
 
 - [Nacos + Gateway 基础](docs/08-nacos-gateway-foundation.md)
