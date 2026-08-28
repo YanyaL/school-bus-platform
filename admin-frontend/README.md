@@ -57,3 +57,5 @@ $env:TEST_PASSWORD='your-password'
 ```
 
 脚本会按需启动两个 Vite 前端，使用同一个 Chrome BrowserContext 完成学生端登录、管理端免密授权和 RP-Initiated Logout，并输出不包含 Token 或密码的 JSON 报告。环境缺失时报告为 `BLOCKED`，浏览器断言失败时为 `FAILED`，所有证据成立时才是 `PASSED`。
+
+2026-08-28 已在真实 IAM、Gateway、MySQL、Redis、Nacos 与 Chrome 环境完成首次 `PASSED` 验收。验收使用临时双角色账号，结束后已移除临时 `ADMIN` 角色。

@@ -138,7 +138,6 @@ try {
     $report.browserTestExecuted = $true
 
     & $node $playwrightCli test `
-        (Join-Path $projectRoot 'admin-frontend\e2e\dual-client-sso.spec.ts') `
         --config (Join-Path $projectRoot 'admin-frontend\playwright.config.ts') `
         *> $playwrightLog
     if ($LASTEXITCODE -ne 0) {

@@ -79,11 +79,9 @@ $env:TEST_PASSWORD='your-password'
 
 尚未宣称完成：
 
-- 在真实浏览器中先登录学生端，再打开管理端验证无需再次输入密码；
-- 从任一应用统一登出后，验证另一个应用重新授权时必须登录；
 - Access Token 的实时跨应用撤销或 OIDC Back-Channel Logout。
 
-2026-08-28 首次执行生成 `target/admin-sso-browser-20260828-185047/report.json`，由于 IAM 与 Gateway 未启动，状态为 `BLOCKED`、`failedInPhase=Assert-IAM`，浏览器测试未执行。因此当前可以描述为“第二 OIDC 客户端、管理端及真实浏览器验收工具已完成，服务端会话复用测试通过”，仍不能把真实双应用免密联调写成已验收。
+2026-08-28 首次执行因 IAM 与 Gateway 未启动得到诚实的 `BLOCKED` 报告。基础设施恢复并统一 IAM、Core 与 Query 的本地 Issuer 后，再次执行生成 `target/admin-sso-browser-20260828-191245/report.json`，状态为 `PASSED`。真实 Chrome 已证明：学生端完成一次认证后，管理端授权不会再次出现凭证页；两个客户端的 Access Token 不同但 `sub` 相同；管理端 Token 包含 `ADMIN`；RP-Initiated Logout 后的新学生端授权会重新进入 IAM 登录页。旧学生页面中已签发的 JWT 仍会保留到过期，这不等同于 Token 撤销。
 
 ## 6. 面试说明
 
