@@ -1,9 +1,9 @@
 package com.schoolbus.iamservice.application.authentication;
 
-public record LogoutCommand(String sessionId) {
+public record LogoutCommand(long userId) {
 
     public LogoutCommand {
-        if (sessionId == null || sessionId.isBlank()) {
+        if (userId <= 0) {
             throw new InvalidLoginSessionException();
         }
     }

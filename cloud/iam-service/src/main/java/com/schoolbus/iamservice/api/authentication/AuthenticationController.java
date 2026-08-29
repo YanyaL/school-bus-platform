@@ -72,7 +72,7 @@ public class AuthenticationController {
     ) {
         service.logout(
                 new LogoutCommand(
-                        jwt.getClaimAsString("sid")
+                        Long.parseLong(jwt.getSubject())
                 )
         );
         return ApiResponse.success(null);

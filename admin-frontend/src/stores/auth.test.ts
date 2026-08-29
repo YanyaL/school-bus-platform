@@ -10,8 +10,12 @@ const oidc = vi.hoisted(() => ({
   removeSession: vi.fn(),
   restoreSession: vi.fn(),
 }));
+const authApi = vi.hoisted(() => ({
+  revokeAccessToken: vi.fn(),
+}));
 
 vi.mock('@/security/oidc', () => oidc);
+vi.mock('@/api/auth', () => authApi);
 
 import { AdminRoleRequiredError, useAuthStore } from './auth';
 
@@ -28,6 +32,7 @@ describe('admin auth store', () => {
     setActivePinia(createPinia());
     vi.clearAllMocks();
     oidc.removeSession.mockResolvedValue(undefined);
+    authApi.revokeAccessToken.mockResolvedValue(undefined);
   });
 
   it('accepts an ADMIN session returned by the OIDC callback', async () => {
@@ -72,6 +77,7 @@ describe('admin auth store', () => {
     auth.applySession(adminSession);
 
     await expect(auth.logout()).resolves.toBe('redirected');
+    expect(authApi.revokeAccessToken).toHaveBeenCalledWith('access-token');
     expect(oidc.beginLogout).toHaveBeenCalledOnce();
   });
 });

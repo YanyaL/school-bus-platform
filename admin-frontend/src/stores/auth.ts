@@ -8,6 +8,7 @@ import {
   restoreSession,
   type AdminSession,
 } from '@/security/oidc';
+import { revokeAccessToken } from '@/api/auth';
 
 export type LogoutResult = 'local-fallback' | 'redirected';
 
@@ -78,6 +79,14 @@ export const useAuthStore = defineStore('auth', {
       }
     },
     async logout(): Promise<LogoutResult> {
+      if (this.accessToken) {
+        try {
+          await revokeAccessToken(this.accessToken);
+        } catch {
+          // Continue with RP-Initiated Logout so the browser session and
+          // local credentials are still cleared when IAM is unavailable.
+        }
+      }
       try {
         if (await beginLogout()) return 'redirected';
       } catch {

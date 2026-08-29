@@ -2,6 +2,7 @@ package com.schoolbus.iamservice.infrastructure.security.sso;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.schoolbus.iamservice.application.authentication.AccessTokenRevocationRepository;
 import com.schoolbus.iamservice.domain.account.Account;
 import com.schoolbus.iamservice.domain.account.AccountStatus;
 import com.schoolbus.iamservice.domain.account.PasswordHash;
@@ -122,6 +123,9 @@ class SsoEndpointsTest {
 
     @MockitoBean
     private RedisLoginSessionRepository redisLoginSessionRepository;
+
+    @MockitoBean
+    private AccessTokenRevocationRepository accessTokenRevocationRepository;
 
     @Test
     void shouldPublishOidcDiscoveryAndJwkSet() throws Exception {
@@ -334,6 +338,8 @@ class SsoEndpointsTest {
                 .isEqualTo("S4789503");
         assertThat(accessToken.getClaimAsStringList("roles"))
                 .containsExactly("STUDENT");
+        assertThat(accessToken.<Number>getClaim("iat_ms").longValue())
+                .isPositive();
     }
 
     @Test

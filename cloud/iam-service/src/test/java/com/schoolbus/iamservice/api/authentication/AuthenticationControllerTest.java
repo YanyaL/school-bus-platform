@@ -390,7 +390,7 @@ class AuthenticationControllerTest {
                 );
 
         verify(service).logout(
-                new LogoutCommand("session-001")
+                new LogoutCommand(1000001L)
         );
     }
 
@@ -403,7 +403,7 @@ class AuthenticationControllerTest {
     }
 
     @Test
-    void shouldRejectAccessTokenWithoutSessionIdOnLogout()
+    void shouldAllowSsoAccessTokenWithoutLegacySessionIdOnLogout()
             throws Exception {
         mockMvc.perform(
                         post("/api/v1/auth/logout")
@@ -417,17 +417,10 @@ class AuthenticationControllerTest {
                                         )
                                 )
                 )
-                .andExpect(status().isUnauthorized())
-                .andExpect(
-                        jsonPath("$.code")
-                                .value("INVALID_LOGIN_SESSION")
-                )
-                .andExpect(
-                        jsonPath("$.message")
-                                .value("invalid login session")
-                );
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("OK"));
 
-        verifyNoInteractions(service);
+        verify(service).logout(new LogoutCommand(1000001L));
     }
 
     @Test

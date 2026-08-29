@@ -254,6 +254,15 @@ export const useAuthStore = defineStore('auth', {
 
     async logout(): Promise<LogoutResult> {
       if (this.authMode === 'sso') {
+        if (this.accessToken) {
+          try {
+            const { auth } = this.createApis();
+            await auth.logout();
+          } catch {
+            // Still clear the browser SSO session and local credentials when
+            // the revocation endpoint is temporarily unavailable.
+          }
+        }
         try {
           if (await redirectToSsoLogout()) {
             return 'redirected';

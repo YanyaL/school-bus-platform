@@ -1,5 +1,6 @@
 package com.schoolbus.iamservice;
 
+import com.schoolbus.iamservice.application.authentication.AccessTokenRevocationRepository;
 import com.schoolbus.iamservice.infrastructure.persistence.MyBatisAccountRepository;
 import com.schoolbus.iamservice.infrastructure.session.RedisLoginSessionRepository;
 import org.junit.jupiter.api.Test;
@@ -66,6 +67,9 @@ class IamApplicationTests {
 
     @MockitoBean
     private RedisLoginSessionRepository redisLoginSessionRepository;
+
+    @MockitoBean
+    private AccessTokenRevocationRepository accessTokenRevocationRepository;
 
     @Test
     void contextLoads() {

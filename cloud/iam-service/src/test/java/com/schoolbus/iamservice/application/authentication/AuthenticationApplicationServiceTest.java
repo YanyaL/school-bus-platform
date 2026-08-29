@@ -67,6 +67,9 @@ class AuthenticationApplicationServiceTest {
     @Mock
     private LoginSessionRepository loginSessionRepository;
 
+    @Mock
+    private AccessTokenRevocationRepository accessTokenRevocationRepository;
+
     private AuthenticationApplicationService service;
 
     @BeforeEach
@@ -78,6 +81,7 @@ class AuthenticationApplicationServiceTest {
                 refreshTokenGenerator,
                 refreshTokenHasher,
                 loginSessionRepository,
+                accessTokenRevocationRepository,
                 Clock.fixed(NOW, ZoneOffset.UTC)
         );
     }
@@ -425,12 +429,16 @@ class AuthenticationApplicationServiceTest {
 
     @Test
     void shouldDeleteLoginSessionWhenLoggingOut() {
-        LogoutCommand command = new LogoutCommand("session-001");
+        LogoutCommand command = new LogoutCommand(1000001L);
 
         service.logout(command);
 
-        verify(loginSessionRepository).deleteBySessionId(
-                "session-001"
+        verify(loginSessionRepository).deleteByUserId(
+                UserId.of(1000001L)
+        );
+        verify(accessTokenRevocationRepository).revokeIssuedBefore(
+                "1000001",
+                NOW
         );
         verifyNoInteractions(
                 accountRepository,
@@ -443,22 +451,27 @@ class AuthenticationApplicationServiceTest {
 
     @Test
     void shouldTreatRepeatedLogoutAsIdempotent() {
-        LogoutCommand command = new LogoutCommand("session-001");
+        LogoutCommand command = new LogoutCommand(1000001L);
 
         service.logout(command);
         service.logout(command);
 
         verify(loginSessionRepository, times(2))
-                .deleteBySessionId("session-001");
+                .deleteByUserId(UserId.of(1000001L));
+        verify(accessTokenRevocationRepository, times(2))
+                .revokeIssuedBefore("1000001", NOW);
     }
 
     @Test
-    void shouldRejectLogoutWithoutSessionId() {
+    void shouldRejectLogoutWithoutValidUserId() {
         assertThatThrownBy(
-                () -> new LogoutCommand(" ")
+                () -> new LogoutCommand(0)
         ).isInstanceOf(InvalidLoginSessionException.class);
 
-        verifyNoInteractions(loginSessionRepository);
+        verifyNoInteractions(
+                loginSessionRepository,
+                accessTokenRevocationRepository
+        );
     }
 
     private Account activeAccount() {

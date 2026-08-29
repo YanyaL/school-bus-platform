@@ -10,7 +10,16 @@ spring:
         ttl: 2s
 
 school-bus:
+  security:
+    jwt:
+      issuer: ${JWT_ISSUER:https://school-bus.local}
+      audience: ${JWT_AUDIENCE:school-bus-api}
+      public-key-location: ${JWT_PUBLIC_KEY_LOCATION:}
   gateway:
+    token-revocation:
+      enabled: ${TOKEN_REVOCATION_ENABLED:true}
+      fail-closed: ${TOKEN_REVOCATION_FAIL_CLOSED:true}
+      key-prefix: ${TOKEN_REVOCATION_KEY_PREFIX:schoolbus:auth:revoked-before:}
     core-service-id: school-bus-core
     transport-query-service-id: school-bus-transport-query
     iam-service-id: school-bus-iam

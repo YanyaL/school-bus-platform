@@ -1,5 +1,7 @@
 package com.schoolbus.iamservice.application.authentication;
 
+import com.schoolbus.iamservice.domain.identity.UserId;
+
 import java.util.Optional;
 
 public interface LoginSessionRepository {
@@ -20,4 +22,6 @@ public interface LoginSessionRepository {
     );
 
     void deleteBySessionId(String sessionId);
+
+    void deleteByUserId(UserId userId);
 }

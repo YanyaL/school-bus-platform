@@ -4,7 +4,7 @@
 
 A school bus booking and payment platform covering OIDC SSO, trip and seat discovery, concurrent seat reservation, payment/refund, cancellation and timeout processing. It starts as a modular monolith and is being incrementally extracted into Spring Cloud services with the Strangler Fig pattern.
 
-> **项目状态 / Status：持续开发中（WIP）。** 学生端核心业务闭环、IAM / Booking / Payment / Transport Query 服务提取、Booking↔Payment 事件解耦及主要基础设施验收已经完成；学生端与管理端两个 OIDC 客户端、管理控制台及真实浏览器 SSO 联调已经完成，独立数据库和跨应用 Token 撤销仍在推进。
+> **项目状态 / Status：持续开发中（WIP）。** 学生端核心业务闭环、IAM / Booking / Payment / Transport Query 服务提取、Booking↔Payment 事件解耦及主要基础设施验收已经完成；学生端与管理端两个 OIDC 客户端、管理控制台、真实浏览器 SSO 联调及 Gateway 全局 Token 撤销已经完成，独立数据库仍在推进。
 
 ## 技术栈 / Tech Stack
 
@@ -24,7 +24,7 @@ A school bus booking and payment platform covering OIDC SSO, trip and seat disco
 
 ## 核心能力 / Highlights
 
-- **统一认证**：基于 Spring Authorization Server 实现 OIDC Discovery/JWK、Authorization Code + PKCE 与 RP-Initiated Logout；学生端和管理端作为独立公共客户端共享 IAM 登录会话，分别签发 Token。
+- **统一认证**：基于 Spring Authorization Server 实现 OIDC Discovery/JWK、Authorization Code + PKCE 与 RP-Initiated Logout；学生端和管理端共享 IAM 登录会话。IAM 使用 Redis 记录用户级撤销水位，Gateway 在入口统一拒绝登出前签发的 JWT，实现跨应用 Access Token 实时失效。
 - **并发预约**：同一 MySQL 事务内完成条件更新锁座、`version` 乐观锁扣减库存、订单与 Outbox 落库，通过幂等请求号和唯一索引防止重复下单与超卖。
 - **事件驱动支付**：Booking 与 Payment 通过 `PaymentSucceeded`、`RefundRequested`、`PaymentRefunded` 事件协作，结合 Transactional Outbox、消费幂等、有限重试与 DLQ 实现最终一致性。
 - **超时与补偿**：RabbitMQ TTL + DLX 处理未支付订单，数据库定时扫描兜底；取消时在本地事务内释放具体座位并恢复汇总库存。
@@ -38,13 +38,13 @@ A school bus booking and payment platform covering OIDC SSO, trip and seat disco
 | --- | --- | --- |
 | 学生端业务闭环 | ✅ 已完成 | 注册登录、查班次/座位、并发下单、订单查询/取消、模拟支付退款与超时关单 |
 | Transport Query 服务 | ✅ 已提取并验收 | Nacos 注册发现、双实例负载分布、故障摘除、幂等 GET 有限重试 |
-| IAM 服务与双客户端 SSO | ✅ 已完成 | 学生端和管理端均使用 PKCE；真实 Chrome 已验证跨应用免密授权与统一登出 |
+| IAM 服务与双客户端 SSO | ✅ 已完成 | 两端均使用 PKCE；真实 Chrome 已验证跨应用免密授权；Gateway + Redis 实现用户级 Token 实时撤销 |
 | Booking 服务 | ✅ 已提取并验收 | HTTP 写链路、支付/过期/班次取消消息职责由独立服务承接 |
 | Payment 服务 | ✅ 已提取并验收 | 支付回调、退款 Outbox Relay、RabbitMQ Consumer、retry/DLQ |
 | Booking ↔ Payment 解耦 | ✅ 已验收 | 云模式使用领域事件，不再跨领域直接写对方业务表 |
 | Canal CDC 缓存链路 | 🟡 影子运行 | 真实联调已通过，暂时保留应用侧缓存失效作为保护 |
 | Transport 写路径与管理端 | 🟡 管理界面已接入 | 车辆、路线和班次管理仍由 Core 提供；独立管理 SPA 已完成，写服务尚未提取 |
-| 数据库自治与全局 Token 撤销 | 📋 待完成 | 当前服务仍共享 MySQL 物理实例；未实现 Back-Channel Logout 或 JWT 实时撤销 |
+| 数据库自治 | 📋 待完成 | 当前服务仍共享 MySQL 物理实例；下一阶段逐步收紧跨服务表访问 |
 
 ## 当前架构 / Architecture
 
@@ -69,13 +69,13 @@ Canal ─ Binlog CDC cache projection (shadow mode)
 
 渐进拆分阶段仍共享 MySQL，但已通过 ownership 开关、Gateway 路由和架构守卫限制职责回流；项目不宣称已经完成拆库或分布式事务。
 
-双客户端 SSO 已增加服务端共享 Session 集成测试及真实 Chrome 验收脚本。2026-08-28 在真实 IAM、Gateway、MySQL、Redis 和 Nacos 环境中完成验收：学生端登录后管理端无需再次输入密码，两个客户端获得不同 Token 但拥有相同 `sub`，统一登出后新的授权会重新要求登录。
+双客户端 SSO 已增加服务端共享 Session 集成测试及真实 Chrome 验收脚本。2026-08-28 在真实 IAM、Gateway、MySQL、Redis 和 Nacos 环境中完成验收：学生端登录后管理端无需再次输入密码，两个客户端获得不同 Token 但拥有相同 `sub`，统一登出后新的授权会重新要求登录。随后增加用户级 Token 撤销水位：任一客户端登出会使该用户此前签发的 Access Token 在 Gateway 入口立即失效，新登录签发的 Token 不受影响。
 
 ## 设计与验收文档 / Engineering Notes
 
 - [Nacos + Gateway 基础](docs/08-nacos-gateway-foundation.md)
 - [Transport Query 绞杀者提取](docs/09-transport-query-strangler.md)、[双实例 HA](docs/10-transport-query-ha.md)、[路由韧性](docs/12-transport-query-resilience.md)
-- [IAM 服务提取](docs/13-iam-strangler.md)、[OIDC Authorization Server](docs/21-iam-sso-authorization-server.md)、[学生端 SSO](docs/22-student-sso-frontend.md)、[统一登出](docs/23-sso-rp-initiated-logout.md)、[管理端 OIDC 客户端](docs/24-admin-sso-frontend.md)
+- [IAM 服务提取](docs/13-iam-strangler.md)、[OIDC Authorization Server](docs/21-iam-sso-authorization-server.md)、[学生端 SSO](docs/22-student-sso-frontend.md)、[统一登出](docs/23-sso-rp-initiated-logout.md)、[管理端 OIDC 客户端](docs/24-admin-sso-frontend.md)、[跨应用 Token 撤销](docs/25-sso-token-revocation.md)
 - [Payment 服务提取](docs/14-payment-strangler.md)、[退款消息职责迁移](docs/15-payment-refund-messaging-extraction.md)
 - [Canal CDC 缓存一致性](docs/18-canal-cache-consistency.md)
 - [Booking 服务提取](docs/19-booking-strangler.md)、[Booking↔Payment 事件解耦](docs/20-booking-payment-event-decoupling.md)

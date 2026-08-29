@@ -16,6 +16,9 @@ const ssoMocks = vi.hoisted(() => ({
   restoreSsoSession: vi.fn<() => Promise<SsoSession | null>>(async () => null),
   removeSsoSession: vi.fn<() => Promise<void>>(async () => undefined),
 }));
+const authApiMocks = vi.hoisted(() => ({
+  logout: vi.fn(async () => undefined),
+}));
 
 vi.mock('@/security/oidc', () => ssoMocks);
 
@@ -40,7 +43,7 @@ vi.mock('@/api/auth', () => ({
       refreshToken: 'new-refresh-token',
       refreshTokenExpiresAt: '2026-08-23T01:00:00.000Z',
     })),
-    logout: vi.fn(async () => undefined),
+    logout: authApiMocks.logout,
     me: vi.fn(async () => ({ userId: '1001', roles: ['STUDENT'] })),
     register: vi.fn(),
   })),
@@ -65,6 +68,7 @@ describe('auth store', () => {
     ssoMocks.completeSsoLogout.mockResolvedValue(undefined);
     ssoMocks.restoreSsoSession.mockResolvedValue(null);
     ssoMocks.removeSsoSession.mockClear();
+    authApiMocks.logout.mockClear();
   });
 
   it('applies an OIDC callback without persisting a refresh token', async () => {
@@ -157,6 +161,7 @@ describe('auth store', () => {
     const result = await store.logout();
 
     expect(result).toBe('redirected');
+    expect(authApiMocks.logout).toHaveBeenCalledOnce();
     expect(ssoMocks.beginSsoLogout).toHaveBeenCalledOnce();
   });
 
