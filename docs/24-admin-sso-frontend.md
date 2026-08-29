@@ -65,14 +65,23 @@ Snowflake ID 在 HTTP JSON 中保持字符串，前端不转换为 JavaScript `n
 - 管理端回跳地址只接受站内路径；
 - 无 `ADMIN` 角色的有效 Token 会被管理端拒绝；
 - 管理端 lint、TypeScript 类型检查、单元测试及生产构建。
+- IAM 集成测试使用同一个 `MockHttpSession` 先后请求学生端和管理端授权，两个客户端均直接获得不同授权码，证明认证中心会话可复用且不需要第二次提交凭证。
+
+真实 Chrome 验收脚本：
+
+```powershell
+$env:TEST_STUDENT_NUMBER='S4789503'
+$env:TEST_PASSWORD='your-password'
+.\scripts\cloud\verify-admin-sso-browser.ps1
+```
+
+脚本的通过条件包括：两个客户端均授权、第二个客户端未出现密码页、Access Token 不同但 `sub` 相同、管理 Token 包含 `ADMIN`、统一登出后新的授权重新要求登录。它还明确记录旧学生页面中已经签发的 Token 仍然存在，避免把“结束 IAM Cookie”错误描述成“已经撤销所有 JWT”。
 
 尚未宣称完成：
 
-- 在真实浏览器中先登录学生端，再打开管理端验证无需再次输入密码；
-- 从任一应用统一登出后，验证另一个应用重新授权时必须登录；
 - Access Token 的实时跨应用撤销或 OIDC Back-Channel Logout。
 
-因此当前可以描述为“第二 OIDC 客户端和管理端代码已接入并通过自动化测试”，不能把真实双应用免密联调写成已验收。
+2026-08-28 首次执行因 IAM 与 Gateway 未启动得到诚实的 `BLOCKED` 报告。基础设施恢复并统一 IAM、Core 与 Query 的本地 Issuer 后，再次执行生成 `target/admin-sso-browser-20260828-191245/report.json`，状态为 `PASSED`。真实 Chrome 已证明：学生端完成一次认证后，管理端授权不会再次出现凭证页；两个客户端的 Access Token 不同但 `sub` 相同；管理端 Token 包含 `ADMIN`；RP-Initiated Logout 后的新学生端授权会重新进入 IAM 登录页。旧学生页面中已签发的 JWT 仍会保留到过期，这不等同于 Token 撤销。
 
 ## 6. 面试说明
 

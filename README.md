@@ -4,7 +4,7 @@
 
 A school bus booking and payment platform covering OIDC SSO, trip and seat discovery, concurrent seat reservation, payment/refund, cancellation and timeout processing. It starts as a modular monolith and is being incrementally extracted into Spring Cloud services with the Strangler Fig pattern.
 
-> **项目状态 / Status：持续开发中（WIP）。** 学生端核心业务闭环、IAM / Booking / Payment / Transport Query 服务提取、Booking↔Payment 事件解耦及主要基础设施验收已经完成；学生端与管理端两个 OIDC 客户端及管理控制台代码已经接入，真实浏览器 SSO 联调、独立数据库和跨应用 Token 撤销仍在推进。
+> **项目状态 / Status：持续开发中（WIP）。** 学生端核心业务闭环、IAM / Booking / Payment / Transport Query 服务提取、Booking↔Payment 事件解耦及主要基础设施验收已经完成；学生端与管理端两个 OIDC 客户端、管理控制台及真实浏览器 SSO 联调已经完成，独立数据库和跨应用 Token 撤销仍在推进。
 
 ## 技术栈 / Tech Stack
 
@@ -38,7 +38,7 @@ A school bus booking and payment platform covering OIDC SSO, trip and seat disco
 | --- | --- | --- |
 | 学生端业务闭环 | ✅ 已完成 | 注册登录、查班次/座位、并发下单、订单查询/取消、模拟支付退款与超时关单 |
 | Transport Query 服务 | ✅ 已提取并验收 | Nacos 注册发现、双实例负载分布、故障摘除、幂等 GET 有限重试 |
-| IAM 服务与双客户端 SSO | 🟡 代码与自动化测试已完成 | 学生端和管理端均使用 PKCE；真实浏览器跨应用免密与统一登出联调待验收 |
+| IAM 服务与双客户端 SSO | ✅ 已完成 | 学生端和管理端均使用 PKCE；真实 Chrome 已验证跨应用免密授权与统一登出 |
 | Booking 服务 | ✅ 已提取并验收 | HTTP 写链路、支付/过期/班次取消消息职责由独立服务承接 |
 | Payment 服务 | ✅ 已提取并验收 | 支付回调、退款 Outbox Relay、RabbitMQ Consumer、retry/DLQ |
 | Booking ↔ Payment 解耦 | ✅ 已验收 | 云模式使用领域事件，不再跨领域直接写对方业务表 |
@@ -68,6 +68,8 @@ Canal ─ Binlog CDC cache projection (shadow mode)
 ```
 
 渐进拆分阶段仍共享 MySQL，但已通过 ownership 开关、Gateway 路由和架构守卫限制职责回流；项目不宣称已经完成拆库或分布式事务。
+
+双客户端 SSO 已增加服务端共享 Session 集成测试及真实 Chrome 验收脚本。2026-08-28 在真实 IAM、Gateway、MySQL、Redis 和 Nacos 环境中完成验收：学生端登录后管理端无需再次输入密码，两个客户端获得不同 Token 但拥有相同 `sub`，统一登出后新的授权会重新要求登录。
 
 ## 设计与验收文档 / Engineering Notes
 
