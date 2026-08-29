@@ -74,6 +74,7 @@ public class JwtAccessTokenIssuer implements AccessTokenIssuer {
                                 validatedAccount.userId().value()
                         )
                 )
+                .claim("iat_ms", issuedAt.toEpochMilli())
                 .claim("roles", roles)
                 .claim("sid", sessionId)
                 .build();

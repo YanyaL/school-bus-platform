@@ -33,6 +33,7 @@ import org.springframework.web.cors.CorsUtils;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.time.Duration;
+import java.time.Clock;
 import java.util.List;
 
 @Configuration(proxyBeanMethods = false)
@@ -152,7 +153,8 @@ public class SsoAuthorizationServerConfiguration {
 
     @Bean
     OAuth2TokenCustomizer<JwtEncodingContext> ssoTokenCustomizer(
-            JwtProperties jwtProperties
+            JwtProperties jwtProperties,
+            Clock clock
     ) {
         return context -> {
             if (!(context.getPrincipal().getPrincipal()
@@ -167,7 +169,7 @@ public class SsoAuthorizationServerConfiguration {
             if (OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())) {
                 context.getClaims().audience(
                         List.of(jwtProperties.audience())
-                );
+                ).claim("iat_ms", clock.instant().toEpochMilli());
             }
         };
     }

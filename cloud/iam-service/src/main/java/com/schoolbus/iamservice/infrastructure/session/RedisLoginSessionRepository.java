@@ -23,6 +23,8 @@ public class RedisLoginSessionRepository
             "school-bus:login-session:id:";
     static final String REFRESH_KEY_PREFIX =
             "school-bus:login-session:refresh:";
+    static final String USER_SESSIONS_KEY_PREFIX =
+            "school-bus:login-session:user:";
 
     private static final String SESSION_ID_FIELD = "sessionId";
     private static final String USER_ID_FIELD = "userId";
@@ -53,6 +55,8 @@ public class RedisLoginSessionRepository
                         'SET', KEYS[2], ARGV[1],
                         'PX', ARGV[6]
                     )
+                    redis.call('SADD', KEYS[3], ARGV[1])
+                    redis.call('PEXPIRE', KEYS[3], ARGV[6])
                     return 1
                     """,
                     Long.class
@@ -64,11 +68,21 @@ public class RedisLoginSessionRepository
                     local refreshHash = redis.call(
                         'HGET', KEYS[1], 'refreshTokenHash'
                     )
+                    local userId = redis.call(
+                        'HGET', KEYS[1], 'userId'
+                    )
                     local deleted = redis.call('DEL', KEYS[1])
                     if refreshHash then
                         deleted = deleted + redis.call(
                             'DEL', ARGV[1] .. refreshHash
                         )
+                    end
+                    if userId then
+                        local userKey = ARGV[2] .. userId
+                        redis.call('SREM', userKey, ARGV[3])
+                        if redis.call('SCARD', userKey) == 0 then
+                            redis.call('DEL', userKey)
+                        end
                     end
                     return deleted
                     """,
@@ -98,7 +112,32 @@ public class RedisLoginSessionRepository
                         'SET', KEYS[2], ARGV[2],
                         'PX', ARGV[7]
                     )
+                    redis.call('SADD', KEYS[3], ARGV[2])
+                    redis.call('PEXPIRE', KEYS[3], ARGV[7])
                     return 1
+                    """,
+                    Long.class
+            );
+
+    private static final DefaultRedisScript<Long> DELETE_USER_SCRIPT =
+            new DefaultRedisScript<>(
+                    """
+                    local sessionIds = redis.call('SMEMBERS', KEYS[1])
+                    local deleted = 0
+                    for _, sessionId in ipairs(sessionIds) do
+                        local sessionKey = ARGV[1] .. sessionId
+                        local refreshHash = redis.call(
+                            'HGET', sessionKey, 'refreshTokenHash'
+                        )
+                        deleted = deleted + redis.call('DEL', sessionKey)
+                        if refreshHash then
+                            deleted = deleted + redis.call(
+                                'DEL', ARGV[2] .. refreshHash
+                            )
+                        end
+                    end
+                    redis.call('DEL', KEYS[1])
+                    return deleted
                     """,
                     Long.class
             );
@@ -143,7 +182,8 @@ public class RedisLoginSessionRepository
                         sessionKey(validatedSession.sessionId()),
                         refreshKey(
                                 validatedSession.refreshTokenHash()
-                        )
+                        ),
+                        userSessionsKey(validatedSession.userId())
                 ),
                 validatedSession.sessionId(),
                 Long.toString(
@@ -240,7 +280,8 @@ public class RedisLoginSessionRepository
                         refreshKey(
                                 validatedReplacement
                                         .refreshTokenHash()
-                        )
+                        ),
+                        userSessionsKey(validatedReplacement.userId())
                 ),
                 validatedExpectedHash,
                 validatedReplacement.sessionId(),
@@ -265,6 +306,22 @@ public class RedisLoginSessionRepository
         redisTemplate.execute(
                 DELETE_SCRIPT,
                 List.of(sessionKey(validatedSessionId)),
+                REFRESH_KEY_PREFIX,
+                USER_SESSIONS_KEY_PREFIX,
+                validatedSessionId
+        );
+    }
+
+    @Override
+    public void deleteByUserId(UserId userId) {
+        UserId validatedUserId = Objects.requireNonNull(
+                userId,
+                "userId must not be null"
+        );
+        redisTemplate.execute(
+                DELETE_USER_SCRIPT,
+                List.of(userSessionsKey(validatedUserId)),
+                SESSION_KEY_PREFIX,
                 REFRESH_KEY_PREFIX
         );
     }
@@ -275,6 +332,10 @@ public class RedisLoginSessionRepository
 
     static String refreshKey(String refreshTokenHash) {
         return REFRESH_KEY_PREFIX + refreshTokenHash;
+    }
+
+    static String userSessionsKey(UserId userId) {
+        return USER_SESSIONS_KEY_PREFIX + userId.value();
     }
 
     private LoginSession restore(Map<Object, Object> fields) {

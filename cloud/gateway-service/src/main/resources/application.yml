@@ -27,6 +27,14 @@ spring:
         # Short TTL reduces how long a removed Query instance stays selectable.
         # Finite GET retries cover residual discovery propagation windows.
         ttl: ${SPRING_CLOUD_LOADBALANCER_CACHE_TTL:2s}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DATABASE:0}
+      connect-timeout: ${REDIS_CONNECT_TIMEOUT:2s}
+      timeout: ${REDIS_TIMEOUT:2s}
 
 server:
   port: ${GATEWAY_SERVER_PORT:8080}
@@ -48,11 +56,20 @@ management:
       enabled: true
 
 school-bus:
+  security:
+    jwt:
+      issuer: ${JWT_ISSUER:https://school-bus.local}
+      audience: ${JWT_AUDIENCE:school-bus-api}
+      public-key-location: ${JWT_PUBLIC_KEY_LOCATION:}
   gateway:
     core-service-id: ${CORE_SERVICE_ID:school-bus-core}
     transport-query-service-id: ${TRANSPORT_QUERY_SERVICE_ID:school-bus-transport-query}
     iam-service-id: ${IAM_SERVICE_ID:school-bus-iam}
     payment-service-id: ${PAYMENT_SERVICE_ID:school-bus-payment}
+    token-revocation:
+      enabled: ${TOKEN_REVOCATION_ENABLED:true}
+      fail-closed: ${TOKEN_REVOCATION_FAIL_CLOSED:true}
+      key-prefix: ${TOKEN_REVOCATION_KEY_PREFIX:schoolbus:auth:revoked-before:}
     transport-query-resilience:
       # Override via SCHOOL_BUS_GATEWAY_TRANSPORT_QUERY_RESILIENCE_* env vars
       # or TRANSPORT_QUERY_RESILIENCE_ENABLED / TRANSPORT_QUERY_RESILIENCE_RETRIES.

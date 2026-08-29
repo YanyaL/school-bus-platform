@@ -4,6 +4,7 @@ import com.schoolbus.iamservice.domain.account.Account;
 import com.schoolbus.iamservice.domain.account.AccountRepository;
 import com.schoolbus.iamservice.domain.account.AccountStatus;
 import com.schoolbus.iamservice.domain.account.StudentNumber;
+import com.schoolbus.iamservice.domain.identity.UserId;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +22,7 @@ public class AuthenticationApplicationService {
     private final RefreshTokenGenerator refreshTokenGenerator;
     private final RefreshTokenHasher refreshTokenHasher;
     private final LoginSessionRepository loginSessionRepository;
+    private final AccessTokenRevocationRepository accessTokenRevocationRepository;
     private final Clock clock;
 
     public AuthenticationApplicationService(
@@ -30,6 +32,7 @@ public class AuthenticationApplicationService {
             RefreshTokenGenerator refreshTokenGenerator,
             RefreshTokenHasher refreshTokenHasher,
             LoginSessionRepository loginSessionRepository,
+            AccessTokenRevocationRepository accessTokenRevocationRepository,
             Clock clock
     ) {
         this.accountRepository = Objects.requireNonNull(
@@ -55,6 +58,10 @@ public class AuthenticationApplicationService {
         this.loginSessionRepository = Objects.requireNonNull(
                 loginSessionRepository,
                 "loginSessionRepository must not be null"
+        );
+        this.accessTokenRevocationRepository = Objects.requireNonNull(
+                accessTokenRevocationRepository,
+                "accessTokenRevocationRepository must not be null"
         );
         this.clock = Objects.requireNonNull(
                 clock,
@@ -186,8 +193,11 @@ public class AuthenticationApplicationService {
                 command,
                 "command must not be null"
         );
-        loginSessionRepository.deleteBySessionId(
-                validatedCommand.sessionId()
+        UserId userId = UserId.of(validatedCommand.userId());
+        accessTokenRevocationRepository.revokeIssuedBefore(
+                Long.toString(userId.value()),
+                clock.instant()
         );
+        loginSessionRepository.deleteByUserId(userId);
     }
 }

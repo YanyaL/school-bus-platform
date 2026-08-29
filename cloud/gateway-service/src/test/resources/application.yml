@@ -21,7 +21,16 @@ management:
       enabled: false
 
 school-bus:
+  security:
+    jwt:
+      issuer: https://school-bus.local
+      audience: school-bus-api
+      public-key-location: ""
   gateway:
+    token-revocation:
+      enabled: false
+      fail-closed: true
+      key-prefix: "schoolbus:auth:revoked-before:"
     transport-query-resilience:
       enabled: true
       retries: 1

@@ -100,6 +100,8 @@ class JwtAccessTokenIssuerTest {
                 .containsExactly("STUDENT");
         assertThat(jwt.getClaimAsString("sid"))
                 .isEqualTo("session-001");
+        assertThat(jwt.<Number>getClaim("iat_ms").longValue())
+                .isEqualTo(NOW.toEpochMilli());
         assertThat(jwt.getClaims())
                 .doesNotContainKey("studentNumber");
         assertThat(jwt.getId()).isNotBlank();
