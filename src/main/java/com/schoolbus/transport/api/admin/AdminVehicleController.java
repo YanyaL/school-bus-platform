@@ -6,6 +6,7 @@ import com.schoolbus.transport.application.vehicle.CreateVehicleCommand;
 import com.schoolbus.transport.application.vehicle.UpdateVehicleStatusCommand;
 import com.schoolbus.transport.application.vehicle.VehicleManagementApplicationService;
 import com.schoolbus.transport.application.vehicle.VehicleView;
+import com.schoolbus.transport.config.ConditionalOnEmbeddedTransportAdmin;
 import com.schoolbus.transport.domain.vehicle.VehicleStatus;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -28,6 +29,7 @@ import java.util.List;
 import java.util.Objects;
 
 @RestController
+@ConditionalOnEmbeddedTransportAdmin
 @RequestMapping("/api/v1/admin/vehicles")
 @Validated
 @Profile("!test")

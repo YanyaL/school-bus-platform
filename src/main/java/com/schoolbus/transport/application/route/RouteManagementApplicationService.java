@@ -9,6 +9,7 @@ import com.schoolbus.transport.domain.route.RouteId;
 import com.schoolbus.transport.domain.route.RouteNumber;
 import com.schoolbus.transport.domain.route.RouteRepository;
 import com.schoolbus.transport.domain.route.RouteStatus;
+import com.schoolbus.transport.config.ConditionalOnEmbeddedTransportAdmin;
 import org.springframework.context.annotation.Profile;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
@@ -20,6 +21,7 @@ import java.util.List;
 import java.util.Objects;
 
 @Service
+@ConditionalOnEmbeddedTransportAdmin
 @Profile("!test")
 public class RouteManagementApplicationService {
 

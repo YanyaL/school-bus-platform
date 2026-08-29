@@ -23,6 +23,10 @@ public class CoreServiceRoutes {
     public static final String IAM_AUTH_ROUTE_ID = "school-bus-iam-auth";
     public static final String PAYMENT_ROUTE_ID = "school-bus-payment-callback";
     public static final String BOOKING_ROUTE_ID = "school-bus-booking-api";
+    public static final String TRANSPORT_COMMAND_VEHICLES_ROUTE_ID =
+            "school-bus-transport-command-vehicles";
+    public static final String TRANSPORT_COMMAND_ROUTES_ROUTE_ID =
+            "school-bus-transport-command-routes";
     public static final String CORE_ROUTE_ID = "school-bus-core-api";
 
     @Bean
@@ -39,7 +43,9 @@ public class CoreServiceRoutes {
             @Value("${school-bus.gateway.payment-service-id:school-bus-payment}")
             String paymentServiceId,
             @Value("${school-bus.gateway.booking-service-id:school-bus-booking}")
-            String bookingServiceId
+            String bookingServiceId,
+            @Value("${school-bus.gateway.transport-command-service-id:school-bus-transport-command}")
+            String transportCommandServiceId
     ) {
         int connectTimeoutMs = Math.toIntExact(resilience.connectTimeout().toMillis());
         long responseTimeoutMs = resilience.responseTimeout().toMillis();
@@ -97,6 +103,16 @@ public class CoreServiceRoutes {
                         .path("/api/v1/bookings", "/api/v1/bookings/**")
                         .filters(filters -> stripUntrustedIdentityHeaders(filters))
                         .uri("lb://" + bookingServiceId))
+                .route(TRANSPORT_COMMAND_VEHICLES_ROUTE_ID, route -> route
+                        .order(-11)
+                        .path("/api/v1/admin/vehicles", "/api/v1/admin/vehicles/**")
+                        .filters(filters -> stripUntrustedIdentityHeaders(filters))
+                        .uri("lb://" + transportCommandServiceId))
+                .route(TRANSPORT_COMMAND_ROUTES_ROUTE_ID, route -> route
+                        .order(-10)
+                        .path("/api/v1/admin/routes", "/api/v1/admin/routes/**")
+                        .filters(filters -> stripUntrustedIdentityHeaders(filters))
+                        .uri("lb://" + transportCommandServiceId))
                 .route(CORE_ROUTE_ID, route -> route
                         .order(0)
                         .path("/api/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")

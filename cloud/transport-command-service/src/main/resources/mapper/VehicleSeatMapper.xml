@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.schoolbus.transport.infrastructure.persistence.vehicle.VehicleSeatMapper">
+
+    <insert id="insertSeats">
+        INSERT INTO transport_vehicle_seat (
+            vehicle_id,
+            seat_number,
+            created_at
+        ) VALUES
+        <foreach collection="seatNumbers" item="seatNumber" separator=",">
+            (
+                #{vehicleId},
+                #{seatNumber},
+                #{createdAt}
+            )
+        </foreach>
+    </insert>
+
+    <select id="selectSeatNumbersByVehicleId" resultType="string">
+        SELECT seat_number
+        FROM transport_vehicle_seat
+        WHERE vehicle_id = #{vehicleId}
+        ORDER BY seat_number
+    </select>
+
+</mapper>

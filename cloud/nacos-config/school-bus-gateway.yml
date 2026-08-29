@@ -24,6 +24,7 @@ school-bus:
     transport-query-service-id: school-bus-transport-query
     iam-service-id: school-bus-iam
     payment-service-id: school-bus-payment
+    transport-command-service-id: school-bus-transport-command
     transport-query-resilience:
       enabled: true
       retries: 1
