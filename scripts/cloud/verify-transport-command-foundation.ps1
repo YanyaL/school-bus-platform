@@ -141,6 +141,16 @@ function New-TestJwt {
     }
 }
 
+function Convert-HttpContentToText([object] $Content) {
+    if ($null -eq $Content) {
+        return ''
+    }
+    if ($Content -is [byte[]]) {
+        return [Text.Encoding]::UTF8.GetString($Content)
+    }
+    return [string]$Content
+}
+
 function Invoke-HttpCapture {
     param(
         [string] $Uri,
@@ -161,12 +171,13 @@ function Invoke-HttpCapture {
             $arguments.Body = $Body | ConvertTo-Json -Depth 8 -Compress
         }
         $response = Invoke-WebRequest @arguments
-        $parsed = if ([string]::IsNullOrWhiteSpace($response.Content)) {
+        $raw = Convert-HttpContentToText $response.Content
+        $parsed = if ([string]::IsNullOrWhiteSpace($raw)) {
             $null
         } else {
-            $response.Content | ConvertFrom-Json
+            $raw | ConvertFrom-Json
         }
-        return @{ status = [int]$response.StatusCode; body = $parsed; raw = $response.Content }
+        return @{ status = [int]$response.StatusCode; body = $parsed; raw = $raw }
     } catch {
         $response = $_.Exception.Response
         if ($null -eq $response) {
@@ -239,7 +250,7 @@ function Remove-TemporaryTransportData([System.Collections.IDictionary] $Report)
         }
         $vehicleId = if ($null -eq $script:VehicleId) { 0 } else { $script:VehicleId }
         $routeId = if ($null -eq $script:RouteId) { 0 } else { $script:RouteId }
-        $remaining = Invoke-MySql "SELECT (SELECT COUNT(*) FROM transport_vehicle WHERE id = $vehicleId) + (SELECT COUNT(*) FROM transport_route WHERE id = $routeId);"
+        $remaining = @(Invoke-MySql "SELECT (SELECT COUNT(*) FROM transport_vehicle WHERE id = $vehicleId) + (SELECT COUNT(*) FROM transport_route WHERE id = $routeId);")
         $count = if ($remaining.Count -eq 0) { 0 } else { [int]$remaining[0] }
         $Report.cleanupEvidence.remainingRows = $count
         $Report.temporaryDataCleaned = ($count -eq 0)
@@ -299,13 +310,17 @@ try {
     $gatewayJar = Find-BootJar (Join-Path $projectRoot 'cloud\gateway-service\target') 'school-bus-gateway'
     $commandJar = Find-BootJar (Join-Path $projectRoot 'cloud\transport-command-service\target') 'school-bus-transport-command'
 
+    $jdbcUrl = "jdbc:mysql://127.0.0.1:3306/${DatabaseName}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
     $common = @{
         NACOS_CONFIG_ENABLED = 'true'
         NACOS_DISCOVERY_ENABLED = 'true'
         NACOS_SERVER_ADDR = '127.0.0.1:8848'
-        DB_URL = "jdbc:mysql://127.0.0.1:3306/$DatabaseName?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
+        DB_URL = $jdbcUrl
         DB_USERNAME = $DatabaseUser
         DB_PASSWORD = $DatabasePassword
+        SPRING_DATASOURCE_URL = $jdbcUrl
+        SPRING_DATASOURCE_USERNAME = $DatabaseUser
+        SPRING_DATASOURCE_PASSWORD = $DatabasePassword
         JWT_PUBLIC_KEY_LOCATION = $keys.Public
     }
     $coreEnv = $common.Clone()
@@ -382,13 +397,13 @@ try {
 
     $route = Invoke-HttpCapture -Uri "http://127.0.0.1:$GatewayPort/api/v1/admin/routes" -Method POST -Headers $adminHeaders -Body @{
         routeCode = "QA-$suffix"
-        departureCampus = 'St Lucia'
-        arrivalCampus = 'Gatton'
+        departureCampus = 'MAIN'
+        arrivalCampus = 'EAST'
         estimatedDurationMinutes = 45
     }
     Assert-Status $route @(201) 'create route'
     $script:RouteId = Assert-NumericId $route.body.data.routeId 'routeId'
-    $routeRows = Invoke-MySql "SELECT COUNT(*) FROM transport_route WHERE id = $script:RouteId;"
+    $routeRows = @(Invoke-MySql "SELECT COUNT(*) FROM transport_route WHERE id = $script:RouteId;")
     if (@($routeRows).Count -eq 0 -or [int]$routeRows[0] -ne 1) {
         throw 'Route row was not committed.'
     }

@@ -77,12 +77,20 @@ The real acceptance script additionally checks Nacos registration, Gateway
 cutover, Core ownership shutdown, anonymous/student/admin authorization,
 vehicle plus seat-layout transactionality, route persistence and cleanup.
 
-On 2026-08-30 the acceptance harness was executed and produced
-`target/transport-command-foundation-20260830-180813/report.json`. The report is
-honestly marked `BLOCKED` at `Assert-Docker` because Docker Desktop was not
-running; no temporary business rows were created and cleanup was successful.
-Real Nacos/Gateway/MySQL acceptance therefore remains pending and must not be
-represented as completed until a later report is `PASSED`.
+On 2026-08-30 the acceptance harness was executed against real Docker, Nacos
+3.0.3, MySQL and Redis infrastructure. The final report is
+`target/transport-command-foundation-20260830-183954/report.json` and is marked
+`PASSED`. It records one healthy Transport Command instance in Nacos, Gateway
+cutover success, a direct-Core `404`, anonymous `401`, student `403`, admin
+writes, one vehicle plus four seat-layout rows committed together, one route
+row committed, and zero temporary rows after cleanup.
+
+Earlier blocked and failed runs exposed acceptance-harness defects rather than
+being hidden: a PowerShell JDBC interpolation error, missing canonical Spring
+datasource environment variables, byte-array HTTP response decoding, invalid
+Campus fixtures and single-row MySQL output unwrapping. Regression checks now
+cover those cases. The generated report remains local evidence under `target/`
+and is not committed as a source artifact.
 
 ## Next phase
 

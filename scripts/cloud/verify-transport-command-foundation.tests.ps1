@@ -53,4 +53,30 @@ foreach ($content in @($bootstrap, $initializer)) {
     }
 }
 
+$acceptanceSource = Get-Content -LiteralPath $scriptPath -Raw
+if ($acceptanceSource -match '\$DatabaseName\?useSSL') {
+    throw 'JDBC URL must use an explicit PowerShell variable boundary before the query string.'
+}
+foreach ($springDataSourceVariable in @(
+    'SPRING_DATASOURCE_URL',
+    'SPRING_DATASOURCE_USERNAME',
+    'SPRING_DATASOURCE_PASSWORD'
+)) {
+    if ($acceptanceSource -notmatch [regex]::Escape($springDataSourceVariable)) {
+        throw "Acceptance runtime must inject canonical Spring datasource variable: $springDataSourceVariable"
+    }
+}
+if ($acceptanceSource -notmatch '\$Content -is \[byte\[\]\]') {
+    throw 'Acceptance HTTP parsing must decode PowerShell byte-array response bodies before JSON parsing.'
+}
+if ($acceptanceSource -match "departureCampus = 'St Lucia'|arrivalCampus = 'Gatton'") {
+    throw 'Acceptance route payload must use values supported by the Campus enum.'
+}
+if ($acceptanceSource -notmatch '\$remaining = @\(Invoke-MySql') {
+    throw 'Cleanup query output must remain an array when MySQL returns a single row.'
+}
+if ($acceptanceSource -notmatch '\$routeRows = @\(Invoke-MySql') {
+    throw 'Route verification output must remain an array when MySQL returns a single row.'
+}
+
 Write-Host 'verify-transport-command-foundation.tests.ps1 PASSED'
