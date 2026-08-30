@@ -66,13 +66,23 @@ persistence even before physical database separation.
 mvn -f .\cloud\transport-command-service\pom.xml test
 mvn -f .\cloud\gateway-service\pom.xml test
 mvn test
+.\scripts\cloud\verify-transport-command-foundation.tests.ps1
+.\scripts\cloud\verify-transport-command-foundation.ps1
 .\scripts\security\check-no-private-keys.ps1
 git diff --check
 ```
 
 The unit, controller, route, ownership and architecture tests are automated.
-Real Nacos/Gateway/MySQL acceptance is still pending and must not be represented
-as completed until the new service is started against the runtime stack.
+The real acceptance script additionally checks Nacos registration, Gateway
+cutover, Core ownership shutdown, anonymous/student/admin authorization,
+vehicle plus seat-layout transactionality, route persistence and cleanup.
+
+On 2026-08-30 the acceptance harness was executed and produced
+`target/transport-command-foundation-20260830-180813/report.json`. The report is
+honestly marked `BLOCKED` at `Assert-Docker` because Docker Desktop was not
+running; no temporary business rows were created and cleanup was successful.
+Real Nacos/Gateway/MySQL acceptance therefore remains pending and must not be
+represented as completed until a later report is `PASSED`.
 
 ## Next phase
 
