@@ -42,6 +42,7 @@ class MyBatisTripPublicationOutboxTest {
         assertThat(body.get("seatNumbers").size()).isEqualTo(body.get("totalSeats").asInt());
         assertThat(body.get("price").asText()).isEqualTo("5.00");
         assertThat(body.get("publishedAt").asText()).isEqualTo("2026-08-31T00:00:00Z");
+        assertThat(body).isEqualTo(json.readTree(java.nio.file.Path.of("contracts/trip-published-v1.json").toFile()));
     }
 
     @Test
@@ -52,7 +53,7 @@ class MyBatisTripPublicationOutboxTest {
 
     private TripPublishedEvent event() {
         Instant now = Instant.parse("2026-08-31T00:00:00Z");
-        return new TripPublishedEvent(9007199254740993L, UUID.randomUUID(), 1, List.of("1", "2"),
+        return new TripPublishedEvent(9007199254740993L, UUID.fromString("11111111-1111-4111-8111-111111111111"), 1, List.of("1", "2"),
                 new BigDecimal("5.00"), now.plusSeconds(60), now.plusSeconds(120), now);
     }
 }

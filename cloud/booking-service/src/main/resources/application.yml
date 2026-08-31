@@ -84,6 +84,8 @@ school-bus:
   identity:
     worker-id: ${SCHOOL_BUS_BOOKING_WORKER_ID:3}
   booking:
+    trip-publication-shadow:
+      enabled: ${BOOKING_TRIP_PUBLICATION_SHADOW_ENABLED:false}
     payment-window: ${BOOKING_PAYMENT_WINDOW:PT15M}
     maximum-attempts: ${BOOKING_MAXIMUM_ATTEMPTS:3}
     expiration:

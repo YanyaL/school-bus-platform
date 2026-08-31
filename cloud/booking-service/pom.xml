@@ -136,6 +136,11 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>rabbitmq</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>org.awaitility</groupId>
             <artifactId>awaitility</artifactId>
             <scope>test</scope>
@@ -143,6 +148,19 @@
     </dependencies>
 
     <build>
+        <testResources>
+            <testResource><directory>src/test/resources</directory></testResource>
+            <testResource>
+                <directory>${project.basedir}/../../contracts</directory>
+                <targetPath>contracts</targetPath>
+                <includes><include>trip-published-v1.json</include></includes>
+            </testResource>
+            <testResource>
+                <directory>${project.basedir}/../../src/main/resources/db/migration</directory>
+                <targetPath>shadow-schema</targetPath>
+                <includes><include>V8__add_booking_trip_publication_shadow.sql</include></includes>
+            </testResource>
+        </testResources>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
