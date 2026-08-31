@@ -94,6 +94,10 @@ school-bus:
     expiration:
       batch-size: ${BOOKING_EXPIRATION_BATCH_SIZE:100}
   transport:
+    publication-events:
+      # Shadow event source only; existing synchronous seat/inventory initialization remains authoritative.
+      enabled: ${TRIP_PUBLICATION_EVENTS_ENABLED:false}
+      relay-enabled: ${TRIP_PUBLICATION_RELAY_ENABLED:false}
     trip-cancellation:
       reconciliation:
         enabled: ${TRIP_CANCELLATION_RECONCILIATION_ENABLED:false}
