@@ -39,6 +39,11 @@ try {
                 'storeRejectsWritesWithoutTransaction','realRabbitDuplicateIsObservedAndAcknowledgedAfterCommit',
                 'malformedRealMessageIsDeadLetteredWithoutObservation','transientDatabaseFailureRetriesAndCommitsRealSql',
                 'exhaustedTransientFailuresReachRealDlqWithoutPartialState')
+        },
+        @{
+            module='cloud/booking-service'; suite='com.schoolbus.bookingservice.trippublication.InventoryReadinessIntegrationTest'
+            cases=@('movesFromWaitingToReadyWithoutMutatingLiveInventory',
+                'sameVersionCannotDowngradeReadyButNewerVersionCanResetIt')
         }
     )
     foreach ($entry in $suites) {

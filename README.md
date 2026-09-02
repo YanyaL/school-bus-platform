@@ -46,6 +46,7 @@ A school bus booking and payment platform covering OIDC SSO, trip and seat disco
 | Transport 写路径与管理端 | 🟡 第一阶段已提取并验收 | 车辆与路线管理由 Transport Command 承接并通过 Nacos/Gateway/MySQL 真实验收；班次发布/取消仍由 Core 提供，独立管理 SPA 已完成 |
 | 班次发布 TripPublished Outbox | 🟡 影子生产端已实现 | 默认关闭；保留同步座位/库存初始化，支持事务事件记录与 Confirm/Return 重试；本轮真实 MySQL/RabbitMQ 验收因 Docker 不可用而 BLOCKED |
 | Booking 班次发布影子消费 | 🟡 代码与非容器测试已完成 | 默认关闭；事务 Inbox、内容冲突检测、版本化观察快照、有限重试与独立 DLQ；不写正式库存，真实容器验收待完成 |
+| Booking 库存就绪门控 | 🟡 影子核对已实现 | 默认关闭；只读核对 TripPublished 快照、具体座位与汇总库存，记录 WAITING/READY，不改变当前下单路径；真实 MySQL 验收待 Docker 恢复 |
 | 数据库自治 | 📋 待完成 | 当前服务仍共享 MySQL 物理实例；下一阶段逐步收紧跨服务表访问 |
 
 ## 当前架构 / Architecture
@@ -85,6 +86,7 @@ Canal ─ Binlog CDC cache projection (shadow mode)
 - [Transport Command 第一阶段](docs/26-transport-command-foundation.md)
 - [班次发布事件与 Outbox 影子投递 / Trip publication Outbox](docs/27-trip-publication-outbox.md)（生产端已实现；真实验收待完成，未切换库存所有权）
 - [Booking 班次发布影子消费者 / Booking publication observer](docs/28-booking-trip-publication-shadow.md)（事务幂等与版本保护；未进行业务切换）
+- [Booking 库存就绪门控 / Inventory readiness shadow](docs/29-booking-inventory-readiness-shadow.md)（只读核对与版本保护；未切换库存所有权）
 
 ## Swagger 端到端演示
 

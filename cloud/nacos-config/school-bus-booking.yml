@@ -18,6 +18,8 @@ school-bus:
   identity:
     worker-id: ${SCHOOL_BUS_BOOKING_WORKER_ID:3}
   booking:
+    inventory-readiness-shadow:
+      enabled: ${BOOKING_INVENTORY_READINESS_SHADOW_ENABLED:false}
     payment-window: ${BOOKING_PAYMENT_WINDOW:PT15M}
     expiration:
       scheduler:

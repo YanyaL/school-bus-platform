@@ -86,6 +86,11 @@ school-bus:
   booking:
     trip-publication-shadow:
       enabled: ${BOOKING_TRIP_PUBLICATION_SHADOW_ENABLED:false}
+    inventory-readiness-shadow:
+      enabled: ${BOOKING_INVENTORY_READINESS_SHADOW_ENABLED:false}
+      batch-size: ${BOOKING_INVENTORY_READINESS_BATCH_SIZE:100}
+      initial-delay-ms: ${BOOKING_INVENTORY_READINESS_INITIAL_DELAY_MS:15000}
+      fixed-delay-ms: ${BOOKING_INVENTORY_READINESS_FIXED_DELAY_MS:10000}
     payment-window: ${BOOKING_PAYMENT_WINDOW:PT15M}
     maximum-attempts: ${BOOKING_MAXIMUM_ATTEMPTS:3}
     expiration:

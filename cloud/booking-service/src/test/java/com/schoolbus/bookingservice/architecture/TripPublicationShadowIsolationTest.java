@@ -9,7 +9,11 @@ class TripPublicationShadowIsolationTest {
     @Test
     void observationCodeMustNotDependOnLiveBusinessStateOrSharedConsumptionCache() throws Exception {
         try (var paths = Files.walk(Path.of("src/main/java"))) {
-            for (Path path : paths.filter(Files::isRegularFile).filter(p -> p.toString().contains("trippublication")).toList()) {
+            for (Path path : paths.filter(Files::isRegularFile)
+                    .filter(p -> p.toString().contains("trippublication"))
+                    .filter(p -> !p.getFileName().toString().contains("InventoryReadiness"))
+                    .filter(p -> !p.getFileName().toString().contains("MyBatisInventoryReadiness"))
+                    .toList()) {
                 assertThat(Files.readString(path)).as(path.toString()).doesNotContain(
                         "booking_order", "booking_trip_inventory", "transport_trip_seat", "event_consumed",
                         "BookingOrderRepository", "SeatInventoryRepository", "TripSeatReservationPort", "ConsumedEventStore",

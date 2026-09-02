@@ -158,7 +158,10 @@
             <testResource>
                 <directory>${project.basedir}/../../src/main/resources/db/migration</directory>
                 <targetPath>shadow-schema</targetPath>
-                <includes><include>V8__add_booking_trip_publication_shadow.sql</include></includes>
+                <includes>
+                    <include>V8__add_booking_trip_publication_shadow.sql</include>
+                    <include>V9__add_booking_inventory_readiness_shadow.sql</include>
+                </includes>
             </testResource>
         </testResources>
         <plugins>
