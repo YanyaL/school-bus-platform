@@ -57,8 +57,8 @@ $env:BOOKING_INVENTORY_READINESS_SHADOW_ENABLED='true'
 
 - Booking 非容器回归覆盖 READY、库存缺失、总量不符、座位集合不符、损坏快照、批次故障隔离和默认关闭行为。
 - `InventoryReadinessBoundaryTest` 防止核对组件向正式座位或库存表写入。
-- `InventoryReadinessIntegrationTest` 使用一次性 MySQL 验证 WAITING→READY 及正式库存不被修改，并已加入 `verify-trip-publication-shadow.ps1`。
-- 当前 Docker Desktop 因用户目录中的残留 runtime socket 无法冷启动，真实 MySQL 测试仍会跳过；本阶段不能宣称容器验收通过。
+- `InventoryReadinessIntegrationTest` 使用一次性 MySQL 验证 WAITING→READY、正式库存不被修改、同版本 READY 不降级及新版本可重新进入 WAITING，并已加入 `verify-trip-publication-shadow.ps1`。
+- 2026-09-02 在 Docker Desktop 4.89.0 与 MySQL 8.4 Testcontainers 上完成真实执行；Booking 完整回归为 116 项、0 失败、0 错误、0 跳过。该结果证明本就绪核对的数据库行为，不代表生产端 Outbox 到消费者的全部切换条件已经满足。
 
 ## 下一阶段退出条件
 
