@@ -3,7 +3,7 @@
 ## 状态 / Status
 
 2026-08-31：Booking 影子消费者、事务 Inbox、版本化快照和失败处理已实现；默认关闭。
-**Docker 引擎不可用，真实 MySQL/RabbitMQ 验收为 BLOCKED，尚未进行云环境消费切换。**
+**2026-09-02 已在 Docker Desktop 4.89.0 上完成真实 MySQL/RabbitMQ 消费端测试；尚未完成生产端 Outbox 整链路验收，也未进行云环境消费切换。**
 
 The Booking service now has an opt-in TripPublished observation consumer. It writes only isolated shadow tables, not live orders, seats or inventory. Container acceptance remains blocked by the local Docker engine. This is not inventory autonomy or a production cutover.
 
