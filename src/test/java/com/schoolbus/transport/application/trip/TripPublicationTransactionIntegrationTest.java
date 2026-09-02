@@ -7,6 +7,14 @@ import com.schoolbus.payment.application.refund.PaymentRefundTransaction;
 import com.schoolbus.payment.application.refund.PaymentRefundRequiredMessage;
 import com.schoolbus.payment.application.refund.RefundMessageEnvelope;
 import com.schoolbus.payment.application.refund.RefundReceipt;
+import com.schoolbus.payment.infrastructure.outbox.OutboxRelayResult;
+import com.schoolbus.transport.infrastructure.messaging.TripPublicationMessagingProperties;
+import com.schoolbus.transport.infrastructure.outbox.TripPublicationOutboxRelay;
+import org.springframework.amqp.core.Binding;
+import org.springframework.amqp.core.Message;
+import org.springframework.amqp.core.MessageDeliveryMode;
+import org.springframework.amqp.rabbit.core.RabbitAdmin;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +28,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.testcontainers.containers.MySQLContainer;
+import org.testcontainers.containers.RabbitMQContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
@@ -36,8 +45,11 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 @Testcontainers(disabledWithoutDocker = true)
-@SpringBootTest(properties =
-        "school-bus.transport.trip-cancellation.reconciliation.grace-period=PT0S")
+@SpringBootTest(properties = {
+        "school-bus.transport.trip-cancellation.reconciliation.grace-period=PT0S",
+        "school-bus.transport.publication-events.enabled=true",
+        "school-bus.transport.publication-events.relay-enabled=false"
+})
 @ActiveProfiles("integration-test")
 @Import(TripPublicationTransactionIntegrationTest.FixedClockConfiguration.class)
 class TripPublicationTransactionIntegrationTest {
@@ -53,7 +65,26 @@ class TripPublicationTransactionIntegrationTest {
             )
                     .withDatabaseName("school_bus_publication_test")
                     .withUsername("school_bus")
-                    .withPassword("school_bus");
+                    .withPassword("school_bus")
+                    // Permit the isolated failure-injection trigger for the non-root test user.
+                    .withCommand("--log-bin-trust-function-creators=1");
+
+    @Container
+    @ServiceConnection
+    static final RabbitMQContainer RABBIT = new RabbitMQContainer(
+            DockerImageName.parse("rabbitmq:4.1-management"));
+
+    @Autowired
+    private TripPublicationOutboxRelay publicationRelay;
+
+    @Autowired
+    private TripPublicationOutboxPort publicationOutbox;
+
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
+
+    @Autowired
+    private TripPublicationMessagingProperties publicationTopology;
 
     @Autowired
     private TripPublicationApplicationService service;
@@ -81,6 +112,7 @@ class TripPublicationTransactionIntegrationTest {
 
     @BeforeEach
     void seedDraftTrip() {
+        new RabbitAdmin(rabbitTemplate.getConnectionFactory()).purgeQueue(publicationTopology.shadowQueue());
         jdbcTemplate.update("DELETE FROM event_consumed");
         jdbcTemplate.update("DELETE FROM event_outbox");
         jdbcTemplate.update("DELETE FROM payment_record");
@@ -194,6 +226,9 @@ class TripPublicationTransactionIntegrationTest {
                 Integer.class
         )).isEqualTo(3);
         verify(bookableTripCache).evict();
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM event_outbox WHERE context_name='transport' AND event_type='TripPublished' AND status='NEW'",
+                Integer.class)).isEqualTo(1);
     }
 
     @Test
@@ -234,6 +269,95 @@ class TripPublicationTransactionIntegrationTest {
                 Integer.class
         )).isZero();
         verify(bookableTripCache, never()).evict();
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM event_outbox WHERE event_type='TripPublished'", Integer.class)).isZero();
+    }
+
+    @Test
+    void outboxInsertFailureRollsBackTripSeatsAndInventory() {
+        // The trigger is confined to this disposable MySQL container and removed even on failure.
+        jdbcTemplate.execute("""
+                CREATE TRIGGER fail_trip_publication BEFORE INSERT ON event_outbox
+                FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'forced Outbox failure'
+                """);
+        try {
+            assertThatThrownBy(() -> service.publish(new PublishTripCommand(5001L, 0L)))
+                    .isInstanceOf(org.springframework.dao.DataAccessException.class);
+            assertThat(jdbcTemplate.queryForObject("SELECT status FROM transport_trip WHERE id=5001", String.class))
+                    .isEqualTo("DRAFT");
+            assertThat(jdbcTemplate.queryForObject("SELECT version FROM transport_trip WHERE id=5001", Long.class)).isZero();
+            assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM transport_trip_seat WHERE trip_id=5001", Integer.class)).isZero();
+            assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM booking_trip_inventory WHERE trip_id=5001", Integer.class)).isZero();
+            assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM event_outbox", Integer.class)).isZero();
+            verify(bookableTripCache, never()).evict();
+        } finally {
+            jdbcTemplate.execute("DROP TRIGGER IF EXISTS fail_trip_publication");
+        }
+    }
+
+    @Test
+    void duplicatePublishDoesNotAppendAnotherEvent() {
+        service.publish(new PublishTripCommand(5001L, 0L));
+        assertThatThrownBy(() -> service.publish(new PublishTripCommand(5001L, 0L)))
+                .isInstanceOf(com.schoolbus.shared.api.BusinessException.class);
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM event_outbox WHERE event_type='TripPublished'", Integer.class)).isEqualTo(1);
+    }
+
+    @Test
+    void publicationOutboxRejectsCallsOutsideTransaction() {
+        assertThatThrownBy(() -> publicationOutbox.append(new TripPublishedEvent(5001L,
+                java.util.UUID.fromString("33333333-3333-3333-3333-333333333333"), 1,
+                java.util.List.of("1"), new java.math.BigDecimal("5.00"), NOW.plusSeconds(60), NOW.plusSeconds(120), NOW)))
+                .isInstanceOf(org.springframework.transaction.IllegalTransactionStateException.class);
+    }
+
+    @Test
+    void committedPublicationReachesRealRabbitWithStableEventId() throws Exception {
+        service.publish(new PublishTripCommand(5001L, 0L));
+        String eventId = jdbcTemplate.queryForObject(
+                "SELECT event_id FROM event_outbox WHERE event_type='TripPublished'", String.class);
+        assertThat(publicationRelay.relayReadyEvents()).isEqualTo(new OutboxRelayResult(1, 1, 0));
+        Message received = rabbitTemplate.receive(publicationTopology.shadowQueue(), 5000);
+        assertThat(received).isNotNull();
+        assertThat(received.getMessageProperties().getMessageId()).isEqualTo(eventId);
+        assertThat(received.getMessageProperties().getReceivedDeliveryMode()).isEqualTo(MessageDeliveryMode.PERSISTENT);
+        var payload = new com.fasterxml.jackson.databind.ObjectMapper().readTree(received.getBody());
+        assertThat(payload.get("tripId").isTextual()).isTrue();
+        assertThat(payload.get("tripId").asText()).isEqualTo("5001");
+        assertThat(payload.get("schemaVersion").asInt()).isEqualTo(1);
+        assertThat(payload.get("seatNumbers").size()).isEqualTo(3);
+        assertThat(payload.get("totalSeats").asInt()).isEqualTo(3);
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT status FROM event_outbox WHERE event_id=?", String.class, eventId)).isEqualTo("PUBLISHED");
+        assertThat(publicationRelay.relayReadyEvents()).isEqualTo(new OutboxRelayResult(0, 0, 0));
+    }
+
+    @Test
+    void unroutableEventRemainsRetryableAndRecoversWithSameIdentity() {
+        service.publish(new PublishTripCommand(5001L, 0L));
+        String eventId = jdbcTemplate.queryForObject(
+                "SELECT event_id FROM event_outbox WHERE event_type='TripPublished'", String.class);
+        RabbitAdmin admin = new RabbitAdmin(rabbitTemplate.getConnectionFactory());
+        Binding binding = new Binding(publicationTopology.shadowQueue(), Binding.DestinationType.QUEUE,
+                publicationTopology.exchange(), publicationTopology.routingKey(), null);
+        admin.removeBinding(binding);
+        try {
+            assertThat(publicationRelay.relayReadyEvents()).isEqualTo(new OutboxRelayResult(1, 0, 1));
+            assertThat(jdbcTemplate.queryForObject(
+                    "SELECT status FROM event_outbox WHERE event_id=?", String.class, eventId)).isEqualTo("FAILED");
+            assertThat(jdbcTemplate.queryForObject(
+                    "SELECT retry_count FROM event_outbox WHERE event_id=?", Integer.class, eventId)).isEqualTo(1);
+        } finally {
+            admin.declareBinding(binding);
+        }
+        // Advance only the isolated test row's due time; no wall-clock sleeping is required.
+        jdbcTemplate.update("UPDATE event_outbox SET next_retry_at=? WHERE event_id=?",
+                LocalDateTime.ofInstant(NOW.minusSeconds(1), ZoneOffset.UTC), eventId);
+        assertThat(publicationRelay.relayReadyEvents()).isEqualTo(new OutboxRelayResult(1, 1, 0));
+        Message received = rabbitTemplate.receive(publicationTopology.shadowQueue(), 5000);
+        assertThat(received).isNotNull();
+        assertThat(received.getMessageProperties().getMessageId()).isEqualTo(eventId);
     }
 
     @Test

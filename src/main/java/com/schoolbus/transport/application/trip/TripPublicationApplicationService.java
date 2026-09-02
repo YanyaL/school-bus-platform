@@ -37,6 +37,7 @@ public class TripPublicationApplicationService {
     private final RouteRepository routeRepository;
     private final TripSeatRepository tripSeatRepository;
     private final TripInventoryInitializationPort inventoryInitializer;
+    private final TripPublicationOutboxPort publicationOutbox;
     private final ApplicationEventPublisher eventPublisher;
     private final Clock clock;
 
@@ -46,6 +47,7 @@ public class TripPublicationApplicationService {
             RouteRepository routeRepository,
             TripSeatRepository tripSeatRepository,
             TripInventoryInitializationPort inventoryInitializer,
+            TripPublicationOutboxPort publicationOutbox,
             ApplicationEventPublisher eventPublisher,
             Clock clock
     ) {
@@ -69,6 +71,7 @@ public class TripPublicationApplicationService {
                 inventoryInitializer,
                 "inventoryInitializer must not be null"
         );
+        this.publicationOutbox = Objects.requireNonNull(publicationOutbox, "publicationOutbox must not be null");
         this.eventPublisher = Objects.requireNonNull(
                 eventPublisher,
                 "eventPublisher must not be null"
@@ -167,6 +170,10 @@ public class TripPublicationApplicationService {
                     "seat or inventory data has already been initialized"
             );
         }
+
+        publicationOutbox.append(new TripPublishedEvent(trip.tripId().value(), trip.tripNumber().value(),
+                trip.version(), seatNumbers, trip.price().amount(), trip.bookingDeadline(),
+                trip.departureTime(), now));
 
         eventPublisher.publishEvent(
                 new TripAvailabilityChangedEvent(now)

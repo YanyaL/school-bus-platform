@@ -73,6 +73,9 @@ class TripPublicationApplicationServiceTest {
     private TripInventoryInitializationPort inventoryInitializer;
 
     @Mock
+    private TripPublicationOutboxPort publicationOutbox;
+
+    @Mock
     private ApplicationEventPublisher eventPublisher;
 
     private TripPublicationApplicationService service;
@@ -85,6 +88,7 @@ class TripPublicationApplicationServiceTest {
                 routeRepository,
                 tripSeatRepository,
                 inventoryInitializer,
+                publicationOutbox,
                 eventPublisher,
                 Clock.fixed(NOW, ZoneOffset.UTC)
         );
@@ -110,6 +114,8 @@ class TripPublicationApplicationServiceTest {
                 NOW
         );
         verify(inventoryInitializer).initialize(5001L, 3, NOW);
+        verify(publicationOutbox).append(new TripPublishedEvent(5001L, trip.tripNumber().value(),
+                1L, SEATS, trip.price().amount(), BOOKING_DEADLINE, DEPARTURE_TIME, NOW));
         verify(eventPublisher).publishEvent(
                 new TripAvailabilityChangedEvent(NOW)
         );
@@ -236,7 +242,7 @@ class TripPublicationApplicationServiceTest {
         assertThatThrownBy(() -> service.publish(
                 new PublishTripCommand(5001L, 0L)
         )).isInstanceOf(TripNotPublishableException.class);
-        verifyNoInteractions(inventoryInitializer, eventPublisher);
+        verifyNoInteractions(inventoryInitializer, publicationOutbox, eventPublisher);
     }
 
     private BusTrip preparePublishableTrip() {
@@ -251,6 +257,16 @@ class TripPublicationApplicationServiceTest {
                 VehicleId.of(3001L)
         )).thenReturn(SEATS);
         return trip;
+    }
+
+    @Test
+    void doesNotPublishCacheEventWhenOutboxAppendFails() {
+        preparePublishableTrip();
+        org.mockito.Mockito.doThrow(new IllegalStateException("outbox unavailable"))
+                .when(publicationOutbox).append(any());
+        assertThatThrownBy(() -> service.publish(new PublishTripCommand(5001L, 0L)))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining("outbox unavailable");
+        verifyNoInteractions(eventPublisher);
     }
 
     private BusTrip draftTrip() {
