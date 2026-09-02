@@ -32,6 +32,12 @@ class CoreServiceRoutesTest {
             "GET, /api/v1/trips/11111111-1111-1111-1111-111111111111/seats, school-bus-transport-query-seats, lb://school-bus-transport-query",
             "GET, /api/v1/admin/trips, school-bus-core-api, lb://school-bus-core",
             "POST, /api/v1/admin/trips, school-bus-core-api, lb://school-bus-core",
+            "GET, /api/v1/admin/vehicles, school-bus-transport-command-vehicles, lb://school-bus-transport-command",
+            "POST, /api/v1/admin/vehicles, school-bus-transport-command-vehicles, lb://school-bus-transport-command",
+            "PATCH, /api/v1/admin/vehicles/101/status, school-bus-transport-command-vehicles, lb://school-bus-transport-command",
+            "GET, /api/v1/admin/routes, school-bus-transport-command-routes, lb://school-bus-transport-command",
+            "POST, /api/v1/admin/routes, school-bus-transport-command-routes, lb://school-bus-transport-command",
+            "PATCH, /api/v1/admin/routes/201/status, school-bus-transport-command-routes, lb://school-bus-transport-command",
             "GET, /api/v1/bookings, school-bus-booking-api, lb://school-bus-booking",
             "POST, /api/v1/bookings, school-bus-booking-api, lb://school-bus-booking",
             "GET, /api/v1/bookings/11111111-1111-1111-1111-111111111111, school-bus-booking-api, lb://school-bus-booking",
@@ -135,6 +141,45 @@ class CoreServiceRoutesTest {
         assertThat(route.getUri()).isEqualTo(URI.create("lb://school-bus-booking"));
         assertThat(route.getFilters().stream().map(Object::toString).anyMatch(s ->
                 s.contains("Retry") || s.contains("retry"))).isFalse();
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "POST, /api/v1/admin/vehicles, school-bus-transport-command-vehicles",
+            "PATCH, /api/v1/admin/vehicles/101/status, school-bus-transport-command-vehicles",
+            "POST, /api/v1/admin/routes, school-bus-transport-command-routes",
+            "PATCH, /api/v1/admin/routes/201/status, school-bus-transport-command-routes"
+    })
+    void transportCommandWritesAreNeverRetried(
+            String method,
+            String path,
+            String expectedRouteId
+    ) {
+        MockServerWebExchange exchange = MockServerWebExchange.from(
+                MockServerHttpRequest.method(HttpMethod.valueOf(method), path).build()
+        );
+        Route route = routeLocator.getRoutes()
+                .filterWhen(candidate -> Mono.from(candidate.getPredicate().apply(exchange)))
+                .blockFirst();
+
+        assertThat(route).isNotNull();
+        assertThat(route.getId()).isEqualTo(expectedRouteId);
+        assertThat(route.getFilters().stream().map(Object::toString).anyMatch(s ->
+                s.contains("Retry") || s.contains("retry"))).isFalse();
+    }
+
+    @Test
+    void coreFallbackKeepsTripAdministrationUntilNextExtractionPhase() {
+        MockServerWebExchange exchange = MockServerWebExchange.from(
+                MockServerHttpRequest.post("/api/v1/admin/trips").build()
+        );
+        Route route = routeLocator.getRoutes()
+                .filterWhen(candidate -> Mono.from(candidate.getPredicate().apply(exchange)))
+                .blockFirst();
+
+        assertThat(route).isNotNull();
+        assertThat(route.getId()).isEqualTo(CoreServiceRoutes.CORE_ROUTE_ID);
+        assertThat(route.getUri()).isEqualTo(URI.create("lb://school-bus-core"));
     }
 
     @Test

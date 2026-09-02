@@ -8,6 +8,7 @@ import com.schoolbus.transport.application.route.CreateRouteCommand;
 import com.schoolbus.transport.application.route.RouteManagementApplicationService;
 import com.schoolbus.transport.application.route.RouteView;
 import com.schoolbus.transport.application.route.UpdateRouteStatusCommand;
+import com.schoolbus.transport.config.ConditionalOnEmbeddedTransportAdmin;
 import com.schoolbus.transport.domain.route.RouteStatus;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -30,6 +31,7 @@ import java.util.List;
 import java.util.Objects;
 
 @RestController
+@ConditionalOnEmbeddedTransportAdmin
 @RequestMapping("/api/v1/admin/routes")
 @Validated
 @Profile("!test")

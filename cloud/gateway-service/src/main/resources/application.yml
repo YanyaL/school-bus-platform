@@ -66,6 +66,7 @@ school-bus:
     transport-query-service-id: ${TRANSPORT_QUERY_SERVICE_ID:school-bus-transport-query}
     iam-service-id: ${IAM_SERVICE_ID:school-bus-iam}
     payment-service-id: ${PAYMENT_SERVICE_ID:school-bus-payment}
+    transport-command-service-id: ${TRANSPORT_COMMAND_SERVICE_ID:school-bus-transport-command}
     token-revocation:
       enabled: ${TOKEN_REVOCATION_ENABLED:true}
       fail-closed: ${TOKEN_REVOCATION_FAIL_CLOSED:true}

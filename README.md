@@ -4,7 +4,7 @@
 
 A school bus booking and payment platform covering OIDC SSO, trip and seat discovery, concurrent seat reservation, payment/refund, cancellation and timeout processing. It starts as a modular monolith and is being incrementally extracted into Spring Cloud services with the Strangler Fig pattern.
 
-> **项目状态 / Status：持续开发中（WIP）。** 学生端核心业务闭环、IAM / Booking / Payment / Transport Query 服务提取、Booking↔Payment 事件解耦及主要基础设施验收已经完成；学生端与管理端两个 OIDC 客户端、管理控制台、真实浏览器 SSO 联调及 Gateway 全局 Token 撤销已经完成，独立数据库仍在推进。
+> **项目状态 / Status：持续开发中（WIP）。** 学生端核心业务闭环、IAM / Booking / Payment / Transport Query 服务提取、Booking↔Payment 事件解耦及主要基础设施验收已经完成；学生端与管理端两个 OIDC 客户端、管理控制台、真实浏览器 SSO 联调及 Gateway 全局 Token 撤销已经完成。Transport Command 第一阶段的车辆与路线管理写路径已提取并通过真实基础设施验收；班次写路径与独立数据库仍在推进。
 
 ## 技术栈 / Tech Stack
 
@@ -43,7 +43,7 @@ A school bus booking and payment platform covering OIDC SSO, trip and seat disco
 | Payment 服务 | ✅ 已提取并验收 | 支付回调、退款 Outbox Relay、RabbitMQ Consumer、retry/DLQ |
 | Booking ↔ Payment 解耦 | ✅ 已验收 | 云模式使用领域事件，不再跨领域直接写对方业务表 |
 | Canal CDC 缓存链路 | 🟡 影子运行 | 真实联调已通过，暂时保留应用侧缓存失效作为保护 |
-| Transport 写路径与管理端 | 🟡 管理界面已接入 | 车辆、路线和班次管理仍由 Core 提供；独立管理 SPA 已完成，写服务尚未提取 |
+| Transport 写路径与管理端 | 🟡 第一阶段已提取并验收 | 车辆与路线管理由 Transport Command 承接并通过 Nacos/Gateway/MySQL 真实验收；班次发布/取消仍由 Core 提供，独立管理 SPA 已完成 |
 | 数据库自治 | 📋 待完成 | 当前服务仍共享 MySQL 物理实例；下一阶段逐步收紧跨服务表访问 |
 
 ## 当前架构 / Architecture
@@ -58,7 +58,8 @@ Spring Cloud Gateway (:8080)
         ├── school-bus-transport-query (:8082 / :8083)
         ├── school-bus-payment (:8085)
         ├── school-bus-booking (:8087)
-        └── school-bus-core (:8081, remaining write/admin paths)
+        ├── school-bus-transport-command (:8088, vehicle/route admin)
+        └── school-bus-core (:8081, trip commands and remaining paths)
 
 Nacos ─ service discovery/configuration
 MySQL ─ transactional source of truth
@@ -79,6 +80,7 @@ Canal ─ Binlog CDC cache projection (shadow mode)
 - [Payment 服务提取](docs/14-payment-strangler.md)、[退款消息职责迁移](docs/15-payment-refund-messaging-extraction.md)
 - [Canal CDC 缓存一致性](docs/18-canal-cache-consistency.md)
 - [Booking 服务提取](docs/19-booking-strangler.md)、[Booking↔Payment 事件解耦](docs/20-booking-payment-event-decoupling.md)
+- [Transport Command 第一阶段](docs/26-transport-command-foundation.md)
 
 ## Swagger 端到端演示
 

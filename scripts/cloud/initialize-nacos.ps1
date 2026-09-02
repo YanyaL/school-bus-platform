@@ -41,7 +41,8 @@ foreach ($dataId in @(
     'school-bus-gateway.yml',
     'school-bus-transport-query.yml',
     'school-bus-iam.yml',
-    'school-bus-payment.yml'
+    'school-bus-payment.yml',
+    'school-bus-transport-command.yml'
 )) {
     $content = Get-Content -Raw -LiteralPath (Join-Path $configDirectory $dataId)
     $publishUri = "$NacosBaseUrl/nacos/v3/admin/cs/config" +

@@ -5,6 +5,7 @@ import com.schoolbus.transport.domain.vehicle.SeatLayout;
 import com.schoolbus.transport.domain.vehicle.Vehicle;
 import com.schoolbus.transport.domain.vehicle.VehicleNumber;
 import com.schoolbus.transport.domain.vehicle.VehicleRepository;
+import com.schoolbus.transport.config.ConditionalOnEmbeddedTransportAdmin;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,6 +14,7 @@ import java.time.Clock;
 import java.util.Objects;
 
 @Service
+@ConditionalOnEmbeddedTransportAdmin
 @Profile("!test")
 public class VehicleCreationTransaction {
 
