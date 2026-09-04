@@ -13,6 +13,23 @@ import java.util.List;
 @Mapper
 public interface InventoryReadinessMapper {
     @Select("""
+            SELECT EXISTS (
+                SELECT 1
+                FROM booking_trip_inventory_readiness r
+                INNER JOIN booking_trip_publication_shadow s
+                    ON s.trip_id = r.trip_id
+                   AND s.trip_version = r.publication_version
+                WHERE r.trip_id = #{tripId}
+                  AND r.publication_version = #{tripVersion}
+                  AND r.status = 'READY'
+            )
+            """)
+    boolean isReadyForPublication(
+            @Param("tripId") long tripId,
+            @Param("tripVersion") long tripVersion
+    );
+
+    @Select("""
             SELECT s.trip_id, s.trip_no AS trip_number,
                    s.trip_version AS publication_version,
                    CAST(s.snapshot_json AS CHAR) AS snapshot_json

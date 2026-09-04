@@ -8,6 +8,10 @@ public enum ErrorCode {
             "too many requests; please retry later"
     ),
     TRIP_NOT_BOOKABLE(HttpStatus.CONFLICT, "trip is not bookable"),
+    TRIP_INVENTORY_NOT_READY(
+            HttpStatus.CONFLICT,
+            "trip inventory is not ready"
+    ),
     BOOKING_ALREADY_EXISTS(
             HttpStatus.CONFLICT,
             "active booking already exists"

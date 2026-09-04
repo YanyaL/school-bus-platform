@@ -28,6 +28,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -43,6 +44,7 @@ class BookingCreationTransactionTest {
             Instant.parse("2026-08-08T02:00:00Z");
     private static final TripReference TRIP =
             TripReference.of(2001L);
+    private static final long TRIP_VERSION = 3L;
     private static final String TRIP_NUMBER_VALUE =
             "22222222-2222-2222-2222-222222222222";
     private static final PublicTripNumber TRIP_NUMBER =
@@ -59,6 +61,7 @@ class BookingCreationTransactionTest {
     private BookingIdGenerator idGenerator;
     private BookingNumberGenerator numberGenerator;
     private BookingExpirationOutboxPort expirationOutboxPort;
+    private InventoryReadinessGate inventoryReadinessGate;
     private BookingCreationTransaction transaction;
 
     @BeforeEach
@@ -70,6 +73,9 @@ class BookingCreationTransactionTest {
         idGenerator = mock(BookingIdGenerator.class);
         numberGenerator = mock(BookingNumberGenerator.class);
         expirationOutboxPort = mock(BookingExpirationOutboxPort.class);
+        inventoryReadinessGate = mock(InventoryReadinessGate.class);
+        when(inventoryReadinessGate.isReady(TRIP, TRIP_VERSION))
+                .thenReturn(true);
         transaction = new BookingCreationTransaction(
                 tripGateway,
                 seatReservationPort,
@@ -78,6 +84,7 @@ class BookingCreationTransactionTest {
                 idGenerator,
                 numberGenerator,
                 expirationOutboxPort,
+                inventoryReadinessGate,
                 Clock.fixed(NOW, ZoneOffset.UTC),
                 Duration.ofMinutes(15)
         );
@@ -159,6 +166,7 @@ class BookingCreationTransactionTest {
         assertThat(result.bookingId())
                 .isEqualTo(existing.bookingId().value());
         verify(tripGateway, never()).findByTripNumber(any());
+        verify(inventoryReadinessGate, never()).isReady(any(), anyLong());
         verify(seatReservationPort, never()).tryLockSeat(any());
         verify(inventoryRepository, never()).save(any());
         verify(expirationOutboxPort, never()).append(any());
@@ -197,6 +205,21 @@ class BookingCreationTransactionTest {
     }
 
     @Test
+    void shouldFailClosedBeforeAnyWriteWhenInventoryIsNotReady() {
+        prepareSuccessfulCreation(DEADLINE);
+        when(inventoryReadinessGate.isReady(TRIP, TRIP_VERSION))
+                .thenReturn(false);
+
+        assertThatThrownBy(() -> transaction.createOnce(command()))
+                .isInstanceOf(TripInventoryNotReadyException.class);
+
+        verify(seatReservationPort, never()).tryLockSeat(any());
+        verify(inventoryRepository, never()).save(any());
+        verify(orderRepository, never()).save(any(BookingOrder.class));
+        verify(expirationOutboxPort, never()).append(any());
+    }
+
+    @Test
     void shouldNotChangeInventoryWhenSeatCannotBeLocked() {
         prepareSuccessfulCreation(DEADLINE);
         when(seatReservationPort.tryLockSeat(any()))
@@ -217,6 +240,7 @@ class BookingCreationTransactionTest {
                 .thenReturn(Optional.of(new BookableTripSnapshot(
                         TRIP,
                         TRIP_NUMBER,
+                        TRIP_VERSION,
                         BookingAmount.of("5.50"),
                         DEPARTURE,
                         deadline,

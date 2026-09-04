@@ -13,6 +13,7 @@ import com.schoolbus.bookingservice.application.booking.CreateBookingCommand;
 import com.schoolbus.bookingservice.application.booking.CreateBookingOutcome;
 import com.schoolbus.bookingservice.application.booking.CreateBookingResult;
 import com.schoolbus.bookingservice.application.booking.SeatAlreadyReservedException;
+import com.schoolbus.bookingservice.application.booking.TripInventoryNotReadyException;
 import com.schoolbus.bookingservice.application.booking.BookingNotCancellableException;
 import com.schoolbus.bookingservice.application.booking.BookingNotFoundException;
 import com.schoolbus.bookingservice.domain.order.BookingNumber;
@@ -20,6 +21,7 @@ import com.schoolbus.bookingservice.domain.order.BookingRequestNumber;
 import com.schoolbus.bookingservice.domain.order.BookingStatus;
 import com.schoolbus.bookingservice.domain.order.CancellationReason;
 import com.schoolbus.bookingservice.domain.order.SeatNumber;
+import com.schoolbus.bookingservice.domain.trip.PublicTripNumber;
 import com.schoolbus.bookingservice.domain.trip.TripReference;
 import com.schoolbus.bookingservice.shared.api.GlobalExceptionHandler;
 import com.schoolbus.bookingservice.security.SecurityConfig;
@@ -368,6 +370,33 @@ class BookingControllerTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code")
                         .value("BOOKING_ALREADY_EXISTS"));
+    }
+
+    @Test
+    void shouldMapInventoryNotReadyConflict() throws Exception {
+        when(applicationService.createBookingOutcome(any(CreateBookingCommand.class)))
+                .thenThrow(new TripInventoryNotReadyException(
+                        PublicTripNumber.of(TRIP_NUMBER)
+                ));
+
+        mockMvc.perform(
+                        post("/api/v1/bookings")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .header(
+                                        BookingController.IDEMPOTENCY_KEY_HEADER,
+                                        IDEMPOTENCY_KEY
+                                )
+                                .content("""
+                                        {
+                                          "tripNumber": "%s",
+                                          "seatNumber": "A01"
+                                        }
+                                        """.formatted(TRIP_NUMBER))
+                                .with(jwt().jwt(builder -> builder.subject("1000001")))
+                )
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code")
+                        .value("TRIP_INVENTORY_NOT_READY"));
     }
 
     @Test

@@ -20,6 +20,8 @@ school-bus:
   booking:
     inventory-readiness-shadow:
       enabled: ${BOOKING_INVENTORY_READINESS_SHADOW_ENABLED:false}
+    inventory-readiness-gate:
+      enabled: ${BOOKING_INVENTORY_READINESS_GATE_ENABLED:false}
     payment-window: ${BOOKING_PAYMENT_WINDOW:PT15M}
     expiration:
       scheduler:

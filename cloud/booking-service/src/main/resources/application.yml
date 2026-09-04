@@ -91,6 +91,8 @@ school-bus:
       batch-size: ${BOOKING_INVENTORY_READINESS_BATCH_SIZE:100}
       initial-delay-ms: ${BOOKING_INVENTORY_READINESS_INITIAL_DELAY_MS:15000}
       fixed-delay-ms: ${BOOKING_INVENTORY_READINESS_FIXED_DELAY_MS:10000}
+    inventory-readiness-gate:
+      enabled: ${BOOKING_INVENTORY_READINESS_GATE_ENABLED:false}
     payment-window: ${BOOKING_PAYMENT_WINDOW:PT15M}
     maximum-attempts: ${BOOKING_MAXIMUM_ATTEMPTS:3}
     expiration:
