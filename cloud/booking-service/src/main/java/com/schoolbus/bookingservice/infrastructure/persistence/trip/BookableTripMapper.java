@@ -11,7 +11,8 @@ import java.time.LocalDateTime;
 public interface BookableTripMapper {
 
     @Select("""
-            SELECT id, trip_no, price, departure_time, booking_deadline, status
+            SELECT id, trip_no, version, price, departure_time,
+                   booking_deadline, status
              FROM transport_trip
              WHERE trip_no = #{tripNo}
              LIMIT 1
@@ -22,6 +23,7 @@ public interface BookableTripMapper {
     record TripRow(
             long id,
             String tripNo,
+            long version,
             BigDecimal price,
             LocalDateTime departureTime,
             LocalDateTime bookingDeadline,

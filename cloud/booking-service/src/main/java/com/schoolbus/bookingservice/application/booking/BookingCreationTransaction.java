@@ -36,6 +36,7 @@ public class BookingCreationTransaction {
     private final BookingIdGenerator bookingIdGenerator;
     private final BookingNumberGenerator bookingNumberGenerator;
     private final BookingExpirationOutboxPort expirationOutboxPort;
+    private final InventoryReadinessGate inventoryReadinessGate;
     private final Clock clock;
     private final Duration paymentWindow;
 
@@ -47,6 +48,7 @@ public class BookingCreationTransaction {
             BookingIdGenerator bookingIdGenerator,
             BookingNumberGenerator bookingNumberGenerator,
             BookingExpirationOutboxPort expirationOutboxPort,
+            InventoryReadinessGate inventoryReadinessGate,
             Clock clock,
             @Value("${school-bus.booking.payment-window:PT15M}")
             Duration paymentWindow
@@ -78,6 +80,10 @@ public class BookingCreationTransaction {
         this.expirationOutboxPort = Objects.requireNonNull(
                 expirationOutboxPort,
                 "expirationOutboxPort must not be null"
+        );
+        this.inventoryReadinessGate = Objects.requireNonNull(
+                inventoryReadinessGate,
+                "inventoryReadinessGate must not be null"
         );
         this.clock = Objects.requireNonNull(
                 clock,
@@ -120,6 +126,13 @@ public class BookingCreationTransaction {
                         () -> new TripNotBookableException(tripNumber)
                 );
         TripReference tripReference = trip.tripReference();
+
+        if (!inventoryReadinessGate.isReady(
+                tripReference,
+                trip.tripVersion()
+        )) {
+            throw new TripInventoryNotReadyException(tripNumber);
+        }
 
         if (bookingOrderRepository
                 .existsActiveByUserIdAndTripReference(

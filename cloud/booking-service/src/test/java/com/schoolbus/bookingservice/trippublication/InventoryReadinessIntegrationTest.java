@@ -2,6 +2,9 @@ package com.schoolbus.bookingservice.trippublication;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.schoolbus.bookingservice.application.trippublication.InventoryReadinessApplicationService;
+import com.schoolbus.bookingservice.application.booking.InventoryReadinessGate;
+import com.schoolbus.bookingservice.domain.trip.TripReference;
+import com.schoolbus.bookingservice.config.InventoryReadinessGateConfiguration;
 import com.schoolbus.bookingservice.config.InventoryReadinessShadowConfiguration;
 import com.schoolbus.bookingservice.infrastructure.persistence.trippublication.InventoryReadinessMapper;
 import org.apache.ibatis.session.SqlSessionFactory;
@@ -45,6 +48,7 @@ class InventoryReadinessIntegrationTest {
     static AnnotationConfigApplicationContext context;
     static JdbcTemplate jdbc;
     static InventoryReadinessApplicationService service;
+    static InventoryReadinessGate gate;
 
     @AfterAll
     static void closeContext() {
@@ -87,7 +91,9 @@ class InventoryReadinessIntegrationTest {
                                 "school-bus.booking.inventory-readiness-shadow.enabled",
                                 "true",
                                 "school-bus.booking.inventory-readiness-shadow.batch-size",
-                                "10"
+                                "10",
+                                "school-bus.booking.inventory-readiness-gate.enabled",
+                                "true"
                         )
                 )
         );
@@ -112,8 +118,10 @@ class InventoryReadinessIntegrationTest {
         );
         context.register(Infrastructure.class);
         context.register(InventoryReadinessShadowConfiguration.class);
+        context.register(InventoryReadinessGateConfiguration.class);
         context.refresh();
         service = context.getBean(InventoryReadinessApplicationService.class);
+        gate = context.getBean(InventoryReadinessGate.class);
     }
 
     @Test
@@ -123,6 +131,8 @@ class InventoryReadinessIntegrationTest {
         insertInventory(1L, 2);
         insertSeat(1L, "A01");
 
+        assertThat(gate.isReady(TripReference.of(1L), 1L)).isFalse();
+
         assertThat(service.verifyPending().waiting()).isEqualTo(1);
         assertThat(readinessStatus()).isEqualTo("WAITING");
         assertThat(diagnostic()).isEqualTo("SEAT_SET_MISMATCH");
@@ -130,6 +140,7 @@ class InventoryReadinessIntegrationTest {
         insertSeat(1L, "A02");
         assertThat(service.verifyPending().ready()).isEqualTo(1);
         assertThat(readinessStatus()).isEqualTo("READY");
+        assertThat(gate.isReady(TripReference.of(1L), 1L)).isTrue();
         assertThat(jdbc.queryForObject(
                 "SELECT available_seats FROM booking_trip_inventory WHERE trip_id=1",
                 Integer.class
@@ -162,6 +173,7 @@ class InventoryReadinessIntegrationTest {
                 null
         );
         assertThat(readinessStatus()).isEqualTo("READY");
+        assertThat(gate.isReady(TripReference.of(1L), 1L)).isTrue();
 
         jdbc.update("""
                 UPDATE booking_trip_publication_shadow
@@ -170,6 +182,7 @@ class InventoryReadinessIntegrationTest {
                 """);
         assertThat(service.verifyPending().waiting()).isEqualTo(1);
         assertThat(readinessStatus()).isEqualTo("WAITING");
+        assertThat(gate.isReady(TripReference.of(1L), 2L)).isFalse();
         assertThat(jdbc.queryForObject(
                 "SELECT publication_version FROM booking_trip_inventory_readiness WHERE trip_id=1",
                 Long.class

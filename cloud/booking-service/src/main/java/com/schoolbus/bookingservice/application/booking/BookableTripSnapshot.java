@@ -10,6 +10,7 @@ import java.util.Objects;
 public record BookableTripSnapshot(
         TripReference tripReference,
         PublicTripNumber tripNumber,
+        long tripVersion,
         BookingAmount price,
         Instant departureTime,
         Instant bookingDeadline,
@@ -25,6 +26,11 @@ public record BookableTripSnapshot(
                 tripNumber,
                 "tripNumber must not be null"
         );
+        if (tripVersion <= 0L) {
+            throw new IllegalArgumentException(
+                    "tripVersion must be positive"
+            );
+        }
         Objects.requireNonNull(price, "price must not be null");
         Objects.requireNonNull(
                 departureTime,

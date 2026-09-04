@@ -39,6 +39,7 @@ public class SharedDatabaseBookableTripGateway implements BookableTripGateway {
         return Optional.of(new BookableTripSnapshot(
                 TripReference.of(row.id()),
                 PublicTripNumber.of(row.tripNo()),
+                row.version(),
                 new BookingAmount(row.price()),
                 toInstant(row.departureTime()),
                 toInstant(row.bookingDeadline()),
